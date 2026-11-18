@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/models.dart';
 import '../core/session.dart';
 import '../l10n/app_localizations.dart';
+import 'pedagogy_screens.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -18,6 +19,11 @@ class HomeScreen extends ConsumerWidget {
       body: screens.isEmpty
           ? Center(child: Text(t.noModules))
           : ListView(children: [for (final sc in screens) ListTile(title: Text(sc))]),
+      floatingActionButton: null,
+      bottomNavigationBar: NavigationBar(
+        destinations: const [NavigationDestination(icon: Icon(Icons.menu_book), label: 'Cahier'), NavigationDestination(icon: Icon(Icons.class_), label: 'Classes')],
+        onDestinationSelected: (i) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => i == 0 ? const LessonsScreen() : const ClassesScreen())),
+      ),
     );
   }
 }

@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'json_cache.dart';
 import 'models.dart';
+import 'offline_queue.dart';
 
 const apiBase = String.fromEnvironment('API_BASE', defaultValue: 'http://10.0.2.2:3000');
 
@@ -20,6 +22,37 @@ class ApiClient {
         headers: _h(school, null), body: jsonEncode({'sub': 'mobile-$role', 'role': role, 'tenant': school}));
     if (r.statusCode >= 300) throw Exception('login failed (${r.statusCode})');
     return (jsonDecode(r.body) as Map<String, dynamic>)['access_token'] as String;
+  }
+
+  /// GET with offline fallback to the cache. Returns decoded JSON and whether it came from the cache.
+  Future<({dynamic data, bool fromCache})> getJson(String school, String token, String path, JsonCache cache) async {
+    try {
+      final r = await _c.get(Uri.parse('$apiBase$path'), headers: _h(school, token));
+      if (r.statusCode >= 300) throw Exception('GET $path failed (${r.statusCode})');
+      await cache.put(path, r.body);
+      return (data: jsonDecode(r.body), fromCache: false);
+    } on http.ClientException {
+      final c = await cache.get(path);
+      if (c == null) rethrow;
+      return (data: jsonDecode(c), fromCache: true);
+    }
+  }
+
+  /// Write: sent now, or queued when offline. `priority` > 0 for teacher grade entries.
+  Future<bool> post(String school, String token, String path, Map<String, dynamic> body, OfflineQueue queue, {int priority = 0}) async {
+    try {
+      final r = await _c.post(Uri.parse('$apiBase$path'), headers: _h(school, token), body: jsonEncode(body));
+      if (r.statusCode >= 300) throw Exception('POST $path failed (${r.statusCode})');
+      return false;
+    } on http.ClientException {
+      await queue.enqueue('POST', path, body, priority: priority);
+      return true; // queued
+    }
+  }
+
+  Future<int> replay(String school, String token, QueuedOp op) async {
+    final r = await _c.post(Uri.parse('$apiBase${op.path}'), headers: _h(school, token), body: jsonEncode(op.body));
+    return r.statusCode;
   }
 
   Future<List<ActiveModule>> activeModules(String school, String token) async {
