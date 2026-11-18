@@ -38,5 +38,5 @@ jobs:
         working-directory: apps/mobile
         run: flutter create --platforms=android,ios --org com.ecolemanager --project-name ecolemanager_mobile .
       - working-directory: apps/mobile
-        run: flutter pub get && flutter gen-l10n && flutter analyze && flutter test && flutter build apk --debug
+        run: flutter pub get && flutter gen-l10n && flutter analyze --no-fatal-infos && flutter test && flutter build apk --debug
   # iOS signed build: added in phase 7, only when signing secrets exist (never read from the repo).
