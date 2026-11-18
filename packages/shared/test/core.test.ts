@@ -89,3 +89,13 @@ test('only SA-E/admin manage modules; teacher cannot; head validates schedule', 
   assert.equal(can(teacher, 'modules:manage', { tenantId: 'T1' }).allowed, false);
   assert.equal(can({ id: 'h', roles: ['head'], tenantId: 'T1' }, 'schedule:validate', { tenantId: 'T1' }).allowed, true);
 });
+
+test('pedagogy ABAC additions: teacher reads students/writes lessons only for own classes; family reads attendance of own/linked child', () => {
+  assert.equal(can(teacher, 'students:read', { tenantId: 'T1', classId: 'c1' }).allowed, true);
+  assert.equal(can(teacher, 'students:read', { tenantId: 'T1', classId: 'c2' }).allowed, false);
+  assert.equal(can(teacher, 'lessons:write', { tenantId: 'T1', classId: 'c2' }).allowed, false);
+  assert.equal(can(guardian, 'absences:read', { tenantId: 'T1', studentId: 's1' }).allowed, true);
+  assert.equal(can(guardian, 'absences:read', { tenantId: 'T1', studentId: 's2' }).allowed, false);
+  assert.equal(can(student, 'absences:read', { tenantId: 'T1', studentId: 's1' }).allowed, true);
+  assert.equal(can(student, 'absences:read', { tenantId: 'T1', studentId: 's2' }).allowed, false);
+});

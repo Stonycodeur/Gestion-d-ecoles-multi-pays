@@ -8,10 +8,13 @@ import { CoreGuard } from './core/auth.guard';
 import { TenantMiddleware } from './core/tenant.middleware';
 import { ModulesController } from './modules/modules.controller';
 import { ModulesService } from './modules/modules.service';
+import { PedagogyController } from './pedagogy/pedagogy.controller';
+import { PedagogyService } from './pedagogy/pedagogy.service';
+import { TenantDb } from './pedagogy/tenant-db.service';
 
 @Module({
-  controllers: [HealthController, AuthController, ModulesController],
-  providers: [AuthService, AuditService, ModulesService, { provide: APP_GUARD, useClass: CoreGuard }],
+  controllers: [HealthController, AuthController, ModulesController, PedagogyController],
+  providers: [AuthService, AuditService, ModulesService, TenantDb, PedagogyService, { provide: APP_GUARD, useClass: CoreGuard }],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) { consumer.apply(TenantMiddleware).forRoutes('*'); }

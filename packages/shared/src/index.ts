@@ -4,3 +4,6 @@ export * from './semver.ts';
 export * from './modules.ts';
 export * from './tenant.ts';
 export * from './rbac.ts';
+export * from './timetable.ts';
+export * from './averages.ts';
+export * from './absences.ts';

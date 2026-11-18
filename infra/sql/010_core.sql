@@ -212,23 +212,4 @@ CREATE TABLE sessions (
   revoked_at TIMESTAMPTZ
 );
 
--- Tenant provisioning: one schema per school + RLS (spec 4.3).
-CREATE OR REPLACE FUNCTION provision_tenant_schema(p_slug TEXT) RETURNS TEXT AS $$
-DECLARE s TEXT := 'tenant_' || p_slug;
-BEGIN
-  IF p_slug !~ '^[a-z0-9_]{2,40}$' THEN RAISE EXCEPTION 'invalid slug'; END IF;
-  EXECUTE format('CREATE SCHEMA IF NOT EXISTS %I', s);
-  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.students (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      tenant_id UUID NOT NULL,
-      first_name TEXT NOT NULL, last_name TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'enrolled',
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s);
-  EXECUTE format('ALTER TABLE %I.students ENABLE ROW LEVEL SECURITY', s);
-  EXECUTE format('ALTER TABLE %I.students FORCE ROW LEVEL SECURITY', s);
-  EXECUTE format($f$CREATE POLICY tenant_isolation ON %I.students
-      USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
-             OR current_setting('app.root_bypass', true) = 'on')$f$, s);
-  RETURN s;
-END;
-$$ LANGUAGE plpgsql;
+-- provision_tenant_schema() lives in 040_tenant_template.sql

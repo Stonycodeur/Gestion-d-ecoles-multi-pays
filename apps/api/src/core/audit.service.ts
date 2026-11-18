@@ -13,9 +13,11 @@ export class AuditService {
   }
   async log(e: AuditEntry): Promise<void> {
     if (!this.pool) { this.memory.push(e); if (this.memory.length > 1000) this.memory.shift(); return; }
+    const isUuid = !!e.actorId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(e.actorId);
     await this.pool.query(
       'INSERT INTO audit_logs(actor_id, tenant_id, action, entity, entity_id, details, ip) VALUES ($1, NULL, $2, $3, $4, $5, $6)',
-      [e.actorId ?? null, e.action, e.entity ?? null, e.entityId ?? null, JSON.stringify({ tenant: e.tenant, ...(e.details ?? {}) }), e.ip ?? null],
+      [isUuid ? e.actorId : null, e.action, e.entity ?? null, e.entityId ?? null,
+        JSON.stringify({ tenant: e.tenant, ...(isUuid ? {} : { actor_sub: e.actorId }), ...(e.details ?? {}) }), e.ip ?? null],
     );
   }
 }

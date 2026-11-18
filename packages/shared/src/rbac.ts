@@ -13,12 +13,12 @@ export const ROLE_PERMISSIONS: Record<RoleCode, string[]> = {
   head: ['students:read', 'students:write', 'staff:read', 'staff:write', 'schedule:read', 'schedule:validate', 'lessons:read', 'lessons:visa',
     'grades:read', 'grades:write', 'absences:read', 'absences:write', 'absences:validate', 'oaa:read', 'ministry:send', 'billing:read',
     'ai:use', 'locker:read', 'predictive:read', 'messages:all'],
-  teacher: ['schedule:read', 'lessons:read', 'lessons:write', 'grades:read', 'grades:write', 'absences:read', 'absences:write', 'oaa:read',
+  teacher: ['students:read', 'schedule:read', 'lessons:read', 'lessons:write', 'grades:read', 'grades:write', 'absences:read', 'absences:write', 'oaa:read',
     'ai:use', 'predictive:read', 'messages:scoped', 'games:create'],
   education_assistant: ['students:read', 'schedule:read', 'lessons:read', 'absences:read', 'absences:write', 'absences:validate', 'messages:scoped'],
   accountant: ['billing:read', 'billing:write', 'messages:scoped'],
-  student: ['schedule:read', 'lessons:read', 'grades:read', 'oaa:read', 'billing:pay', 'absences:justify', 'messages:scoped', 'games:play', 'gps:consent', 'locker:read', 'ai:tutor'],
-  guardian: ['schedule:read', 'lessons:read', 'grades:read', 'oaa:read', 'billing:pay', 'absences:justify', 'messages:scoped', 'gps:read', 'gps:consent', 'locker:read'],
+  student: ['absences:read', 'schedule:read', 'lessons:read', 'grades:read', 'oaa:read', 'billing:pay', 'absences:justify', 'messages:scoped', 'games:play', 'gps:consent', 'locker:read', 'ai:tutor'],
+  guardian: ['absences:read', 'schedule:read', 'lessons:read', 'grades:read', 'oaa:read', 'billing:pay', 'absences:justify', 'messages:scoped', 'gps:read', 'gps:consent', 'locker:read'],
   visitor: ['public:read'],
 };
 
@@ -37,9 +37,9 @@ export interface Resource {
 }
 export interface Decision { allowed: boolean; reason: string; auditRootBypass?: boolean }
 
-const TEACHER_SCOPED = new Set(['grades:read', 'grades:write', 'absences:read', 'absences:write', 'oaa:read', 'predictive:read']);
-const OWN_ONLY_STUDENT = new Set(['grades:read', 'oaa:read', 'absences:justify', 'locker:read', 'gps:consent', 'billing:pay', 'schedule:read', 'lessons:read']);
-const CHILD_ONLY_GUARDIAN = new Set(['grades:read', 'oaa:read', 'absences:justify', 'locker:read', 'gps:read', 'gps:consent', 'billing:pay', 'schedule:read', 'lessons:read']);
+const TEACHER_SCOPED = new Set(['students:read', 'lessons:write', 'grades:read', 'grades:write', 'absences:read', 'absences:write', 'oaa:read', 'predictive:read']);
+const OWN_ONLY_STUDENT = new Set(['absences:read', 'grades:read', 'oaa:read', 'absences:justify', 'locker:read', 'gps:consent', 'billing:pay', 'schedule:read', 'lessons:read']);
+const CHILD_ONLY_GUARDIAN = new Set(['absences:read', 'grades:read', 'oaa:read', 'absences:justify', 'locker:read', 'gps:read', 'gps:consent', 'billing:pay', 'schedule:read', 'lessons:read']);
 
 function roleHas(role: RoleCode, perm: string): boolean {
   const list = ROLE_PERMISSIONS[role] ?? [];
