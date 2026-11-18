@@ -1,3 +1,15 @@
+'use client';
+import { useEffect, useState } from 'react';
+import Shell from '../components/Shell';
+import { api } from '../lib/api';
+
 export default function Home() {
-  return (<main style={{ padding: 24 }}><h1>ÉcoleManager Pro</h1><p>Phase 0 : squelette web. Authentification et modules en Phase 1.</p></main>);
+  const [mods, setMods] = useState<{ name: string; version: string; mobile_screens: string[] }[]>([]);
+  useEffect(() => { api('/modules/active').then((r) => setMods(r.data ?? [])); }, []);
+  return (
+    <Shell>
+      <h1>ÉcoleManager Pro</h1>
+      <ul>{mods.length ? mods.map((m) => <li key={m.name}>{m.name} {m.version}</li>) : <li>—</li>}</ul>
+    </Shell>
+  );
 }
