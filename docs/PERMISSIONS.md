@@ -10,7 +10,7 @@
 | Configurer échelles de notation (dans les limites du pays) | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ |
 | Gérer élèves | ✔ | ✔ | ✔ | ✔ | ✘ | ◐ | ✘ | ✘ | ✘ | ✘ |
 | Gérer personnel | ✔ | ✔ | ✔ | ✔ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ |
-| Générer / valider EDT | ✘ | ✔ | ✔ | ✔ (valide) | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ |
+| Générer EDT / valider EDT | ✘ | ✔ génère | ✔ génère | ✔ génère et valide (seule la direction valide) | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ |
 | Consulter EDT | ✘ | ✔ | ✔ | ✔ | ✔ | ✔ | ✘ | ◐ | ◐ | ✘ |
 | Cahier de textes : saisir | ✘ | ✘ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ | ✘ | ✘ |
 | Cahier de textes : viser | ✘ | ✘ | ✘ | ✔ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ |

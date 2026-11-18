@@ -1,7 +1,7 @@
 export type RoleCode = 'root_super_admin' | 'tenant_super_admin' | 'admin' | 'head' | 'teacher'
   | 'education_assistant' | 'accountant' | 'student' | 'guardian' | 'visitor';
 
-const ALL_TENANT = ['students:read', 'students:write', 'staff:read', 'staff:write', 'schedule:read', 'schedule:write', 'schedule:validate',
+const ALL_TENANT = ['students:read', 'students:write', 'staff:read', 'staff:write', 'schedule:read', 'schedule:write',
   'lessons:read', 'grades:read', 'absences:read', 'oaa:read', 'oaa:configure', 'modules:manage', 'grading:configure', 'audit:read',
   'billing:read', 'billing:write', 'ministry:prepare', 'marketplace:install', 'ai:use', 'ai:configure', 'locker:read', 'predictive:read'];
 

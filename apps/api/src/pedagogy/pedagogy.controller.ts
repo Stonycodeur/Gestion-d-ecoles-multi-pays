@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Header, Param, Post, Query, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Header, Param, Patch, Post, Query, Req, StreamableFile } from '@nestjs/common';
 import { PedagogyService } from './pedagogy.service';
 import { RequirePermission } from '../core/auth.guard';
 import type { CoreRequest } from '../core/request-context';
@@ -39,6 +39,8 @@ export class PedagogyController {
   schedule(@Req() r: CoreRequest, @Param('id') id: string) { const { slug, p } = need(r); return this.svc.getSchedule(slug, id, p); }
   @Post('schedules/:id/slots') @RequirePermission('schedule:write')
   addSlot(@Req() r: CoreRequest, @Param('id') id: string, @Body() b: any) { return this.svc.addSlot(need(r).slug, id, b); }
+  @Patch('schedules/:id/slots/:slotId') @RequirePermission('schedule:write')
+  moveSlot(@Req() r: CoreRequest, @Param('id') id: string, @Param('slotId') slotId: string, @Body() b: any) { return this.svc.moveSlot(need(r).slug, id, slotId, b); }
   @Post('schedules/:id/validate') @RequirePermission('schedule:validate')
   validate(@Req() r: CoreRequest, @Param('id') id: string) { const { slug, p } = need(r); return this.svc.setScheduleStatus(slug, id, p.id, 'validated'); }
   @Post('schedules/:id/publish') @RequirePermission('schedule:validate')
@@ -71,7 +73,7 @@ export class PedagogyController {
   }
   @Get('students/:id/report.pdf') @Header('Content-Type', 'application/pdf')
   async reportPdf(@Req() r: CoreRequest, @Param('id') id: string, @Query('period') period: string, @Query('locale') locale?: string) {
-    return this.svc.reportPdf(await this.authStudent(r, id, 'grades:read'), id, period, locale);
+    return new StreamableFile(await this.svc.reportPdf(await this.authStudent(r, id, 'grades:read'), id, period, locale));
   }
   @Post('students/:id/report/archive') @RequirePermission('grades:write')
   async archive(@Req() r: CoreRequest, @Param('id') id: string, @Body() b: { period: string; school_year: string }) {

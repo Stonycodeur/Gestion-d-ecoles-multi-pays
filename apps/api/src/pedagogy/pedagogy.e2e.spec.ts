@@ -73,6 +73,10 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
     expect(view.conflicts).toEqual([]);
     const taken = view.slots[0];
     await call('post', `/schedules/${sid}/slots`, adminT).send({ class_id: ids.cls, subject_id: ids.fr, teacher_id: ids.t2, weekday: taken.day, period_index: taken.period }).expect(409);
+    // drag and drop: moving onto an occupied cell is refused, onto a free cell accepted (drafts only)
+    const other = view.slots.find((x: any) => x.teacherId !== taken.teacherId && x.id !== taken.id);
+    await (request(server) as any).patch(`/schedules/${sid}/slots/${taken.id}`).set('Authorization', `Bearer ${adminT}`).send({ weekday: other.day, period_index: other.period }).expect(409);
+    await (request(server) as any).patch(`/schedules/${sid}/slots/${taken.id}`).set('Authorization', `Bearer ${adminT}`).send({ weekday: 6, period_index: 9 }).expect(200);
     await call('post', `/schedules/${sid}/validate`, adminT).expect(403);        // admin cannot validate: only the head
     await call('post', `/schedules/${sid}/validate`, headT).expect(201);
     await call('post', `/schedules/${sid}/publish`, headT).expect(201);

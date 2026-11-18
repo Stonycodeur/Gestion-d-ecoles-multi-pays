@@ -126,6 +126,22 @@ export class PedagogyService {
         [uuid(id, 'schedule_id'), s.classId, s.subjectId, s.teacherId, s.roomId, s.day, s.period]))[0];
     });
   }
+  /** Drag and drop (web): move a slot, refused with the list of conflicts if the target cell is taken. Only drafts can be edited. */
+  async moveSlot(slug: string, scheduleId: string, slotId: string, b: any) {
+    return this.tx(slug, async (q) => {
+      const sch = (await q('SELECT status FROM schedules WHERE id = $1', [uuid(scheduleId, 'schedule_id')]))[0];
+      if (!sch) throw new NotFoundException('schedule not found');
+      if (sch.status !== 'draft') throw new ConflictException('only a draft timetable can be edited');
+      const all = await this.slots(q, scheduleId);
+      const idx = all.findIndex((x) => x.id === slotId);
+      if (idx < 0) throw new NotFoundException('slot not found');
+      const moved: Slot & { id: string } = { ...all[idx], day: num(b.weekday, 'weekday', 1, 7), period: num(b.period_index, 'period_index', 0, 20) };
+      const next = all.map((x, i) => (i === idx ? moved : x));
+      const c = detectConflicts(next).filter((x) => x.slotIndexes.includes(idx));
+      if (c.length) throw new ConflictException({ message: 'timetable conflict', conflicts: c });
+      return (await q('UPDATE schedule_slots SET weekday = $2, period_index = $3 WHERE id = $1 RETURNING *', [slotId, moved.day, moved.period]))[0];
+    });
+  }
   async setScheduleStatus(slug: string, id: string, actor: string, to: 'validated' | 'published') {
     const r = await this.tx(slug, async (q) => {
       const cur = (await q('SELECT status FROM schedules WHERE id = $1', [uuid(id, 'id')]))[0];

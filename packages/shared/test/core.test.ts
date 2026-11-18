@@ -99,3 +99,9 @@ test('pedagogy ABAC additions: teacher reads students/writes lessons only for ow
   assert.equal(can(student, 'absences:read', { tenantId: 'T1', studentId: 's1' }).allowed, true);
   assert.equal(can(student, 'absences:read', { tenantId: 'T1', studentId: 's2' }).allowed, false);
 });
+
+test('only the head (direction) validates the timetable, not admins or school super-admins', () => {
+  assert.equal(can({ id: 'a', roles: ['admin'], tenantId: 'T1' }, 'schedule:validate', { tenantId: 'T1' }).allowed, false);
+  assert.equal(can({ id: 's', roles: ['tenant_super_admin'], tenantId: 'T1' }, 'schedule:validate', { tenantId: 'T1' }).allowed, false);
+  assert.equal(can({ id: 'a', roles: ['admin'], tenantId: 'T1' }, 'schedule:write', { tenantId: 'T1' }).allowed, true);
+});
