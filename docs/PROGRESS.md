@@ -12,10 +12,14 @@
 
 **Livré** : `ARCHITECTURE.md` (avec ERD du noyau), `PERMISSIONS.md`, `README.md`, `CONTRIBUTING.md`, `DECISIONS.md`.
 
-## Prochaine étape : Phase 1 (Core)
-Auth OIDC/Keycloak, TenantResolver, utilisateurs/rôles, Module Registry, audit côté API, socle mobile (OIDC, stockage sécurisé, choix du tenant), migration `material_ui`.
+## Phase 1 (Core) : TERMINÉE (CI verte, run 44300037668)
+**Fait et vérifié** : 19 tests shared (semver, registre de modules avec compat core et hooks isolés, TenantResolver, RBAC+ABAC dont GPS avec consentement et bypass root audité) + 3 tests module-oaa ; e2e NestJS (token obligatoire, sandbox ne produit jamais de root, module-oaa découvert dans `packages/modules` et activé par tenant seulement par un admin, isolation entre tenants, token/sous-domaine cohérents) ; mobile : choix de l'établissement, connexion, stockage sécurisé, écrans selon `/modules/active` (3 tests unitaires + 1 widget).
 
-## Problèmes connus
-- Dossiers natifs `android/` et `ios/` non générés (nécessite `flutter create`, fait en CI et à documenter) ; icône et écran de lancement à ajouter.
-- Docker : seul le fichier compose a été validé, pas le démarrage des services.
-- Aucune fonctionnalité factice à ce stade.
+**Reste / limites connues de la Phase 1**
+- L'authentification réelle OIDC/PKCE avec Keycloak (côté API `AUTH_MODE=oidc`, vérification JWKS) est codée mais **non testée contre un vrai Keycloak** ; le mobile utilise pour l'instant la connexion sandbox. Le flux AppAuth/PKCE mobile, la biométrie et le certificate pinning restent à brancher (prévu avec le paiement/sécurité, Phase 5 et 7), de même que MFA et le journal des connexions (Keycloak + table `sessions`).
+- L'activation des modules par tenant est en mémoire dans l'API (`MemoryEnablementStore`) ; la persistance dans `feature_flags` est à faire en Phase 2 avec la couche d'accès aux données par tenant.
+- Les droits `ROLE_PERMISSIONS` couvrent le noyau ; ils seront complétés module par module.
+- Migration `material_ui` toujours à faire.
+
+## Prochaine étape : Phase 2 (Pédagogie)
+Établissements, élèves, personnel, classes, EDT (génération + conflits), notes et bulletins, cahier de textes, absences, web et mobile ; couche d'accès aux données par tenant ; port Dart du moteur de notation.
