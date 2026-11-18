@@ -1,0 +1,42 @@
+name: CI
+on: { push: { branches: ["**"] }, pull_request: {} }
+jobs:
+  shared-and-sql:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: ci }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 10
+    env: { PGHOST: localhost, PGUSER: postgres, PGPASSWORD: ci }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm run test:shared
+      - run: npm run test:sql
+  api-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install
+      - run: npm --prefix apps/api run build && npm --prefix apps/api test
+      - run: npm --prefix apps/web run build
+  mobile-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - name: Generate native platform folders if absent
+        working-directory: apps/mobile
+        run: flutter create --platforms=android,ios --org com.ecolemanager --project-name ecolemanager_mobile .
+      - working-directory: apps/mobile
+        run: flutter pub get && flutter gen-l10n && flutter analyze && flutter test && flutter build apk --debug
+  # iOS signed build: added in phase 7, only when signing secrets exist (never read from the repo).

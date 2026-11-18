@@ -1,0 +1,24 @@
+node_modules/
+dist/
+.next/
+.env
+.env.*
+!.env.example
+coverage/
+*.log
+# Mobile signing and secrets (never commit)
+*.jks
+*.keystore
+key.properties
+**/android/app/google-services.json
+**/ios/Runner/GoogleService-Info.plist
+*.mobileprovision
+*.p12
+*.p8
+*.cer
+fastlane/report.xml
+# Flutter
+.dart_tool/
+build/
+.flutter-plugins*
+Pods/

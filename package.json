@@ -1,0 +1,9 @@
+{
+  "name": "ecolemanager-pro",
+  "private": true,
+  "workspaces": ["apps/api", "apps/web", "packages/shared", "packages/modules/*"],
+  "scripts": {
+    "test:shared": "npm --prefix packages/shared test",
+    "test:sql": "bash infra/sql/run_tests.sh"
+  }
+}

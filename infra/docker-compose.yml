@@ -1,0 +1,39 @@
+# Dev stack: `docker compose -f infra/docker-compose.yml up`. Secrets come from .env (never committed).
+services:
+  postgres:   # TimescaleDB image includes PostgreSQL 16 + the timescaledb extension (GPS series)
+    image: timescale/timescaledb:latest-pg16
+    environment: { POSTGRES_USER: "${PG_USER:-ecole}", POSTGRES_PASSWORD: "${PG_PASSWORD:?set in .env}", POSTGRES_DB: ecolemanager }
+    volumes: [ "pgdata:/var/lib/postgresql/data", "./sql:/docker-entrypoint-initdb.d:ro" ]
+    ports: [ "5432:5432" ]
+    healthcheck: { test: ["CMD-SHELL","pg_isready -U ${PG_USER:-ecole}"], interval: 5s, retries: 10 }
+  redis:
+    image: redis:7-alpine
+    ports: [ "6379:6379" ]
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment: { RABBITMQ_DEFAULT_USER: "${RABBIT_USER:-ecole}", RABBITMQ_DEFAULT_PASS: "${RABBIT_PASSWORD:?set in .env}" }
+    ports: [ "5672:5672", "15672:15672" ]
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment: { MINIO_ROOT_USER: "${MINIO_USER:-ecole}", MINIO_ROOT_PASSWORD: "${MINIO_PASSWORD:?set in .env}" }
+    volumes: [ "miniodata:/data" ]
+    ports: [ "9000:9000", "9001:9001" ]
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.14.0
+    environment: { discovery.type: single-node, xpack.security.enabled: "false", ES_JAVA_OPTS: "-Xms512m -Xmx512m" }
+    ports: [ "9200:9200" ]
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    command: start-dev
+    environment: { KEYCLOAK_ADMIN: "${KC_ADMIN:-admin}", KEYCLOAK_ADMIN_PASSWORD: "${KC_ADMIN_PASSWORD:?set in .env}" }
+    ports: [ "8080:8080" ]
+  prometheus:
+    image: prom/prometheus:latest
+    volumes: [ "./prometheus.yml:/etc/prometheus/prometheus.yml:ro" ]
+    ports: [ "9090:9090" ]
+  grafana:
+    image: grafana/grafana:latest
+    ports: [ "3001:3000" ]
+volumes: { pgdata: {}, miniodata: {} }
+# api (NestJS), web (Next.js) and ai (FastAPI) services are added in phases 1, 4 and 6 once their builds are verifiable.
