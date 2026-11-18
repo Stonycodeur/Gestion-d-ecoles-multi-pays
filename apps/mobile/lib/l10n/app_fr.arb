@@ -1,1 +1,12 @@
-{ "@@locale": "fr", "appTitle": "ÉcoleManager Pro", "welcome": "Bienvenue" }
+{
+  "@@locale": "fr",
+  "appTitle": "ÉcoleManager Pro",
+  "welcome": "Bienvenue",
+  "schoolCode": "Code établissement",
+  "invalidCode": "Code invalide (lettres minuscules, chiffres, _)",
+  "continueLabel": "Continuer",
+  "login": "Se connecter",
+  "signOut": "Se déconnecter",
+  "noModules": "Aucun module actif pour cet établissement",
+  "roleLabel": "Rôle (mode sandbox)"
+}

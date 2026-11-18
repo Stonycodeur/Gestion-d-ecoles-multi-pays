@@ -1,0 +1,38 @@
+{
+  "name": "module-oaa",
+  "version": "1.0.0",
+  "core_version": ">=0.1.0",
+  "description": "Évaluation des capacités (OAA)",
+  "permissions": [
+    "oaa:read",
+    "oaa:write",
+    "oaa:configure"
+  ],
+  "hooks": {
+    "onStudentCreated": "calculateInitialOAA",
+    "onGradeSubmitted": "recalculateOAA",
+    "onExamCompleted": "updateOAA"
+  },
+  "config_schema": {
+    "weights": {
+      "academic": 1.0,
+      "physical": 1.0,
+      "adaptability": 1.0,
+      "social_contribution": 0.5
+    },
+    "thresholds": {
+      "warning": 50,
+      "penalty": 40
+    },
+    "initial_axes": {
+      "academic": 50,
+      "physical": 50,
+      "adaptability": 50,
+      "social_contribution": 50
+    }
+  },
+  "mobile_screens": [
+    "oaa_dashboard"
+  ],
+  "entry": "dist-cjs/modules/module-oaa/src/index.js"
+}

@@ -1,1 +1,12 @@
-{ "@@locale": "ar", "appTitle": "ÉcoleManager Pro", "welcome": "مرحبا" }
+{
+  "@@locale": "ar",
+  "appTitle": "ÉcoleManager Pro",
+  "welcome": "مرحبا",
+  "schoolCode": "رمز المدرسة",
+  "invalidCode": "رمز غير صالح",
+  "continueLabel": "متابعة",
+  "login": "تسجيل الدخول",
+  "signOut": "تسجيل الخروج",
+  "noModules": "لا توجد وحدات نشطة لهذه المدرسة",
+  "roleLabel": "الدور (وضع تجريبي)"
+}

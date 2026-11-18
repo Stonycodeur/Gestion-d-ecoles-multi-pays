@@ -24,6 +24,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: npm install
+      - run: npm run test:shared
       - run: npm --prefix apps/api run build && npm --prefix apps/api test
       - run: npm --prefix apps/web run build
   mobile-android:
