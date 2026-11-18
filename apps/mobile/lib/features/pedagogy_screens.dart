@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../core/api_client.dart';
 import '../core/json_cache.dart';
 import '../core/offline_queue.dart';
 import '../core/session.dart';
-import '../core/token_store.dart';
 
 final queueProvider = Provider<OfflineQueue>((ref) => OfflineQueue(ref.read(tokenStoreProvider)));
 final cacheProvider = Provider<JsonCache>((ref) => JsonCache(ref.read(tokenStoreProvider)));
