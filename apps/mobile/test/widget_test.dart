@@ -6,7 +6,7 @@ void main() {
   testWidgets('unauthenticated user lands on the login screen', (tester) async {
     await tester.pumpWidget(const ProviderScope(child: EcoleApp()));
     await tester.pumpAndSettle();
-    expect(find.text('Code établissement'), findsOneWidget);
-    expect(find.text('Se connecter'), findsOneWidget);
+    expect(find.text('School code'), findsOneWidget);
+    expect(find.text('Sign in'), findsOneWidget);
   });
 }

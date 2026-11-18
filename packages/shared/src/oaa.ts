@@ -17,7 +17,7 @@ export function computeOaa(axes: OaaAxes, weights: OaaWeights = DEFAULT_OAA_WEIG
 }
 
 export type OaaAlert = 'ok' | 'warning' | 'penalty';
-export function oaaAlert(score100: number, t = DEFAULT_OAA_THRESHOLDS): OaaAlert {
+export function oaaAlert(score100: number, t: { warning: number; penalty: number } = DEFAULT_OAA_THRESHOLDS): OaaAlert {
   if (score100 < t.penalty) return 'penalty';
   if (score100 < t.warning) return 'warning';
   return 'ok';
