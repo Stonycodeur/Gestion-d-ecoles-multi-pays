@@ -40,7 +40,7 @@ export interface Resource {
 }
 export interface Decision { allowed: boolean; reason: string; auditRootBypass?: boolean }
 
-const TEACHER_SCOPED = new Set(['students:read', 'lessons:write', 'grades:read', 'grades:write', 'absences:read', 'absences:write', 'oaa:read', 'oaa:write', 'games:read', 'predictive:read']);
+const TEACHER_SCOPED = new Set(['students:read', 'lessons:write', 'grades:read', 'grades:write', 'absences:read', 'absences:write', 'oaa:read', 'oaa:write', 'games:read', 'games:create', 'predictive:read']);
 const OWN_ONLY_STUDENT = new Set(['absences:read', 'grades:read', 'oaa:read', 'absences:justify', 'locker:read', 'gps:consent', 'billing:pay', 'schedule:read', 'lessons:read', 'games:read']);
 const CHILD_ONLY_GUARDIAN = new Set(['absences:read', 'grades:read', 'oaa:read', 'absences:justify', 'locker:read', 'gps:read', 'gps:consent', 'billing:pay', 'schedule:read', 'lessons:read', 'games:read']);
 
