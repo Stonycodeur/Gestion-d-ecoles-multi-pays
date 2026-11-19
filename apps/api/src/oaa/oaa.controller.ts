@@ -8,6 +8,8 @@ const need = (r: CoreRequest) => { if (!r.tenantSlug || !r.principal) throw new 
 @Controller()
 export class OaaController {
   constructor(private readonly svc: OaaService) {}
+  /** Students the caller may look at: own record, children, students of own classes (direction: use /classes). */
+  @Get('me/students') mine(@Req() r: CoreRequest) { const { slug, p } = need(r); return this.svc.myStudents(slug, p); }
   @Get('students/:id/oaa') student(@Req() r: CoreRequest, @Param('id') id: string, @Query('locale') l?: string) { const { slug, p } = need(r); return this.svc.studentOaa(slug, p, id, l); }
   @Get('classes/:id/oaa') cls(@Req() r: CoreRequest, @Param('id') id: string, @Query('locale') l?: string) { const { slug, p } = need(r); return this.svc.classOaa(slug, p, id, l); }
   @Post('students/:id/oaa/assessments') assess(@Req() r: CoreRequest, @Param('id') id: string, @Body() b: any) { const { slug, p } = need(r); return this.svc.addAssessment(slug, p, id, b); }

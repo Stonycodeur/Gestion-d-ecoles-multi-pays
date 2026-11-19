@@ -57,6 +57,12 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
     expect(r.thresholds.penalty.in_scale).toMatch(/8/);
   });
 
+  it('me/students: own record, children, taught classes', async () => {
+    expect((await call('get', '/me/students', studentT).expect(200)).body.map((x: any) => x.id)).toEqual([ids.s1]);
+    expect((await call('get', '/me/students', guardianT).expect(200)).body.map((x: any) => x.id)).toEqual([ids.s1]);
+    expect((await call('get', '/me/students', teacherT).expect(200)).body.length).toBe(2);
+  });
+
   it('confidentiality by role: student own, parent child, teacher own class, direction all', async () => {
     await call('get', `/students/${ids.s1}/oaa`, studentT).expect(200);
     await call('get', `/students/${ids.s1}/oaa`, guardianT).expect(200);
@@ -170,6 +176,7 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
   it('challenges, teams and leaderboards (names shortened for students)', async () => {
     const today = new Date().toISOString().slice(0, 10);
     await call('post', '/challenges', studentT).send({}).expect(403);
+    await call('post', '/challenges', teacherT).send({ code: 'T1', title: 'Défi prof', kind: 'individual', metric: 'xp', target: 10000, starts_on: today, ends_on: today }).expect(201);
     await call('post', '/challenges', headT).send({ code: 'XP50', title: 'Gagne 50 XP', kind: 'individual', metric: 'xp', target: 50, starts_on: today, ends_on: today }).expect(201);
     const t = (await call('post', '/teams', teacherT).send({ name: 'Les Lions', class_id: ids.cls, member_ids: [ids.s1, ids.s2] }).expect(201)).body;
     expect(t.members).toBe(2);
