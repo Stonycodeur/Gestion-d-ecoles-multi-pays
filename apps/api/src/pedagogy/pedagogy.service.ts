@@ -7,23 +7,14 @@ import { AuditService } from '../core/audit.service';
 import { date, mapDbError, num, optStr, str, uuid } from './validate';
 import { reportPdf } from './pdf';
 import { NotificationService } from '../comms/notification.service';
+import { OaaService } from '../oaa/oaa.service';
 
-export const ACTIVE_SCALE_SQL = `
-  SELECT gs.* FROM public.tenants t
-  LEFT JOIN LATERAL (SELECT grading_scale_code FROM public.tenant_settings ts WHERE ts.tenant_id = t.id AND ts.effective_from <= CURRENT_DATE
-                     ORDER BY effective_from DESC LIMIT 1) o ON true
-  JOIN public.education_systems es ON es.country_code = t.country_code AND es.school_type = t.school_type
-  JOIN public.grading_scales gs ON gs.country_code = t.country_code AND gs.code = COALESCE(o.grading_scale_code, es.grading_scale_code)
-  WHERE t.slug = $1 LIMIT 1`;
-
-export function rowToScale(r: any): GradingScale {
-  return { code: r.code, type: r.type, min: Number(r.min_value), max: Number(r.max_value), step: Number(r.step), decimals: Number(r.decimals),
-    passMark: Number(r.pass_mark), rounding: r.rounding, bands: r.bands ?? [] };
-}
+import { ACTIVE_SCALE_SQL, rowToScale } from './scale';
+export { ACTIVE_SCALE_SQL, rowToScale };
 
 @Injectable()
 export class PedagogyService {
-  constructor(private readonly db: TenantDb, private readonly modules: ModulesService, private readonly audit: AuditService, private readonly notif: NotificationService) {}
+  constructor(private readonly db: TenantDb, private readonly modules: ModulesService, private readonly audit: AuditService, private readonly notif: NotificationService, private readonly oaa: OaaService) {}
 
   authorize(p: Principal, tenant: string, perm: string, r: Resource = {}) {
     const d = can(p, perm, { tenantId: tenant, ...r });
@@ -41,8 +32,10 @@ export class PedagogyService {
   }
   listClasses(slug: string) { return this.tx(slug, (q) => q('SELECT * FROM classes ORDER BY name')); }
   createSubject(slug: string, b: any) {
-    return this.tx(slug, async (q) => (await q('INSERT INTO subjects(code, name, coefficient) VALUES ($1,$2,$3) RETURNING *',
-      [str(b.code, 'code', 20), str(b.name, 'name', 120), num(b.coefficient ?? 1, 'coefficient', 0.1, 20)]))[0]);
+    const category = b.category ?? 'academic';
+    if (!['academic', 'physical', 'creativity', 'research', 'professional', 'orientation'].includes(category)) throw new BadRequestException('invalid subject category');
+    return this.tx(slug, async (q) => (await q('INSERT INTO subjects(code, name, coefficient, category) VALUES ($1,$2,$3,$4) RETURNING *',
+      [str(b.code, 'code', 20), str(b.name, 'name', 120), num(b.coefficient ?? 1, 'coefficient', 0.1, 20), category]))[0]);   // category feeds the OAA axes (physical = EPS...)
   }
   listSubjects(slug: string) { return this.tx(slug, (q) => q('SELECT * FROM subjects ORDER BY name')); }
   createTeacher(slug: string, b: any) {
@@ -60,8 +53,9 @@ export class PedagogyService {
   // ---- students -------------------------------------------------------------------------------------------------
   async createStudent(slug: string, actor: string, b: any) {
     const s = await this.tx(slug, async (q) => {
-      const row = (await q('INSERT INTO students(first_name, last_name, birth_date, class_id) VALUES ($1,$2,$3,$4) RETURNING *',
-        [str(b.first_name, 'first_name', 80), str(b.last_name, 'last_name', 80), b.birth_date ? date(b.birth_date, 'birth_date') : null, b.class_id ? uuid(b.class_id, 'class_id') : null]))[0];
+      const row = (await q('INSERT INTO students(first_name, last_name, birth_date, class_id, gender) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+        [str(b.first_name, 'first_name', 80), str(b.last_name, 'last_name', 80), b.birth_date ? date(b.birth_date, 'birth_date') : null, b.class_id ? uuid(b.class_id, 'class_id') : null,
+          ['F', 'M', 'X'].includes(b.gender) ? b.gender : null]))[0];   // gender: optional, used only to audit AI bias
       for (const g of Array.isArray(b.guardians) ? b.guardians : []) {
         await q('INSERT INTO guardians(student_id, full_name, relation, phone, email) VALUES ($1,$2,$3,$4,$5)',
           [row.id, str(g.full_name, 'guardian.full_name', 120), optStr(g.relation, 'relation', 40), optStr(g.phone, 'phone', 40), optStr(g.email, 'email', 120)]);
@@ -69,7 +63,8 @@ export class PedagogyService {
       return row;
     });
     await this.audit.log({ actorId: actor, tenant: slug, action: 'student.create', entity: 'student', entityId: s.id });
-    const hooks = await this.modules.registry.emit(slug, 'onStudentCreated', { studentId: s.id });   // OAA initialisation etc.
+    const oaaHook = await this.oaa.recompute(slug, s.id, 'onStudentCreated', 'enrolment');   // module-oaa: initial score, persisted by the core
+    const hooks = [...(oaaHook ? [oaaHook] : []), ...(await this.modules.registry.emit(slug, 'onStudentCreated', { studentId: s.id }, ['module-oaa']))];
     return { student: s, hooks };
   }
   listStudents(slug: string, classId?: string) {
@@ -211,7 +206,8 @@ export class PedagogyService {
       return { saved, scale: scale.code, scaleObj: scale, subj, shown, studentIds: b.entries.map((e: any) => e.student_id as string) };
     });
     await this.audit.log({ actorId: actor, tenant: slug, action: 'grades.submit', entity: 'evaluation', entityId: evaluationId, details: { count: out.saved } });
-    const hooks = await this.modules.registry.emit(slug, 'onGradeSubmitted', { evaluationId, studentIds: out.studentIds });
+    const hooks = await this.modules.registry.emit(slug, 'onGradeSubmitted', { evaluationId, studentIds: out.studentIds }, ['module-oaa']);
+    for (const sid of out.studentIds) { const h = await this.oaa.recompute(slug, sid, 'onGradeSubmitted', `grade:${evaluationId}`); if (h) hooks.push(h); }
     for (const sh of out.shown) {
       await this.notif.notifyFamily(slug, sh.id, 'grade.published', (lang) => ({ subject: out.subj, value: display(sh.normalized, out.scaleObj, lang === 'ar' ? 'fr' : lang).text }), { evaluation_id: evaluationId });
     }
@@ -268,6 +264,7 @@ export class PedagogyService {
       .then(async (row: any) => {
         const name = await this.tx(slug, async (q) => { const r = (await q('SELECT first_name, last_name FROM students WHERE id = $1', [row.student_id]))[0]; return r ? `${r.first_name} ${r.last_name}` : ''; });
         await this.notif.notifyFamily(slug, row.student_id, 'absence.recorded', { kind, student: name, date: String(b.on_date) }, { absence_id: row.id });
+        await this.oaa.recompute(slug, row.student_id, 'onExamCompleted', 'attendance');   // social-contribution axis (6.8)
         return row;
       });
   }
@@ -285,12 +282,15 @@ export class PedagogyService {
   }
   async decideJustification(slug: string, id: string, actor: string, decision: string) {
     if (decision !== 'accepted' && decision !== 'rejected') throw new BadRequestException('decision must be accepted|rejected');
-    return this.tx(slug, async (q) => {
+    const j = await this.tx(slug, async (q) => {
       const j = (await q('UPDATE justifications SET decision = $2, decided_by = $3, decided_at = NOW() WHERE id = $1 AND decision = $4 RETURNING *', [uuid(id, 'id'), decision, actor, 'pending']))[0];
       if (!j) throw new NotFoundException('pending justification not found');
       await q('UPDATE absences SET status = $2 WHERE id = $1', [j.absence_id, decision === 'accepted' ? 'justified' : 'rejected']);
       return j;
     });
+    const sid = await this.tx(slug, async (q) => (await q('SELECT student_id FROM absences WHERE id = $1', [j.absence_id]))[0]?.student_id as string | undefined);
+    if (sid) await this.oaa.recompute(slug, sid, 'onExamCompleted', 'justification');
+    return j;
   }
   async attendance(slug: string, studentId: string) {
     return this.tx(slug, async (q) => {

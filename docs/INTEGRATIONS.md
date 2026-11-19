@@ -13,4 +13,6 @@ Chaque service a un adaptateur **sandbox** (par défaut, aucune clé) et un adap
 
 En mode sandbox, les push sont écrits dans la table `push_outbox` (consultable via `GET /push-outbox`), les SMS/e-mails sont conservés en mémoire : mêmes flux que le réel.
 
-Les adaptateurs de paiement, GPS/cartes, IA et ministères seront documentés ici dans leurs phases.
+| IA prédictive | `AI_MODE` (`sandbox` = modèle JSON en processus, `live` = service FastAPI) | `AI_SERVICE_URL`, `AI_SERVICE_KEY` ; sandbox : `AI_MODEL_PATH` | Entraîner avec `python apps/ai/train.py` sur des données réelles anonymisées, relire `MODEL_CARD.md` et la mesure de biais avant d'activer ; xgboost/shap optionnels (`requirements.txt`) |
+
+Les adaptateurs de paiement, GPS/cartes, IA générative et ministères seront documentés ici dans leurs phases.

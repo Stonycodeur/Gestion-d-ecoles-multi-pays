@@ -1,0 +1,70 @@
+{
+  "type": "logistic",
+  "version": "logit-seed42",
+  "features": [
+    "avg100",
+    "trend",
+    "unjustified_rate",
+    "late_rate",
+    "oaa",
+    "xp_30d",
+    "quiz_avg"
+  ],
+  "intercept": 0.285926,
+  "coefs": [
+    -1.046522,
+    -0.599617,
+    0.579072,
+    0.253897,
+    -0.264883,
+    -0.473137,
+    -0.353849
+  ],
+  "means": [
+    59.487443,
+    0.130423,
+    1.004,
+    1.503111,
+    59.836472,
+    57.991064,
+    58.878817
+  ],
+  "stds": [
+    15.023812,
+    5.986336,
+    0.995761,
+    1.23369,
+    9.880602,
+    58.547249,
+    16.84391
+  ],
+  "thresholds": {
+    "medium": 0.33,
+    "high": 0.66
+  },
+  "card": {
+    "auc": 0.86,
+    "brier": 0.152,
+    "n_train": 2250,
+    "n_test": 750,
+    "bias": {
+      "rows": [
+        {
+          "group": "F",
+          "n": 378,
+          "highRiskRate": 0.399
+        },
+        {
+          "group": "M",
+          "n": 372,
+          "highRiskRate": 0.438
+        }
+      ],
+      "disparateImpactRatio": 0.911,
+      "flagged": false
+    },
+    "data": "synthetic demonstration dataset (seeded), no real student data",
+    "intended_use": "decision support only, reviewed by a human",
+    "excluded": "payment data, gender and any personal attribute (gender is used only to audit bias)"
+  }
+}

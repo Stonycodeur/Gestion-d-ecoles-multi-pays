@@ -1,0 +1,650 @@
+[
+  {
+    "input": {
+      "avg100": 64.86,
+      "trend": -0.345,
+      "unjustified_rate": 0.0,
+      "late_rate": 0.0,
+      "oaa": 66.74,
+      "xp_30d": 8.24,
+      "quiz_avg": 72.975
+    },
+    "output": {
+      "probability": 0.266,
+      "level": "low",
+      "factors": [
+        {
+          "feature": "xp_30d",
+          "contribution": 0.402,
+          "value": 8.24
+        },
+        {
+          "feature": "trend",
+          "contribution": 0.048,
+          "value": -0.345
+        },
+        {
+          "feature": "oaa",
+          "contribution": -0.185,
+          "value": 66.74
+        },
+        {
+          "feature": "quiz_avg",
+          "contribution": -0.296,
+          "value": 72.975
+        },
+        {
+          "feature": "late_rate",
+          "contribution": -0.309,
+          "value": 0.0
+        },
+        {
+          "feature": "avg100",
+          "contribution": -0.374,
+          "value": 64.86
+        },
+        {
+          "feature": "unjustified_rate",
+          "contribution": -0.584,
+          "value": 0.0
+        }
+      ],
+      "modelVersion": "logit-seed42",
+      "advisoryOnly": true
+    }
+  },
+  {
+    "input": {
+      "avg100": 76.36,
+      "trend": 4.703,
+      "unjustified_rate": 0.0,
+      "late_rate": 0.0,
+      "oaa": 68.403,
+      "xp_30d": 11.53,
+      "quiz_avg": 59.664
+    },
+    "output": {
+      "probability": 0.108,
+      "level": "low",
+      "factors": [
+        {
+          "feature": "xp_30d",
+          "contribution": 0.375,
+          "value": 11.53
+        },
+        {
+          "feature": "quiz_avg",
+          "contribution": -0.016,
+          "value": 59.664
+        },
+        {
+          "feature": "oaa",
+          "contribution": -0.23,
+          "value": 68.403
+        },
+        {
+          "feature": "late_rate",
+          "contribution": -0.309,
+          "value": 0.0
+        },
+        {
+          "feature": "trend",
+          "contribution": -0.458,
+          "value": 4.703
+        },
+        {
+          "feature": "unjustified_rate",
+          "contribution": -0.584,
+          "value": 0.0
+        },
+        {
+          "feature": "avg100",
+          "contribution": -1.175,
+          "value": 76.36
+        }
+      ],
+      "modelVersion": "logit-seed42",
+      "advisoryOnly": true
+    }
+  },
+  {
+    "input": {
+      "avg100": 61.954,
+      "trend": 16.031,
+      "unjustified_rate": 2.0,
+      "late_rate": 2.0,
+      "oaa": 60.909,
+      "xp_30d": 9.969,
+      "quiz_avg": 82.99
+    },
+    "output": {
+      "probability": 0.28,
+      "level": "low",
+      "factors": [
+        {
+          "feature": "unjustified_rate",
+          "contribution": 0.579,
+          "value": 2.0
+        },
+        {
+          "feature": "xp_30d",
+          "contribution": 0.388,
+          "value": 9.969
+        },
+        {
+          "feature": "late_rate",
+          "contribution": 0.102,
+          "value": 2.0
+        },
+        {
+          "feature": "oaa",
+          "contribution": -0.029,
+          "value": 60.909
+        },
+        {
+          "feature": "avg100",
+          "contribution": -0.172,
+          "value": 61.954
+        },
+        {
+          "feature": "quiz_avg",
+          "contribution": -0.507,
+          "value": 82.99
+        },
+        {
+          "feature": "trend",
+          "contribution": -1.593,
+          "value": 16.031
+        }
+      ],
+      "modelVersion": "logit-seed42",
+      "advisoryOnly": true
+    }
+  },
+  {
+    "input": {
+      "avg100": 55.617,
+      "trend": -2.437,
+      "unjustified_rate": 3.0,
+      "late_rate": 3.0,
+      "oaa": 61.033,
+      "xp_30d": 70.572,
+      "quiz_avg": 69.743
+    },
+    "output": {
+      "probability": 0.872,
+      "level": "high",
+      "factors": [
+        {
+          "feature": "unjustified_rate",
+          "contribution": 1.161,
+          "value": 3.0
+        },
+        {
+          "feature": "late_rate",
+          "contribution": 0.308,
+          "value": 3.0
+        },
+        {
+          "feature": "avg100",
+          "contribution": 0.27,
+          "value": 55.617
+        },
+        {
+          "feature": "trend",
+          "contribution": 0.257,
+          "value": -2.437
+        },
+        {
+          "feature": "oaa",
+          "contribution": -0.032,
+          "value": 61.033
+        },
+        {
+          "feature": "xp_30d",
+          "contribution": -0.102,
+          "value": 70.572
+        },
+        {
+          "feature": "quiz_avg",
+          "contribution": -0.228,
+          "value": 69.743
+        }
+      ],
+      "modelVersion": "logit-seed42",
+      "advisoryOnly": true
+    }
+  },
+  {
+    "input": {
+      "avg100": 59.588,
+      "trend": -8.416,
+      "unjustified_rate": 1.0,
+      "late_rate": 0.0,
+      "oaa": 52.16,
+      "xp_30d": 25.752,
+      "quiz_avg": 51.362
+    },
+    "output": {
+      "probability": 0.81,
+      "level": "high",
+      "factors": [
+        {
+          "feature": "trend",
+          "contribution": 0.856,
+          "value": -8.416
+        },
+        {
+          "feature": "xp_30d",
+          "contribution": 0.261,
+          "value": 25.752
+        },
+        {
+          "feature": "oaa",
+          "contribution": 0.206,
+          "value": 52.16
+        },
+        {
+          "feature": "quiz_avg",
+          "contribution": 0.158,
+          "value": 51.362
+        },
+        {
+          "feature": "unjustified_rate",
+          "contribution": -0.002,
+          "value": 1.0
+        },
+        {
+          "feature": "avg100",
+          "contribution": -0.007,
+          "value": 59.588
+        },
+        {
+          "feature": "late_rate",
+          "contribution": -0.309,
+          "value": 0.0
+        }
+      ],
+      "modelVersion": "logit-seed42",
+      "advisoryOnly": true
+    }
+  },
+  {
+    "input": {
+      "avg100": 38.735,
+      "trend": 2.736,
+      "unjustified_rate": 2.0,
+      "late_rate": 3.0,
+      "oaa": 49.517,
+      "xp_30d": 100.498,
+      "quiz_avg": 39.078
+    },
+    "output": {
+      "probability": 0.937,
+      "level": "high",
+      "factors": [
+        {
+          "feature": "avg100",
+          "contribution": 1.446,
+          "value": 38.735
+        },
+        {
+          "feature": "unjustified_rate",
+          "contribution": 0.579,
+          "value": 2.0
+        },
+        {
+          "feature": "quiz_avg",
+          "contribution": 0.416,
+          "value": 39.078
+        },
+        {
+          "feature": "late_rate",
+          "contribution": 0.308,
+          "value": 3.0
+        },
+        {
+          "feature": "oaa",
+          "contribution": 0.277,
+          "value": 49.517
+        },
+        {
+          "feature": "trend",
+          "contribution": -0.261,
+          "value": 2.736
+        },
+        {
+          "feature": "xp_30d",
+          "contribution": -0.344,
+          "value": 100.498
+        }
+      ],
+      "modelVersion": "logit-seed42",
+      "advisoryOnly": true
+    }
+  },
+  {
+    "input": {
+      "avg100": 49.056,
+      "trend": -1.756,
+      "unjustified_rate": 3.0,
+      "late_rate": 0.0,
+      "oaa": 56.298,
+      "xp_30d": 55.101,
+      "quiz_avg": 53.833
+    },
+    "output": {
+      "probability": 0.907,
+      "level": "high",
+      "factors": [
+        {
+          "feature": "unjustified_rate",
+          "contribution": 1.161,
+          "value": 3.0
+        },
+        {
+          "feature": "avg100",
+          "contribution": 0.727,
+          "value": 49.056
+        },
+        {
+          "feature": "trend",
+          "contribution": 0.189,
+          "value": -1.756
+        },
+        {
+          "feature": "quiz_avg",
+          "contribution": 0.106,
+          "value": 53.833
+        },
+        {
+          "feature": "oaa",
+          "contribution": 0.095,
+          "value": 56.298
+        },
+        {
+          "feature": "xp_30d",
+          "contribution": 0.023,
+          "value": 55.101
+        },
+        {
+          "feature": "late_rate",
+          "contribution": -0.309,
+          "value": 0.0
+        }
+      ],
+      "modelVersion": "logit-seed42",
+      "advisoryOnly": true
+    }
+  },
+  {
+    "input": {
+      "avg100": 44.648,
+      "trend": 2.001,
+      "unjustified_rate": 1.0,
+      "late_rate": 2.0,
+      "oaa": 54.528,
+      "xp_30d": 3.812,
+      "quiz_avg": 49.281
+    },
+    "output": {
+      "probability": 0.882,
+      "level": "high",
+      "factors": [
+        {
+          "feature": "avg100",
+          "contribution": 1.034,
+          "value": 44.648
+        },
+        {
+          "feature": "xp_30d",
+          "contribution": 0.438,
+          "value": 3.812
+        },
+        {
+          "feature": "quiz_avg",
+          "contribution": 0.202,
+          "value": 49.281
+        },
+        {
+          "feature": "oaa",
+          "contribution": 0.142,
+          "value": 54.528
+        },
+        {
+          "feature": "late_rate",
+          "contribution": 0.102,
+          "value": 2.0
+        },
+        {
+          "feature": "unjustified_rate",
+          "contribution": -0.002,
+          "value": 1.0
+        },
+        {
+          "feature": "trend",
+          "contribution": -0.187,
+          "value": 2.001
+        }
+      ],
+      "modelVersion": "logit-seed42",
+      "advisoryOnly": true
+    }
+  },
+  {
+    "input": {
+      "avg100": 50.757,
+      "trend": 13.391,
+      "unjustified_rate": 0.0,
+      "late_rate": 1.0,
+      "oaa": 47.468,
+      "xp_30d": 23.227,
+      "quiz_avg": 62.164
+    },
+    "output": {
+      "probability": 0.359,
+      "level": "medium",
+      "factors": [
+        {
+          "feature": "avg100",
+          "contribution": 0.608,
+          "value": 50.757
+        },
+        {
+          "feature": "oaa",
+          "contribution": 0.332,
+          "value": 47.468
+        },
+        {
+          "feature": "xp_30d",
+          "contribution": 0.281,
+          "value": 23.227
+        },
+        {
+          "feature": "quiz_avg",
+          "contribution": -0.069,
+          "value": 62.164
+        },
+        {
+          "feature": "late_rate",
+          "contribution": -0.104,
+          "value": 1.0
+        },
+        {
+          "feature": "unjustified_rate",
+          "contribution": -0.584,
+          "value": 0.0
+        },
+        {
+          "feature": "trend",
+          "contribution": -1.328,
+          "value": 13.391
+        }
+      ],
+      "modelVersion": "logit-seed42",
+      "advisoryOnly": true
+    }
+  },
+  {
+    "input": {
+      "avg100": 43.001,
+      "trend": 1.247,
+      "unjustified_rate": 1.0,
+      "late_rate": 0.0,
+      "oaa": 49.576,
+      "xp_30d": 0.135,
+      "quiz_avg": 43.168
+    },
+    "output": {
+      "probability": 0.889,
+      "level": "high",
+      "factors": [
+        {
+          "feature": "avg100",
+          "contribution": 1.148,
+          "value": 43.001
+        },
+        {
+          "feature": "xp_30d",
+          "contribution": 0.468,
+          "value": 0.135
+        },
+        {
+          "feature": "quiz_avg",
+          "contribution": 0.33,
+          "value": 43.168
+        },
+        {
+          "feature": "oaa",
+          "contribution": 0.275,
+          "value": 49.576
+        },
+        {
+          "feature": "unjustified_rate",
+          "contribution": -0.002,
+          "value": 1.0
+        },
+        {
+          "feature": "trend",
+          "contribution": -0.112,
+          "value": 1.247
+        },
+        {
+          "feature": "late_rate",
+          "contribution": -0.309,
+          "value": 0.0
+        }
+      ],
+      "modelVersion": "logit-seed42",
+      "advisoryOnly": true
+    }
+  },
+  {
+    "input": {
+      "avg100": 54.573,
+      "trend": 9.367,
+      "unjustified_rate": 2.0,
+      "late_rate": 3.0,
+      "oaa": 55.162,
+      "xp_30d": 17.257,
+      "quiz_avg": 55.466
+    },
+    "output": {
+      "probability": 0.753,
+      "level": "high",
+      "factors": [
+        {
+          "feature": "unjustified_rate",
+          "contribution": 0.579,
+          "value": 2.0
+        },
+        {
+          "feature": "avg100",
+          "contribution": 0.342,
+          "value": 54.573
+        },
+        {
+          "feature": "xp_30d",
+          "contribution": 0.329,
+          "value": 17.257
+        },
+        {
+          "feature": "late_rate",
+          "contribution": 0.308,
+          "value": 3.0
+        },
+        {
+          "feature": "oaa",
+          "contribution": 0.125,
+          "value": 55.162
+        },
+        {
+          "feature": "quiz_avg",
+          "contribution": 0.072,
+          "value": 55.466
+        },
+        {
+          "feature": "trend",
+          "contribution": -0.925,
+          "value": 9.367
+        }
+      ],
+      "modelVersion": "logit-seed42",
+      "advisoryOnly": true
+    }
+  },
+  {
+    "input": {
+      "avg100": 46.034,
+      "trend": 3.068,
+      "unjustified_rate": 2.0,
+      "late_rate": 0.0,
+      "oaa": 52.357,
+      "xp_30d": 26.596,
+      "quiz_avg": 18.588
+    },
+    "output": {
+      "probability": 0.924,
+      "level": "high",
+      "factors": [
+        {
+          "feature": "avg100",
+          "contribution": 0.937,
+          "value": 46.034
+        },
+        {
+          "feature": "quiz_avg",
+          "contribution": 0.846,
+          "value": 18.588
+        },
+        {
+          "feature": "unjustified_rate",
+          "contribution": 0.579,
+          "value": 2.0
+        },
+        {
+          "feature": "xp_30d",
+          "contribution": 0.254,
+          "value": 26.596
+        },
+        {
+          "feature": "oaa",
+          "contribution": 0.201,
+          "value": 52.357
+        },
+        {
+          "feature": "trend",
+          "contribution": -0.294,
+          "value": 3.068
+        },
+        {
+          "feature": "late_rate",
+          "contribution": -0.309,
+          "value": 0.0
+        }
+      ],
+      "modelVersion": "logit-seed42",
+      "advisoryOnly": true
+    }
+  }
+]

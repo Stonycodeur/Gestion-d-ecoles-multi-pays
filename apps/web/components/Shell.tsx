@@ -28,7 +28,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         <strong>{t('app', locale)}</strong>
         <nav aria-label="principal" style={{ display: 'flex', gap: 12 }}>
           <Link href="/">{t('modules', locale)}</Link><Link href="/timetable">{t('timetable', locale)}</Link><Link href="/grades">{t('grades', locale)}</Link>
-          <Link href="/absences">{t('absences', locale)}</Link><Link href="/lessons">{t('lessons', locale)}</Link><Link href="/messages">{locale === 'fr' ? 'Messages' : 'Messages'}</Link><Link href="/news">{locale === 'fr' ? 'Actualités' : 'News'}</Link><Link href="/notifications">Notifications</Link>
+          <Link href="/absences">{t('absences', locale)}</Link><Link href="/lessons">{t('lessons', locale)}</Link><Link href="/messages">{locale === 'fr' ? 'Messages' : 'Messages'}</Link><Link href="/news">{locale === 'fr' ? 'Actualités' : 'News'}</Link><Link href="/notifications">Notifications</Link><Link href="/oaa">OAA</Link><Link href="/play">{locale === 'fr' ? 'Jeux' : 'Games'}</Link><Link href="/risk">{locale === 'fr' ? 'Risque' : 'Risk'}</Link>
         </nav>
         <select aria-label="langue" value={locale} onChange={(e) => pick(e.target.value as Locale)}><option value="fr">FR</option><option value="en">EN</option><option value="ar">AR</option></select>
         <button onClick={() => { setSession(null); router.replace('/login'); }}>{t('signout', locale)}</button>

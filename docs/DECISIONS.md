@@ -18,4 +18,10 @@
 | D-014 | Écriture entre élèves d'une même classe : option `ALLOW_STUDENT_PEER_MESSAGING` (désactivée par défaut) | CDC 6.9 : « selon option » ; prudence pour les mineurs |
 | D-015 | Notifications : en base (toujours) + temps réel Socket.IO + push via adaptateur ; un échec de push n'échoue jamais l'action métier | Fiabilité des saisies de notes et d'absences |
 | D-016 | Accès inspecteur : rôle `inspector` limité à `lessons:read` et expirant via `inspectorUntil` | CDC : accès inspecteurs limité dans le temps |
+| D-017 | Axes supplémentaires des profils OAA par niveau (7.5 : créativité, recherche, professionnel, orientation) pondérés 1,0 ; l'axe « contribution sociale » garde 0,5 | Le CDC ne fixe que les pondérations des 4 axes du secondaire ; configurable par établissement (`oaa_config`) |
+| D-018 | XP, niveaux (0/100/500/1500), badges et poids d'alimentation de l'OAA : valeurs par défaut, tous configurables par module | Le CDC donne les noms des niveaux, pas les seuils |
+| D-019 | Alimentation de l'OAA (tableau 8.4) : quiz de matière → Académique, jeux individuels → Adaptabilité, défis de groupe → Contribution sociale, assiduité → Contribution sociale | Application littérale du tableau 8.4 et de la section 7 |
+| D-020 | IA prédictive : résultats visibles du personnel autorisé par défaut ; visibilité famille activable par établissement (`family_visible`) | Le CDC dit « mêmes règles d'accès que l'OAA » ET « parents informés » ; on choisit la prudence pour des mineurs, la lecture littérale reste un réglage. **Écart à valider par le propriétaire** |
+| D-021 | Pénalités OAA seulement PROPOSÉES (seuil 40 %) ; la direction décide | Aide à la décision, jamais d'effet automatique sur un mineur |
+| D-022 | Quiz : jamais mis en file hors ligne (chrono et anti-triche côté serveur) | Intégrité des examens gamifiés |
 

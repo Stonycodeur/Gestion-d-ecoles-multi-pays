@@ -5,6 +5,7 @@ import '../core/session.dart';
 import '../l10n/app_localizations.dart';
 import 'pedagogy_screens.dart';
 import 'comms_screens.dart';
+import 'oaa_games_screens.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -20,7 +21,22 @@ class HomeScreen extends ConsumerWidget {
       ]),
       body: screens.isEmpty
           ? Center(child: Text(t.noModules))
-          : ListView(children: [for (final sc in screens) ListTile(title: Text(sc))]),
+          : ListView(children: [
+              for (final sc in screens)
+                ListTile(
+                  title: Text(sc),
+                  onTap: () {
+                    // Module screens are discovered from /modules/active; only the ones with a native screen navigate.
+                    final target = switch (sc) {
+                      'gamification_home' || 'quiz_player' => const QuizListScreen(),
+                      'leaderboard' => const LeaderboardScreen(),
+                      'risk_dashboard' => const RiskDashboardScreen(),
+                      _ => null,
+                    };
+                    if (target != null) Navigator.of(context).push(MaterialPageRoute(builder: (_) => target));
+                  },
+                ),
+            ]),
       floatingActionButton: null,
       bottomNavigationBar: NavigationBar(
         destinations: const [

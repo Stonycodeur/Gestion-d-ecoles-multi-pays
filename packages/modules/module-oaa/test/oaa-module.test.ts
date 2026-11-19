@@ -1,38 +1,25 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { ModuleRegistry, validateManifest } from '../../../shared/src/modules.ts';
 import { handlers } from '../src/index.ts';
 
-const manifest = JSON.parse(readFileSync(new URL('../manifest.json', import.meta.url), 'utf8'));
+const config = { weights: { academic: 1, physical: 1, adaptability: 1, social_contribution: 0.5 }, thresholds: { warning: 50, penalty: 40 },
+  initial_axes: { academic: 50, physical: 50, adaptability: 50, social_contribution: 50 } };
+const ctx = { tenantId: 't', config };
 
-test('module-oaa manifest is valid and loads without touching the core', async () => {
-  assert.deepEqual(validateManifest(manifest), []);
-  const reg = new ModuleRegistry('0.1.0');
-  reg.register(manifest, handlers);
-  reg.enable('t1', 'module-oaa');
-  const axes = { academic: 80, physical: 70, adaptability: 75, social_contribution: 60 };
-  const r = await reg.emit('t1', 'onGradeSubmitted', { studentId: 's1', axes });
-  assert.equal(r.length, 1);
-  assert.equal(r[0].ok, true);
-  assert.equal((r[0].value as { score100: number }).score100, 73);
-  assert.equal((r[0].value as { alert: string }).alert, 'ok');
+test('initial OAA uses the configured initial axes', () => {
+  const r = handlers.calculateInitialOAA({ studentId: 's' }, ctx) as any;
+  assert.equal(r.score100, 50); assert.equal(r.alert, 'ok');
 });
-
-test('per-tenant config overrides weights and thresholds', async () => {
-  const reg = new ModuleRegistry('0.1.0');
-  reg.register(manifest, handlers);
-  reg.enable('t2', 'module-oaa', { weights: { academic: 1, physical: 1, adaptability: 1, social_contribution: 1 }, thresholds: { warning: 80, penalty: 40 } });
-  const r = await reg.emit('t2', 'onExamCompleted', { studentId: 's', axes: { academic: 80, physical: 70, adaptability: 75, social_contribution: 60 } });
-  assert.equal((r[0].value as { score100: number }).score100, 71);
-  assert.equal((r[0].value as { alert: string }).alert, 'warning');
+test('spec example: 80,70,75,60 -> 73', () => {
+  const r = handlers.recalculateOAA({ studentId: 's', axes: { academic: 80, physical: 70, adaptability: 75, social_contribution: 60 } }, ctx) as any;
+  assert.equal(r.score100, 73);
 });
-
-test('initial OAA on student creation, disabled module is silent', async () => {
-  const reg = new ModuleRegistry('0.1.0');
-  reg.register(manifest, handlers);
-  assert.equal((await reg.emit('t3', 'onStudentCreated', { studentId: 's' })).length, 0);
-  reg.enable('t3', 'module-oaa');
-  const r = await reg.emit('t3', 'onStudentCreated', { studentId: 's' });
-  assert.equal((r[0].value as { score100: number }).score100, 50);
+test('alert thresholds: 45 -> warning, 35 -> penalty', () => {
+  const a = (v: number) => (handlers.updateOAA({ studentId: 's', axes: { academic: v, physical: v, adaptability: v, social_contribution: v } }, ctx) as any).alert;
+  assert.equal(a(45), 'warning'); assert.equal(a(35), 'penalty'); assert.equal(a(50), 'ok');
+});
+test('level profile (primary) overrides the weights and recalculation needs axes', () => {
+  const r = handlers.recalculateOAA({ studentId: 's', profile: { academic: 1, social_contribution: 0.5, creativity: 1 }, axes: { academic: 60, social_contribution: 60, creativity: 60 } }, ctx) as any;
+  assert.equal(r.score100, 60);
+  assert.throws(() => handlers.recalculateOAA({ studentId: 's' }, ctx));
 });

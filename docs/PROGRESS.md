@@ -45,5 +45,13 @@
 - Envoi SMS/e-mail selon préférences par type d'événement (seul le push et l'in-app sont déclenchés automatiquement) ; newsletter déclenchée manuellement.
 - Modération des messages par la direction (`messages:all` existe, pas d'écran).
 
+## Phase 4 (OAA, IA prédictive, gamification) : branche `phase-4-oaa-gamification`
+**Fait** : calcul OAA générique par profil de niveau (73/100 → 14,6/20, 7,3/10, B vérifiés), alimentation depuis notes par catégorie de matière, assiduité, quiz et jeux ; historique, alertes à 50 % et pénalités proposées à 40 % exprimées dans l'échelle locale ; confidentialité par rôle ; gamification (XP idempotents, niveaux, badges, quiz avec mélange par tentative, réponses jamais exposées, chrono serveur, drapeau trop rapide, modes QCM/escape game/quiz d'équipe/boss, défis, équipes, classements) ; modèle de risque explicable (SHAP linéaire exact), service Python reproductible avec jeu de démonstration et fiche modèle, mesure de biais (règle des 4/5), paiement exclu ; modules `module-oaa`, `module-gamification`, `module-ia-predictive` ; e2e API ; pages web OAA / jeux / risque ; écrans mobiles quiz, classement, risque, OAA ; job CI Python.
+**Limites connues / reste à faire**
+- Code API, web et mobile de la phase vérifié par la CI GitHub (pas compilé localement) ; chemin xgboost/shap non testé.
+- Mobile : `OaaScreen` existe mais n'est pas encore relié au menu (il faut l'identifiant de l'élève : choix de l'enfant pour un parent) ; pas d'écran de configuration OAA/pénalités ni de création de quiz/défi/équipe sur mobile (web : API prête, formulaires de création à faire).
+- Web : pas de formulaire de création de quiz ni d'écran de configuration OAA (API prête).
+- Écart D-020 à valider.
+
 ## Prochaine étape
-Fusionner la Phase 3 après CI verte, puis finir le reste de la Phase 2, puis Phase 4 (OAA + IA prédictive + gamification).
+Pousser la Phase 4, corriger selon la CI, fusionner, puis Phase 5 (paiement + GPS) et le reste de la Phase 2.

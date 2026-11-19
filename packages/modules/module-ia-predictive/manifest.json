@@ -1,0 +1,24 @@
+{
+  "name": "module-ia-predictive",
+  "version": "1.0.0",
+  "core_version": ">=0.1.0",
+  "description": "IA prédictive : risque de décrochage et d'échec, explicable, aide à la décision",
+  "permissions": [
+    "predictive:read"
+  ],
+  "hooks": {
+    "onGradeSubmitted": "markForRescore"
+  },
+  "config_schema": {
+    "thresholds": {
+      "medium": 0.33,
+      "high": 0.66
+    },
+    "notify_guardians": false,
+    "alert_level": "high"
+  },
+  "mobile_screens": [
+    "risk_dashboard"
+  ],
+  "entry": "dist-cjs/modules/module-ia-predictive/src/index.js"
+}
