@@ -29,6 +29,7 @@ class HomeScreen extends ConsumerWidget {
                     // Module screens are discovered from /modules/active; only the ones with a native screen navigate.
                     final target = switch (sc) {
                       'gamification_home' || 'quiz_player' => const QuizListScreen(),
+                      'oaa_dashboard' => const OaaPickerScreen(),
                       'leaderboard' => const LeaderboardScreen(),
                       'risk_dashboard' => const RiskDashboardScreen(),
                       _ => null,

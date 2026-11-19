@@ -24,4 +24,6 @@
 | D-020 | IA prédictive : résultats visibles du personnel autorisé par défaut ; visibilité famille activable par établissement (`family_visible`) | Le CDC dit « mêmes règles d'accès que l'OAA » ET « parents informés » ; on choisit la prudence pour des mineurs, la lecture littérale reste un réglage. **Écart à valider par le propriétaire** |
 | D-021 | Pénalités OAA seulement PROPOSÉES (seuil 40 %) ; la direction décide | Aide à la décision, jamais d'effet automatique sur un mineur |
 | D-022 | Quiz : jamais mis en file hors ligne (chrono et anti-triche côté serveur) | Intégrité des examens gamifiés |
+| D-023 | Création de quiz, défis, équipes et configuration OAA : web uniquement (administration lourde) ; le mobile les joue et les consulte | CDC 2 : l'administration lourde peut rester web si documentée |
+| D-024 | Permission `games:challenge` (école entière) pour les défis, distincte de `games:create` limitée aux classes de l'enseignant | Les défis n'ont pas de classe ; évite l'élargissement des droits des enseignants |
 

@@ -185,3 +185,32 @@ class _QuizPlayerState extends ConsumerState<QuizPlayerScreen> {
     );
   }
 }
+
+/// Entry point of the OAA module on mobile: student -> own score, parent -> choose a child, teacher -> a student of own classes.
+class OaaPickerScreen extends ConsumerWidget {
+  const OaaPickerScreen({super.key});
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(sessionProvider);
+    return Scaffold(
+      appBar: AppBar(title: const Text('OAA')),
+      body: FutureBuilder(
+        future: ref.read(apiProvider).getJson(s.school!, s.token!, '/me/students', ref.read(cacheProvider)),
+        builder: (c, snap) {
+          if (snap.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
+          if (snap.hasError) return Center(child: Text('${snap.error}'));
+          final rows = (snap.data!.data as List).cast<Map<String, dynamic>>();
+          if (rows.isEmpty) return const Center(child: Text('Aucun élève / No student'));
+          return ListView(children: [
+            for (final st in rows)
+              ListTile(
+                title: Text('${st['first_name']} ${st['last_name']}'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OaaScreen(studentId: st['id'] as String))),
+              ),
+          ]);
+        },
+      ),
+    );
+  }
+}

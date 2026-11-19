@@ -107,6 +107,16 @@ export class OaaService {
     };
   }
 
+  async myStudents(slug: string, p: Principal) {
+    const ids = new Set<string>();
+    if (p.studentId) ids.add(p.studentId);
+    for (const c of p.childIds ?? []) ids.add(c);
+    const classes = p.classIds ?? [];
+    return this.tx(slug, async (q) => q(
+      `SELECT id, first_name, last_name, class_id FROM students WHERE id = ANY($1::uuid[]) OR class_id = ANY($2::uuid[]) ORDER BY last_name, first_name`,
+      [[...ids], classes]));
+  }
+
   async studentOaa(slug: string, p: Principal, studentId: string, locale = 'fr') {
     this.requireEnabled(slug);
     const st = await this.tx(slug, async (q) => (await q('SELECT id, class_id FROM students WHERE id = $1', [uuid(studentId, 'student_id')]))[0]);

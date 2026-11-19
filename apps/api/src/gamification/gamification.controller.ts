@@ -18,7 +18,7 @@ export class GamificationController {
   @Post('quiz-attempts/:id/submit') submit(@Req() r: CoreRequest, @Param('id') id: string, @Body() b: any) { const { slug, p } = need(r); return this.svc.submit(slug, p, id, b); }
   @Get('students/:id/gamification') profile(@Req() r: CoreRequest, @Param('id') id: string, @Query('lang') l?: string) { const { slug, p } = need(r); return this.svc.studentProfile(slug, p, id, l); }
   @Get('leaderboards') board(@Req() r: CoreRequest, @Query('scope') scope = 'class', @Query('class_id') c?: string, @Query('subject_id') s?: string) { const { slug, p } = need(r); return this.svc.leaderboard(slug, p, scope, { classId: c, subjectId: s }); }
-  @Post('challenges') @RequirePermission('games:create') challenge(@Req() r: CoreRequest, @Body() b: any) { const { slug, p } = need(r); return this.svc.createChallenge(slug, p, b); }
+  @Post('challenges') @RequirePermission('games:challenge') challenge(@Req() r: CoreRequest, @Body() b: any) { const { slug, p } = need(r); return this.svc.createChallenge(slug, p, b); }
   @Get('challenges') @RequirePermission('games:read') challenges(@Req() r: CoreRequest) { return this.svc.listChallenges(need(r).slug); }
   @Post('teams') createTeam(@Req() r: CoreRequest, @Body() b: any) { const { slug, p } = need(r); return this.svc.createTeam(slug, p, b); }
   @Get('teams') @RequirePermission('games:read') teams(@Req() r: CoreRequest) { return this.svc.teams(need(r).slug); }
