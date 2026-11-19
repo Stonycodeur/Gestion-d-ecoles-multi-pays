@@ -35,5 +35,15 @@
 - **Le hook `onGradeSubmitted` n'alimente pas encore l'OAA** : le module reçoit des identifiants d'élèves alors qu'il attend les 4 axes ; l'erreur est isolée (résultat `ok:false`). Le calcul des axes depuis les notes, l'assiduité et la gamification est prévu en Phase 4.
 - Activation des modules par établissement toujours en mémoire (persistance dans `feature_flags` à brancher).
 
+## Phase 3 (Communication) : API, web et mobile livrés en branche `phase-3-communication`
+**Fait** : règles de messagerie (tableau 6.9) testées en pur ; chiffrement AES-GCM ; notifications localisées FR/EN/AR ; remplacement de professeur et charge horaire (logique pure testée, voir `staff.ts`) ; API : annuaire, fils et messages (pièces jointes ≤ 5 Mo via adaptateur stockage local/S3), actualités par public, newsletter par e-mail, sondages (un vote par compte), événements, notifications (liste, lu), enregistrement d'appareils, casier numérique (rétention configurable, purge, ABAC), passerelle Socket.IO ; adaptateurs sandbox + réels : stockage (local/S3-MinIO), push (sandbox/FCM), SMS (sandbox/Twilio), e-mail (sandbox/SMTP) ; notifications branchées sur notes, absences et publication d'EDT ; e2e comms ; web : messages (temps réel), actualités, notifications ; mobile : messages (envoi, file hors ligne), actualités, notifications, enregistrement push en mode sandbox.
+
+**Reste (non fait, à clore avant la fin de la v1)**
+- Mobile : vrai jeton FCM/APNs (`firebase_messaging` + `google-services.json` fournis par le propriétaire) ; aujourd'hui jeton sandbox. Création de fil depuis le mobile, pièces jointes mobile.
+- Endpoints de la Phase 2 non encore exposés : remplacement de professeur, contrats/charge horaire, accès inspecteurs, API établissements.
+- Purge automatique quotidienne du casier : appel `POST /locker/purge` disponible, planification à brancher (cron/RabbitMQ).
+- Envoi SMS/e-mail selon préférences par type d'événement (seul le push et l'in-app sont déclenchés automatiquement) ; newsletter déclenchée manuellement.
+- Modération des messages par la direction (`messages:all` existe, pas d'écran).
+
 ## Prochaine étape
-Terminer le reste de la Phase 2 ci-dessus, puis Phase 3 (Communication).
+Fusionner la Phase 3 après CI verte, puis finir le reste de la Phase 2, puis Phase 4 (OAA + IA prédictive + gamification).
