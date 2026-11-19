@@ -180,8 +180,53 @@ BEGIN
     prediction_id UUID NOT NULL REFERENCES %I.ai_predictions(id) ON DELETE CASCADE, user_id UUID NOT NULL, useful BOOLEAN NOT NULL, comment TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
 
+  -- Phase 5: payments (money is integer minor units) ------------------------------------------------------------------
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.fee_plans (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    level_code TEXT NOT NULL, school_year TEXT NOT NULL, label TEXT NOT NULL, amount_minor BIGINT NOT NULL CHECK (amount_minor >= 0),
+    installments INT NOT NULL DEFAULT 1 CHECK (installments BETWEEN 1 AND 36), first_due_on DATE NOT NULL, UNIQUE (level_code, school_year, label))$f$, s, tid);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.invoices (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    student_id UUID NOT NULL REFERENCES %I.students(id), number TEXT NOT NULL UNIQUE, label TEXT NOT NULL, currency CHAR(3) NOT NULL,
+    gross_minor BIGINT NOT NULL CHECK (gross_minor >= 0), discount_minor BIGINT NOT NULL DEFAULT 0, net_minor BIGINT NOT NULL CHECK (net_minor >= 0),
+    discounts JSONB NOT NULL DEFAULT '[]', status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','partial','paid','overdue','cancelled')),
+    issued_on DATE NOT NULL DEFAULT CURRENT_DATE, created_by UUID, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS invoices_student ON %I.invoices (student_id)', s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.installments (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    invoice_id UUID NOT NULL REFERENCES %I.invoices(id) ON DELETE CASCADE, seq INT NOT NULL, due_on DATE NOT NULL,
+    amount_minor BIGINT NOT NULL CHECK (amount_minor >= 0), paid_minor BIGINT NOT NULL DEFAULT 0 CHECK (paid_minor >= 0),
+    last_reminder_on DATE, UNIQUE (invoice_id, seq))$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.payments (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    invoice_id UUID NOT NULL REFERENCES %I.invoices(id), method TEXT NOT NULL, provider TEXT NOT NULL, provider_ref TEXT NOT NULL,
+    idempotency_key TEXT UNIQUE, amount_minor BIGINT NOT NULL CHECK (amount_minor > 0), currency CHAR(3) NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','succeeded','failed','refunded')), payer TEXT,
+    created_by UUID, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), confirmed_at TIMESTAMPTZ, UNIQUE (provider, provider_ref))$f$, s, tid, s);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS payments_invoice ON %I.payments (invoice_id)', s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.payment_events (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    provider TEXT NOT NULL, event_id TEXT NOT NULL, payload JSONB NOT NULL, received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE (provider, event_id))$f$, s, tid);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.receipts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    payment_id UUID NOT NULL UNIQUE REFERENCES %I.payments(id), number TEXT NOT NULL UNIQUE, issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
+
+  -- Phase 5: parent GPS tracking (positions encrypted at rest, retention purge, access log) ------------------------------
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.gps_consents (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE, guardian_user_id UUID NOT NULL, granted BOOLEAN NOT NULL,
+    consent_window JSONB NOT NULL, retention_days INT NOT NULL DEFAULT 30 CHECK (retention_days BETWEEN 1 AND 365),
+    granted_at TIMESTAMPTZ, revoked_at TIMESTAMPTZ, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE (student_id, guardian_user_id))$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.gps_geofences (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    student_id UUID REFERENCES %I.students(id) ON DELETE CASCADE, name TEXT NOT NULL, kind TEXT NOT NULL CHECK (kind IN ('school','home','safe')),
+    lat DOUBLE PRECISION NOT NULL CHECK (lat BETWEEN -90 AND 90), lng DOUBLE PRECISION NOT NULL CHECK (lng BETWEEN -180 AND 180),
+    radius_m INT NOT NULL CHECK (radius_m BETWEEN 20 AND 5000), expected_in_window BOOLEAN NOT NULL DEFAULT FALSE)$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.gps_positions (id BIGSERIAL PRIMARY KEY, %s,
+    student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE, enc TEXT NOT NULL, accuracy_m REAL, recorded_at TIMESTAMPTZ NOT NULL)$f$, s, tid, s);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS gps_positions_student ON %I.gps_positions (student_id, recorded_at DESC)', s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.gps_state (student_id UUID PRIMARY KEY REFERENCES %I.students(id) ON DELETE CASCADE, %s,
+    state JSONB NOT NULL DEFAULT '{"inside":[],"out_of_zone":false}', updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, s, tid);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.gps_events (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE, type TEXT NOT NULL CHECK (type IN ('arrival','exit','out_of_zone')),
+    geofence_id UUID, occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.gps_access_log (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    student_id UUID NOT NULL, user_id UUID NOT NULL, action TEXT NOT NULL, at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid);
+
   FOREACH t IN ARRAY ARRAY['classes','subjects','rooms','students','guardians','teachers','class_subjects','schedules','schedule_slots',
-    'substitutions','evaluations','grades','report_cards','absences','justifications','lessons','inspector_access','contracts','directory','threads','thread_members','messages','message_attachments','news','surveys','survey_votes','events','notifications','device_tokens','push_outbox','locker_documents','oaa_config','oaa_scores','oaa_history','oaa_assessments','oaa_penalties','game_results','xp_events','student_badges','challenges','challenge_completions','teams','team_members','quizzes','quiz_questions','quiz_attempts','ai_predictions','ai_feedback'] LOOP
+    'substitutions','evaluations','grades','report_cards','absences','justifications','lessons','inspector_access','contracts','directory','threads','thread_members','messages','message_attachments','news','surveys','survey_votes','events','notifications','device_tokens','push_outbox','locker_documents','oaa_config','oaa_scores','oaa_history','oaa_assessments','oaa_penalties','game_results','xp_events','student_badges','challenges','challenge_completions','teams','team_members','quizzes','quiz_questions','quiz_attempts','ai_predictions','ai_feedback','fee_plans','invoices','installments','payments','payment_events','receipts','gps_consents','gps_geofences','gps_positions','gps_state','gps_events','gps_access_log'] LOOP
     EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY', s, t);
     EXECUTE format('ALTER TABLE %I.%I FORCE ROW LEVEL SECURITY', s, t);
     EXECUTE format('DROP POLICY IF EXISTS tenant_isolation ON %I.%I', s, t);

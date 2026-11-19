@@ -1,0 +1,11 @@
+{
+  "name": "module-gps",
+  "version": "1.0.0",
+  "core_version": ">=0.1.0",
+  "description": "Suivi GPS parent : consentement révocable avec plage horaire, carte, géofencing, historique, purge, journal d'accès",
+  "permissions": ["gps:read", "gps:consent"],
+  "hooks": { "onStudentCreated": "defaultRetention" },
+  "config_schema": { "retention_days": 30, "school_interval_sec": 30, "outside_interval_sec": 300 },
+  "mobile_screens": ["gps_parent_map", "gps_student_tracker"],
+  "entry": "dist-cjs/modules/module-gps/src/index.js"
+}

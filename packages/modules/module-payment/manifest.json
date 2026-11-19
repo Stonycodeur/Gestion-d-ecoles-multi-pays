@@ -1,0 +1,14 @@
+{
+  "name": "module-payment",
+  "version": "1.0.0",
+  "core_version": ">=0.1.0",
+  "description": "Paiement de la scolarité : facturation, échéanciers, Mobile Money, carte, virement, espèces (QR), chèque, reçus, conciliation",
+  "permissions": ["billing:read", "billing:write", "billing:pay"],
+  "hooks": { "onStudentCreated": "planInvoice" },
+  "config_schema": {
+    "reminder_rule": { "daysBefore": [3], "daysAfter": [1, 7, 15] },
+    "allow_partial_payment": true
+  },
+  "mobile_screens": ["payment_home"],
+  "entry": "dist-cjs/modules/module-payment/src/index.js"
+}
