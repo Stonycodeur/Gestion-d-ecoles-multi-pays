@@ -8,4 +8,5 @@ INSERT INTO roles (code, label_fr, label_en, scope) VALUES
  ('accountant','Comptable / Intendance','Accountant / Bursar','tenant'),
  ('student','Élève / Étudiant','Student','tenant'),
  ('guardian','Parent / Tuteur','Parent / Guardian','tenant'),
- ('visitor','Visiteur','Visitor','none');
+ ('visitor','Visiteur','Visitor','none'),
+ ('inspector','Inspecteur (accès limité dans le temps)','Inspector (time-limited access)','tenant');
