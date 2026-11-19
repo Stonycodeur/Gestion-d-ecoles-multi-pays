@@ -190,7 +190,7 @@ export class GamificationService {
       const src = a.mode === 'boss' ? 'boss' : a.mode === 'qcm' && a.subject_id ? 'quiz' : a.mode === 'qcm' ? 'game' : 'exam';
       return { result, flags: timing.flags, kind, source: src, quizId: a.quiz_id };
     });
-    if ('rejected' in r) throw new BadRequestException(`submission refused: ${r.rejected.join(',')}`);
+    if ('rejected' in r) throw new BadRequestException(`submission refused: ${(r.rejected ?? []).join(',')}`);
     // exam-type results: XP is computed by module-gamification (hook onExamCompleted); other sources use the XP rules directly
     let xp = xpFor(r.source as 'quiz', r.result.score100, rules);
     if (r.source === 'exam') {

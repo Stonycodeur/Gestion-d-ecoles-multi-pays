@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/session.dart';
 import 'pedagogy_screens.dart';
-import 'comms_screens.dart';
 
 Color _hex(String? c) {
   final v = (c ?? '#607d8b').replaceFirst('#', '');
