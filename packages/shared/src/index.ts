@@ -7,3 +7,7 @@ export * from './rbac.ts';
 export * from './timetable.ts';
 export * from './averages.ts';
 export * from './absences.ts';
+export * from './staff.ts';
+export * from './messaging.ts';
+export * from './notifications.ts';
+export * from './crypto.ts';

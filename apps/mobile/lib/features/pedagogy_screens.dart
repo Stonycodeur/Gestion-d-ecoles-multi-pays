@@ -8,10 +8,10 @@ final queueProvider = Provider<OfflineQueue>((ref) => OfflineQueue(ref.read(toke
 final cacheProvider = Provider<JsonCache>((ref) => JsonCache(ref.read(tokenStoreProvider)));
 
 /// Generic read-only list screen that works offline (cached answer + banner).
-class _JsonList extends ConsumerWidget {
+class JsonListScreen extends ConsumerWidget {
   final String title, path;
   final String Function(Map<String, dynamic>) line;
-  const _JsonList(this.title, this.path, this.line);
+  const JsonListScreen(this.title, this.path, this.line);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -38,12 +38,12 @@ class _JsonList extends ConsumerWidget {
 class LessonsScreen extends StatelessWidget {
   const LessonsScreen({super.key});
   @override
-  Widget build(BuildContext context) => _JsonList('Cahier de textes', '/lessons',
+  Widget build(BuildContext context) => JsonListScreen('Cahier de textes', '/lessons',
       (m) => '${(m['on_date'] as String).substring(0, 10)}  ${m['title']}${m['homework'] != null ? ' - ${m['homework']}' : ''}');
 }
 
 class ClassesScreen extends StatelessWidget {
   const ClassesScreen({super.key});
   @override
-  Widget build(BuildContext context) => _JsonList('Classes', '/classes', (m) => '${m['name']} (${m['level_code']})');
+  Widget build(BuildContext context) => JsonListScreen('Classes', '/classes', (m) => '${m['name']} (${m['level_code']})');
 }

@@ -6,6 +6,7 @@ import { ModulesService } from '../modules/modules.service';
 import { AuditService } from '../core/audit.service';
 import { date, mapDbError, num, optStr, str, uuid } from './validate';
 import { reportPdf } from './pdf';
+import { NotificationService } from '../comms/notification.service';
 
 export const ACTIVE_SCALE_SQL = `
   SELECT gs.* FROM public.tenants t
@@ -22,7 +23,7 @@ export function rowToScale(r: any): GradingScale {
 
 @Injectable()
 export class PedagogyService {
-  constructor(private readonly db: TenantDb, private readonly modules: ModulesService, private readonly audit: AuditService) {}
+  constructor(private readonly db: TenantDb, private readonly modules: ModulesService, private readonly audit: AuditService, private readonly notif: NotificationService) {}
 
   authorize(p: Principal, tenant: string, perm: string, r: Resource = {}) {
     const d = can(p, perm, { tenantId: tenant, ...r });
@@ -153,7 +154,8 @@ export class PedagogyService {
       return (await q('UPDATE schedules SET status = $2, validated_by = COALESCE(validated_by, $3), validated_at = COALESCE(validated_at, NOW()) WHERE id = $1 RETURNING *', [id, to, actor]))[0];
     });
     await this.audit.log({ actorId: actor, tenant: slug, action: `schedule.${to}`, entity: 'schedule', entityId: id });
-    return r;   // push notification of the change is sent by the notifications module (Phase 3)
+    if (to === 'published') await this.notif.notifyAll(slug, 'schedule.published', {}, { schedule_id: id });
+    return r;
   }
   async ical(slug: string, id: string, query: { first_monday: string; until: string; timezone?: string }) {
     return this.tx(slug, async (q) => {
@@ -204,10 +206,15 @@ export class PedagogyService {
           [evaluationId, uuid(e.student_id, 'student_id'), String(raw), normalized, actor]);
         saved++;
       }
-      return { saved, scale: scale.code, studentIds: b.entries.map((e: any) => e.student_id as string) };
+      const subj = (await q('SELECT s.name FROM subjects s WHERE s.id = $1', [ev.subject_id]))[0]?.name ?? '';
+      const shown = (b.entries as any[]).map((e) => ({ id: e.student_id as string, normalized: toNormalized(typeof e.value === 'string' && scale.type === 'letter' ? e.value : Number(e.value), scale) }));
+      return { saved, scale: scale.code, scaleObj: scale, subj, shown, studentIds: b.entries.map((e: any) => e.student_id as string) };
     });
     await this.audit.log({ actorId: actor, tenant: slug, action: 'grades.submit', entity: 'evaluation', entityId: evaluationId, details: { count: out.saved } });
     const hooks = await this.modules.registry.emit(slug, 'onGradeSubmitted', { evaluationId, studentIds: out.studentIds });
+    for (const sh of out.shown) {
+      await this.notif.notifyFamily(slug, sh.id, 'grade.published', (lang) => ({ subject: out.subj, value: display(sh.normalized, out.scaleObj, lang === 'ar' ? 'fr' : lang).text }), { evaluation_id: evaluationId });
+    }
     return { saved: out.saved, scale: out.scale, hooks };
   }
 
@@ -257,7 +264,12 @@ export class PedagogyService {
     const kind = b.kind === 'late' ? 'late' : b.kind === 'absence' ? 'absence' : null;
     if (!kind) throw new BadRequestException('kind must be absence|late');
     return this.tx(slug, async (q) => (await q('INSERT INTO absences(student_id, on_date, period_index, kind, minutes_late, recorded_by) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
-      [uuid(b.student_id, 'student_id'), date(b.on_date, 'on_date'), b.period_index ?? null, kind, kind === 'late' ? num(b.minutes_late ?? 0, 'minutes_late', 0, 600) : null, actor]))[0]);
+      [uuid(b.student_id, 'student_id'), date(b.on_date, 'on_date'), b.period_index ?? null, kind, kind === 'late' ? num(b.minutes_late ?? 0, 'minutes_late', 0, 600) : null, actor]))[0])
+      .then(async (row: any) => {
+        const name = await this.tx(slug, async (q) => { const r = (await q('SELECT first_name, last_name FROM students WHERE id = $1', [row.student_id]))[0]; return r ? `${r.first_name} ${r.last_name}` : ''; });
+        await this.notif.notifyFamily(slug, row.student_id, 'absence.recorded', { kind, student: name, date: String(b.on_date) }, { absence_id: row.id });
+        return row;
+      });
   }
   async studentOfAbsence(slug: string, id: string): Promise<string> {
     const r = await this.tx(slug, (q) => q('SELECT student_id FROM absences WHERE id = $1', [uuid(id, 'id')]));

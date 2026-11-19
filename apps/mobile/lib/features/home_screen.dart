@@ -4,6 +4,7 @@ import '../core/models.dart';
 import '../core/session.dart';
 import '../l10n/app_localizations.dart';
 import 'pedagogy_screens.dart';
+import 'comms_screens.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -11,6 +12,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = AppLocalizations.of(context)!;
     final s = ref.watch(sessionProvider);
+    ref.watch(pushRegistrationProvider);
     final screens = visibleScreens(s.modules).toList()..sort();
     return Scaffold(
       appBar: AppBar(title: Text(t.appTitle), actions: [
@@ -21,8 +23,15 @@ class HomeScreen extends ConsumerWidget {
           : ListView(children: [for (final sc in screens) ListTile(title: Text(sc))]),
       floatingActionButton: null,
       bottomNavigationBar: NavigationBar(
-        destinations: const [NavigationDestination(icon: Icon(Icons.menu_book), label: 'Cahier'), NavigationDestination(icon: Icon(Icons.class_), label: 'Classes')],
-        onDestinationSelected: (i) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => i == 0 ? const LessonsScreen() : const ClassesScreen())),
+        destinations: const [
+          NavigationDestination(icon: Icon(Icons.menu_book), label: 'Cahier'),
+          NavigationDestination(icon: Icon(Icons.class_), label: 'Classes'),
+          NavigationDestination(icon: Icon(Icons.chat), label: 'Messages'),
+          NavigationDestination(icon: Icon(Icons.newspaper), label: 'News'),
+          NavigationDestination(icon: Icon(Icons.notifications), label: 'Alertes'),
+        ],
+        onDestinationSelected: (i) => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => const [LessonsScreen(), ClassesScreen(), ThreadsScreen(), NewsScreen(), NotificationsScreen()][i])),
       ),
     );
   }

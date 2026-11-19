@@ -80,8 +80,50 @@ BEGIN
   EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.inspector_access (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
     user_id UUID NOT NULL, expires_at TIMESTAMPTZ NOT NULL, created_by UUID)$f$, s, tid);
 
+  -- Phase 2 remainder: staff contracts
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.contracts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    teacher_id UUID NOT NULL REFERENCES %I.teachers(id) ON DELETE CASCADE, kind TEXT NOT NULL, start_date DATE NOT NULL, end_date DATE,
+    weekly_hours INT CHECK (weekly_hours > 0))$f$, s, tid, s);
+
+  -- Phase 3: school directory (links accounts to teaching/family attributes used by messaging and notifications)
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.directory (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    user_id UUID NOT NULL UNIQUE, role TEXT NOT NULL, display_name TEXT NOT NULL, class_ids UUID[] NOT NULL DEFAULT '{}',
+    child_ids UUID[] NOT NULL DEFAULT '{}', student_id UUID, locale TEXT NOT NULL DEFAULT 'fr', email TEXT, phone TEXT)$f$, s, tid);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.threads (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    subject TEXT NOT NULL, created_by UUID NOT NULL, context JSONB NOT NULL DEFAULT '{}', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.thread_members (%s, thread_id UUID NOT NULL REFERENCES %I.threads(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL, last_read_at TIMESTAMPTZ, PRIMARY KEY (thread_id, user_id))$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.messages (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    thread_id UUID NOT NULL REFERENCES %I.threads(id) ON DELETE CASCADE, sender_id UUID NOT NULL, body_enc TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS messages_thread ON %I.messages (thread_id, created_at)', s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.message_attachments (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    message_id UUID NOT NULL REFERENCES %I.messages(id) ON DELETE CASCADE, storage_key TEXT NOT NULL, filename TEXT NOT NULL,
+    content_type TEXT NOT NULL, size_bytes INT NOT NULL)$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.news (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    title TEXT NOT NULL, body TEXT NOT NULL, audience TEXT NOT NULL DEFAULT 'all' CHECK (audience IN ('all','staff','students','guardians')),
+    is_public BOOLEAN NOT NULL DEFAULT FALSE, published_by UUID, published_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.surveys (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    question TEXT NOT NULL, options JSONB NOT NULL, closes_at TIMESTAMPTZ, created_by UUID)$f$, s, tid);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.survey_votes (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    survey_id UUID NOT NULL REFERENCES %I.surveys(id) ON DELETE CASCADE, user_id UUID NOT NULL, option_index INT NOT NULL CHECK (option_index >= 0),
+    UNIQUE (survey_id, user_id))$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.events (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    title TEXT NOT NULL, description TEXT, starts_at TIMESTAMPTZ NOT NULL, ends_at TIMESTAMPTZ, location TEXT)$f$, s, tid);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.notifications (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    user_id UUID NOT NULL, type TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, data JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), read_at TIMESTAMPTZ)$f$, s, tid);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS notifications_user ON %I.notifications (user_id, created_at DESC)', s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.device_tokens (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    user_id UUID NOT NULL, platform TEXT NOT NULL CHECK (platform IN ('android','ios','web')), token TEXT NOT NULL, UNIQUE (user_id, token))$f$, s, tid);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.push_outbox (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    user_id UUID NOT NULL, platform TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, mode TEXT NOT NULL, sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.locker_documents (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    student_id UUID NOT NULL REFERENCES %I.students(id), kind TEXT NOT NULL, title TEXT NOT NULL, storage_key TEXT NOT NULL, content_type TEXT NOT NULL,
+    retention_days INT NOT NULL CHECK (retention_days > 0), expires_at TIMESTAMPTZ NOT NULL, created_by UUID, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
+
   FOREACH t IN ARRAY ARRAY['classes','subjects','rooms','students','guardians','teachers','class_subjects','schedules','schedule_slots',
-    'substitutions','evaluations','grades','report_cards','absences','justifications','lessons','inspector_access'] LOOP
+    'substitutions','evaluations','grades','report_cards','absences','justifications','lessons','inspector_access','contracts','directory','threads','thread_members','messages','message_attachments','news','surveys','survey_votes','events','notifications','device_tokens','push_outbox','locker_documents'] LOOP
     EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY', s, t);
     EXECUTE format('ALTER TABLE %I.%I FORCE ROW LEVEL SECURITY', s, t);
     EXECUTE format('DROP POLICY IF EXISTS tenant_isolation ON %I.%I', s, t);
