@@ -50,6 +50,13 @@ class ApiClient {
     }
   }
 
+  /// Online-only write that returns the decoded body (quizzes: never queued, the server enforces timing).
+  Future<dynamic> postOnline(String school, String token, String path, Map<String, dynamic> body) async {
+    final r = await _c.post(Uri.parse('$apiBase$path'), headers: _h(school, token), body: jsonEncode(body));
+    if (r.statusCode >= 300) throw Exception('POST $path failed (${r.statusCode}): ${r.body}');
+    return jsonDecode(r.body);
+  }
+
   Future<int> replay(String school, String token, QueuedOp op) async {
     final r = await _c.post(Uri.parse('$apiBase${op.path}'), headers: _h(school, token), body: jsonEncode(op.body));
     return r.statusCode;

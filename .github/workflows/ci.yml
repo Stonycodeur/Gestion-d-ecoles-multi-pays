@@ -46,6 +46,19 @@ jobs:
       - run: npm run test:shared
       - run: npm --prefix apps/api run build && npm --prefix apps/api test
       - run: npm --prefix apps/web run build
+  ai-service:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - working-directory: apps/ai
+        run: |
+          pip install numpy scikit-learn
+          python train.py
+          python -m unittest discover -s tests
+      - name: Model artefacts are reproducible (no diff after retraining)
+        run: git diff --exit-code apps/ai/model/model.json apps/ai/model/golden.json
   mobile-android:
     runs-on: ubuntu-latest
     steps:

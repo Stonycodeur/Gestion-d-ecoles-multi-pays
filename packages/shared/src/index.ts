@@ -11,3 +11,6 @@ export * from './staff.ts';
 export * from './messaging.ts';
 export * from './notifications.ts';
 export * from './crypto.ts';
+export * from './oaa-axes.ts';
+export * from './gamification.ts';
+export * from './risk.ts';

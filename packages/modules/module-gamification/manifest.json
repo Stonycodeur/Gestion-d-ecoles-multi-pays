@@ -1,0 +1,52 @@
+{
+  "name": "module-gamification",
+  "version": "1.0.0",
+  "core_version": ">=0.1.0",
+  "description": "Gamification : XP, niveaux, badges, défis, équipes, examens gamifiés",
+  "permissions": [
+    "games:create",
+    "games:play",
+    "games:read"
+  ],
+  "hooks": {
+    "onExamCompleted": "awardExamXp",
+    "onGradeSubmitted": "noteGradeActivity"
+  },
+  "config_schema": {
+    "xp_rules": {
+      "homework": 10,
+      "participation": 5,
+      "quizBase": 10,
+      "quizPerfectBonus": 15,
+      "challenge": 30,
+      "game": 8,
+      "boss": 50,
+      "examBase": 20
+    },
+    "levels": [
+      {
+        "code": "novice",
+        "min_xp": 0
+      },
+      {
+        "code": "apprenti",
+        "min_xp": 100
+      },
+      {
+        "code": "expert",
+        "min_xp": 500
+      },
+      {
+        "code": "maitre",
+        "min_xp": 1500
+      }
+    ],
+    "leaderboard_enabled": true
+  },
+  "mobile_screens": [
+    "gamification_home",
+    "quiz_player",
+    "leaderboard"
+  ],
+  "entry": "dist-cjs/modules/module-gamification/src/index.js"
+}

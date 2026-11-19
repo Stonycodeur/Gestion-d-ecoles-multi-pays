@@ -113,9 +113,10 @@ export class ModuleRegistry {
   }
 
   /** Runs hooks of enabled modules only; one failing module never blocks the others. */
-  async emit(tenantId: string, event: HookEvent, payload: unknown): Promise<HookResult[]> {
+  async emit(tenantId: string, event: HookEvent, payload: unknown, exclude: string[] = []): Promise<HookResult[]> {
     const out: HookResult[] = [];
     for (const [name, { manifest, handlers }] of this.modules) {
+      if (exclude.includes(name)) continue;
       const handlerName = manifest.hooks?.[event];
       if (!handlerName || !this.isEnabled(tenantId, name)) continue;
       try {
@@ -125,5 +126,17 @@ export class ModuleRegistry {
       }
     }
     return out;
+  }
+
+  /** Runs the hook of ONE module (when enabled). Used by core services that feed a module its own payload. */
+  async emitTo(tenantId: string, event: HookEvent, moduleName: string, payload: unknown): Promise<HookResult | null> {
+    const m = this.modules.get(moduleName);
+    const handlerName = m?.manifest.hooks?.[event];
+    if (!m || !handlerName || !this.isEnabled(tenantId, moduleName)) return null;
+    try {
+      return { module: moduleName, ok: true, value: await m.handlers[handlerName](payload, { tenantId, config: this.config(tenantId, moduleName) }) };
+    } catch (e) {
+      return { module: moduleName, ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
   }
 }

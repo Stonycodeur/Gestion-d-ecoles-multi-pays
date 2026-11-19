@@ -12,14 +12,20 @@ import { PedagogyController } from './pedagogy/pedagogy.controller';
 import { PedagogyService } from './pedagogy/pedagogy.service';
 import { TenantDb } from './pedagogy/tenant-db.service';
 import { Adapters } from './adapters/adapters';
+import { OaaController } from './oaa/oaa.controller';
+import { OaaService } from './oaa/oaa.service';
+import { GamificationController } from './gamification/gamification.controller';
+import { GamificationService } from './gamification/gamification.service';
+import { PredictiveController } from './predictive/predictive.controller';
+import { PredictiveService } from './predictive/predictive.service';
 import { CommsController } from './comms/comms.controller';
 import { CommsService } from './comms/comms.service';
 import { NotificationService } from './comms/notification.service';
 import { RealtimeGateway } from './comms/realtime.gateway';
 
 @Module({
-  controllers: [HealthController, AuthController, ModulesController, PedagogyController, CommsController],
-  providers: [AuthService, AuditService, ModulesService, TenantDb, PedagogyService, Adapters, RealtimeGateway, NotificationService, CommsService, { provide: APP_GUARD, useClass: CoreGuard }],
+  controllers: [HealthController, AuthController, ModulesController, PedagogyController, CommsController, OaaController, GamificationController, PredictiveController],
+  providers: [AuthService, AuditService, ModulesService, TenantDb, PedagogyService, Adapters, RealtimeGateway, NotificationService, CommsService, OaaService, GamificationService, PredictiveService, { provide: APP_GUARD, useClass: CoreGuard }],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) { consumer.apply(TenantMiddleware).forRoutes('*'); }

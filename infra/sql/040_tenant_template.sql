@@ -11,13 +11,14 @@ BEGIN
   EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.classes (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
     name TEXT NOT NULL, level_code TEXT NOT NULL, section TEXT, school_year TEXT NOT NULL, UNIQUE (name, school_year))$f$, s, tid);
   EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.subjects (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
-    code TEXT NOT NULL UNIQUE, name TEXT NOT NULL, coefficient NUMERIC NOT NULL DEFAULT 1 CHECK (coefficient > 0))$f$, s, tid);
+    code TEXT NOT NULL UNIQUE, name TEXT NOT NULL, coefficient NUMERIC NOT NULL DEFAULT 1 CHECK (coefficient > 0),
+    category TEXT NOT NULL DEFAULT 'academic' CHECK (category IN ('academic','physical','creativity','research','professional','orientation')))$f$, s, tid);
   EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.rooms (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
     name TEXT NOT NULL UNIQUE, capacity INT)$f$, s, tid);
   EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.students (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
     first_name TEXT NOT NULL, last_name TEXT NOT NULL, birth_date DATE,
     status TEXT NOT NULL DEFAULT 'enrolled' CHECK (status IN ('enrolled','active','transferred','graduated')),
-    class_id UUID REFERENCES %I.classes(id), user_id UUID, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
+    class_id UUID REFERENCES %I.classes(id), user_id UUID, gender TEXT CHECK (gender IN ('F','M','X')), created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
   EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.guardians (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
     student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE, full_name TEXT NOT NULL, relation TEXT,
     phone TEXT, email TEXT, user_id UUID)$f$, s, tid, s);
@@ -122,8 +123,65 @@ BEGIN
     student_id UUID NOT NULL REFERENCES %I.students(id), kind TEXT NOT NULL, title TEXT NOT NULL, storage_key TEXT NOT NULL, content_type TEXT NOT NULL,
     retention_days INT NOT NULL CHECK (retention_days > 0), expires_at TIMESTAMPTZ NOT NULL, created_by UUID, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
 
+  -- Phase 4: OAA, gamification, predictive AI
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.oaa_config (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    weights JSONB, thresholds JSONB NOT NULL DEFAULT '{"warning":50,"penalty":40}', initial_value NUMERIC NOT NULL DEFAULT 50 CHECK (initial_value BETWEEN 0 AND 100),
+    ranking_enabled BOOLEAN NOT NULL DEFAULT TRUE, feed_weights JSONB, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.oaa_scores (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    student_id UUID NOT NULL UNIQUE REFERENCES %I.students(id) ON DELETE CASCADE, axes JSONB NOT NULL, score100 INT NOT NULL CHECK (score100 BETWEEN 0 AND 100),
+    alert TEXT NOT NULL CHECK (alert IN ('ok','warning','penalty')), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.oaa_history (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE, axes JSONB NOT NULL, score100 INT NOT NULL, reason TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS oaa_history_student ON %I.oaa_history (student_id, created_at)', s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.oaa_assessments (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE, axis TEXT NOT NULL, value NUMERIC NOT NULL CHECK (value BETWEEN 0 AND 100),
+    label TEXT, created_by UUID, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.oaa_penalties (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE, score100 INT NOT NULL, code TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'proposed' CHECK (status IN ('proposed','applied','lifted','dismissed')), decided_by UUID,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), decided_at TIMESTAMPTZ)$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.game_results (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('quiz','game','group_challenge','individual_challenge','exam','boss')), score100 NUMERIC NOT NULL CHECK (score100 BETWEEN 0 AND 100),
+    ref TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.xp_events (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE, source TEXT NOT NULL, xp INT NOT NULL CHECK (xp >= 0), ref TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE (student_id, source, ref))$f$, s, tid, s);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS xp_events_student ON %I.xp_events (student_id, created_at)', s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.student_badges (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE, badge_code TEXT NOT NULL, earned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (student_id, badge_code))$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.challenges (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    code TEXT NOT NULL UNIQUE, title TEXT NOT NULL, kind TEXT NOT NULL CHECK (kind IN ('individual','group')), metric TEXT NOT NULL CHECK (metric IN ('xp','quizzes','homework')),
+    target INT NOT NULL CHECK (target > 0), starts_on DATE NOT NULL, ends_on DATE NOT NULL CHECK (ends_on >= starts_on), created_by UUID)$f$, s, tid);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.challenge_completions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    challenge_id UUID NOT NULL REFERENCES %I.challenges(id) ON DELETE CASCADE, student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE,
+    completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE (challenge_id, student_id))$f$, s, tid, s, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.teams (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    name TEXT NOT NULL UNIQUE, class_id UUID REFERENCES %I.classes(id))$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.team_members (%s, team_id UUID NOT NULL REFERENCES %I.teams(id) ON DELETE CASCADE,
+    student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE, PRIMARY KEY (team_id, student_id))$f$, s, tid, s, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.quizzes (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    title TEXT NOT NULL, subject_id UUID REFERENCES %I.subjects(id), class_id UUID NOT NULL REFERENCES %I.classes(id),
+    mode TEXT NOT NULL DEFAULT 'qcm' CHECK (mode IN ('qcm','escape_game','team_quiz','boss')), time_limit_sec INT CHECK (time_limit_sec > 0),
+    max_attempts INT NOT NULL DEFAULT 1 CHECK (max_attempts > 0), published BOOLEAN NOT NULL DEFAULT FALSE, created_by UUID, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.quiz_questions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    quiz_id UUID NOT NULL REFERENCES %I.quizzes(id) ON DELETE CASCADE, position INT NOT NULL, prompt TEXT NOT NULL, choices JSONB NOT NULL,
+    correct INT NOT NULL CHECK (correct >= 0), points INT NOT NULL DEFAULT 1 CHECK (points > 0))$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.quiz_attempts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    quiz_id UUID NOT NULL REFERENCES %I.quizzes(id) ON DELETE CASCADE, student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE,
+    started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), submitted_at TIMESTAMPTZ, score100 INT, flags JSONB NOT NULL DEFAULT '[]', result JSONB)$f$, s, tid, s, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.ai_predictions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE, probability NUMERIC NOT NULL CHECK (probability BETWEEN 0 AND 1),
+    level TEXT NOT NULL CHECK (level IN ('low','medium','high')), factors JSONB NOT NULL, model_version TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS ai_predictions_student ON %I.ai_predictions (student_id, created_at DESC)', s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.ai_feedback (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    prediction_id UUID NOT NULL REFERENCES %I.ai_predictions(id) ON DELETE CASCADE, user_id UUID NOT NULL, useful BOOLEAN NOT NULL, comment TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
+
   FOREACH t IN ARRAY ARRAY['classes','subjects','rooms','students','guardians','teachers','class_subjects','schedules','schedule_slots',
-    'substitutions','evaluations','grades','report_cards','absences','justifications','lessons','inspector_access','contracts','directory','threads','thread_members','messages','message_attachments','news','surveys','survey_votes','events','notifications','device_tokens','push_outbox','locker_documents'] LOOP
+    'substitutions','evaluations','grades','report_cards','absences','justifications','lessons','inspector_access','contracts','directory','threads','thread_members','messages','message_attachments','news','surveys','survey_votes','events','notifications','device_tokens','push_outbox','locker_documents','oaa_config','oaa_scores','oaa_history','oaa_assessments','oaa_penalties','game_results','xp_events','student_badges','challenges','challenge_completions','teams','team_members','quizzes','quiz_questions','quiz_attempts','ai_predictions','ai_feedback'] LOOP
     EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY', s, t);
     EXECUTE format('ALTER TABLE %I.%I FORCE ROW LEVEL SECURITY', s, t);
     EXECUTE format('DROP POLICY IF EXISTS tenant_isolation ON %I.%I', s, t);
