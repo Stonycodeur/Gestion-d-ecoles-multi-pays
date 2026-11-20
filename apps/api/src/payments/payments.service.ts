@@ -75,9 +75,9 @@ export class PaymentsService {
       const c = await this.country(q, t);
       let gross: number, count: number, first: string, label: string;
       if (b.fee_plan_id) {
-        const f = (await q('SELECT * FROM fee_plans WHERE id = $1', [uuid(b.fee_plan_id, 'fee_plan_id')]))[0];
+        const f = (await q('SELECT id, label, amount_minor, installments, first_due_on::text AS first_due_on FROM fee_plans WHERE id = $1', [uuid(b.fee_plan_id, 'fee_plan_id')]))[0];
         if (!f) throw new NotFoundException('fee plan not found');
-        gross = Number(f.amount_minor); count = f.installments; first = String(f.first_due_on).slice(0, 10); label = f.label;
+        gross = Number(f.amount_minor); count = f.installments; first = f.first_due_on; label = f.label;
       } else { gross = toMinor(num(b.amount, 'amount', 0, 1e12), c.currency); count = Math.round(num(b.installments ?? 1, 'installments', 1, 36)); first = date(b.first_due_on, 'first_due_on'); label = str(b.label, 'label', 120); }
       const { discountMinor, netMinor } = applyDiscounts(gross, discounts);
       return this.persistInvoice(q, t, p.id, { studentId, label, currency: c.currency, gross, discountMinor, net: netMinor, discounts, installments: splitInstallments(netMinor, count, first) });
@@ -90,9 +90,9 @@ export class PaymentsService {
   async invoiceOnEnrollment(slug: string, actor: string, studentId: string) {
     if (!this.modules.registry.isEnabled(slug, PAYMENT_MODULE)) return null;
     const plan = await this.tx(slug, async (q) => (await q(
-      `SELECT f.* FROM students s JOIN classes c ON c.id = s.class_id JOIN fee_plans f ON f.level_code = c.level_code AND f.school_year = c.school_year WHERE s.id = $1 ORDER BY f.label LIMIT 1`, [studentId]))[0]);
+      `SELECT f.id, f.label, f.amount_minor, f.installments, f.first_due_on::text AS first_due_on FROM students s JOIN classes c ON c.id = s.class_id JOIN fee_plans f ON f.level_code = c.level_code AND f.school_year = c.school_year WHERE s.id = $1 ORDER BY f.label LIMIT 1`, [studentId]))[0]);
     if (!plan) return null;
-    const hook = await this.modules.registry.emitTo(slug, 'onStudentCreated', PAYMENT_MODULE, { feePlan: { amount_minor: Number(plan.amount_minor), installments: plan.installments, first_due_on: String(plan.first_due_on).slice(0, 10) } });
+    const hook = await this.modules.registry.emitTo(slug, 'onStudentCreated', PAYMENT_MODULE, { feePlan: { amount_minor: Number(plan.amount_minor), installments: plan.installments, first_due_on: plan.first_due_on } });
     const planned = (hook?.ok ? (hook as any).value?.invoice : null) as { gross_minor: number; discount_minor: number; net_minor: number; installments: Installment[] } | null;
     if (!planned) return null;
     const inv = await this.tx(slug, async (q, t) => { const c = await this.country(q, t);

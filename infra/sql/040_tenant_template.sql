@@ -214,7 +214,7 @@ BEGIN
     student_id UUID REFERENCES %I.students(id) ON DELETE CASCADE, name TEXT NOT NULL, kind TEXT NOT NULL CHECK (kind IN ('school','home','safe')),
     lat DOUBLE PRECISION NOT NULL CHECK (lat BETWEEN -90 AND 90), lng DOUBLE PRECISION NOT NULL CHECK (lng BETWEEN -180 AND 180),
     radius_m INT NOT NULL CHECK (radius_m BETWEEN 20 AND 5000), expected_in_window BOOLEAN NOT NULL DEFAULT FALSE)$f$, s, tid, s);
-  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.gps_positions (id BIGSERIAL PRIMARY KEY, %s,
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.gps_positions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
     student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE, enc TEXT NOT NULL, accuracy_m REAL, recorded_at TIMESTAMPTZ NOT NULL)$f$, s, tid, s);
   EXECUTE format('CREATE INDEX IF NOT EXISTS gps_positions_student ON %I.gps_positions (student_id, recorded_at DESC)', s);
   EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.gps_state (student_id UUID PRIMARY KEY REFERENCES %I.students(id) ON DELETE CASCADE, %s,

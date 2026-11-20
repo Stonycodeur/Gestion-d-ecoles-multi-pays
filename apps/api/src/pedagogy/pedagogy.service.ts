@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Logger, BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { buildReportCard, can, detectConflicts, generateTimetable, exportICal, toNormalized, attendanceStats, absenceAlert,
   rank, subjectAverages, generalAverage, display, type GradingScale, type Principal, type Resource, type Slot } from '@ecolemanager/shared';
 import { TenantDb, type Q } from './tenant-db.service';
@@ -66,7 +66,7 @@ export class PedagogyService {
     await this.audit.log({ actorId: actor, tenant: slug, action: 'student.create', entity: 'student', entityId: s.id });
     const oaaHook = await this.oaa.recompute(slug, s.id, 'onStudentCreated', 'enrolment');   // module-oaa: initial score, persisted by the core
     const hooks = [...(oaaHook ? [oaaHook] : []), ...(await this.modules.registry.emit(slug, 'onStudentCreated', { studentId: s.id }, ['module-oaa', 'module-payment']))];
-    const invoice = await this.payments.invoiceOnEnrollment(slug, actor, s.id).catch(() => null);   // module-payment: invoice at enrolment (never blocks enrolment)
+    const invoice = await this.payments.invoiceOnEnrollment(slug, actor, s.id).catch((e) => { new Logger('Enrolment').warn(`enrolment invoice failed: ${(e as Error).message}`); return null; });   // module-payment: invoice at enrolment (never blocks enrolment)
     return { student: s, hooks, invoice };
   }
   listStudents(slug: string, classId?: string) {

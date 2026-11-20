@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import '../core/gps_tracker.dart';
 import '../core/money.dart';
 import '../core/session.dart';
+import 'pedagogy_screens.dart';
 
 Future<List<Map<String, dynamic>>> _myStudents(WidgetRef ref) async {
   final s = ref.read(sessionProvider);
