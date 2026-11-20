@@ -50,6 +50,7 @@ test('webhook signature: valid, tampered, replayed', () => {
   assert.equal(verifyWebhook('other', now, body, sig, now), false);
   assert.equal(verifyWebhook('s3cret', now, body, sig, now + 3600), false);
   assert.equal(verifyWebhook('s3cret', now, body, 'zz', now), false);
+  assert.equal(verifyWebhook('s3cret', now, body, sig + 'x', now), false);   // trailing garbage must not be ignored
 });
 test('reconciliation and recovery statistics', () => {
   const r = reconcile([{ ref: 'A', amount_minor: 100 }, { ref: 'B', amount_minor: 200 }, { ref: 'X', amount_minor: 5 }],

@@ -244,7 +244,7 @@ export class PaymentsService {
   private cashSig(id: string, exp: number) { return createHmac('sha256', this.secret()).update(`cash.${id}.${exp}`).digest('hex'); }
   private verifyCashToken(token: string, invoiceId: string): boolean {
     const [id, expS, sig] = token.split('.'); const exp = Number(expS);
-    if (id !== invoiceId || !Number.isFinite(exp) || exp < Math.floor(Date.now() / 1000) || !sig) return false;
+    if (id !== invoiceId || !Number.isFinite(exp) || exp < Math.floor(Date.now() / 1000) || !sig || !/^[0-9a-f]{64}$/.test(sig)) return false;   // strict hex: Buffer.from() would silently truncate a tampered signature
     const a = Buffer.from(sig, 'hex'), b = Buffer.from(this.cashSig(id, exp), 'hex');
     return a.length === b.length && timingSafeEqual(a, b);
   }

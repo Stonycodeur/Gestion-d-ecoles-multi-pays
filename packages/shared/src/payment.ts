@@ -86,8 +86,8 @@ export function signWebhook(secret: string, timestamp: number, body: string): st
 }
 export function verifyWebhook(secret: string, timestamp: number, body: string, signature: string, nowSec = Math.floor(Date.now() / 1000), toleranceSec = 300): boolean {
   if (!Number.isFinite(timestamp) || Math.abs(nowSec - timestamp) > toleranceSec) return false;
-  const expected = Buffer.from(signWebhook(secret, timestamp, body), 'hex'); let given: Buffer;
-  try { given = Buffer.from(signature, 'hex'); } catch { return false; }
+  if (!/^[0-9a-f]{64}$/i.test(signature)) return false;   // Buffer.from(.., 'hex') silently truncates invalid input
+  const expected = Buffer.from(signWebhook(secret, timestamp, body), 'hex'), given = Buffer.from(signature, 'hex');
   return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
