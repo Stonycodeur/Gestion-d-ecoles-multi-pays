@@ -50,5 +50,21 @@
 **Corrections après la CI (branche phase-4b-fixes)** : écran mobile OAA relié au menu (`GET /me/students`), formulaires web de création de quiz/défi/équipe et de configuration OAA, permission `games:challenge`.
 **Limites connues** : code vérifié par la CI (pas compilé localement) ; chemin xgboost/shap non testé ; création de jeux et configuration OAA web uniquement (D-023) ; écart D-020 à valider.
 
+## Phase 5 (paiement, GPS, consentements) : branche `phase-5-payment-gps`
+**Fait**
+- Logique pure testée (13 tests) : unités mineures et devises, remises, échéanciers à somme exacte, affectation aux échéances les plus anciennes, statut de facture, rappels aux jours exacts, signature de webhook (HMAC, anti-rejeu, hex strict), conciliation, statistiques de recouvrement ; fenêtre de consentement GPS (fuseau, jours, plage passant minuit), haversine, filtre de précision, géofencing par transitions, purge, intervalle 30 s.
+- Tables SQL (RLS) : plans de frais, factures, échéances, paiements, événements webhook, reçus ; consentements, zones, positions chiffrées, état, événements, journal d'accès.
+- API : plans de frais, facture automatique à l'inscription (calculée par `module-payment`, enregistrée par le cœur), factures, paiement en ligne avec `Idempotency-Key`, webhook public signé idempotent, paiements manuels (espèces avec QR signé, chèque, virement), reçus PDF FR/EN, rappels (job quotidien appelable), conciliation, statistiques, annulation ; GPS : consentement révocable avec plage et durée, politique d'envoi pour l'app élève, réception des positions, alertes aux tuteurs consentants, carte/historique/événements, journal d'accès, zones, purge. Adaptateurs : sandbox pour tous les prestataires, Stripe, Airtel Money et Moov Money (réels, non testés faute de compte).
+- Web : pages Paiements (famille et comptabilité) et GPS (consentement, carte, événements, zones, journal). Mobile : écrans paiement (hors achat intégré), consentement parent avec carte, envoi de position élève au premier plan et en arrière-plan (intervalle imposé par le serveur), script `tool/configure_native.py` (permissions Android/iOS, modes d'arrière-plan) exécuté en CI.
+- Les écritures de paiement, de quiz et de GPS ne sont jamais mises en file hors connexion (web et mobile) : seules les consultations le sont.
+**Limites connues / reste à faire**
+- Adaptateurs Airtel/Moov/Stripe réels non testés en conditions réelles (identifiants requis) ; Moov au format générique.
+- Les positions GPS ne sont pas poussées en temps réel par WebSocket (la page parent interroge toutes les 15 s) ; géofencing évalué à chaque position reçue.
+- Reçus PDF : ouverture sur le web ; sur mobile la liste des paiements est affichée mais le PDF n'est pas encore ouvert (à traiter en phase 7).
+- Les nouveaux écrans mobiles (Phase 4 et 5) utilisent des textes FR/EN en dur et pas encore les fichiers ARB ; RTL à vérifier : à traiter en phase 7.
+- Entitlements iOS (push, localisation) et projet Xcode propre : phase 7 (préparation des stores).
+- Surpaiement non crédité (D-029). Rappels : pas encore de tâche planifiée automatique (endpoint prêt).
+- Pas de test automatisé de l'envoi de position en arrière-plan sur appareil réel (nécessite émulateur/appareil).
+
 ## Prochaine étape
-Pousser la Phase 4, corriger selon la CI, fusionner, puis Phase 5 (paiement + GPS) et le reste de la Phase 2.
+Fusionner la Phase 5, puis Phase 6 (orientation, stages, espace visiteur, ministères, API publique, marketplace, IA générative, VR/AR).

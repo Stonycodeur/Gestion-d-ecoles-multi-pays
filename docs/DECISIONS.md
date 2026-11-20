@@ -26,4 +26,13 @@
 | D-022 | Quiz : jamais mis en file hors ligne (chrono et anti-triche côté serveur) | Intégrité des examens gamifiés |
 | D-023 | Création de quiz, défis, équipes et configuration OAA : web uniquement (administration lourde) ; le mobile les joue et les consulte | CDC 2 : l'administration lourde peut rester web si documentée |
 | D-024 | Permission `games:challenge` (école entière) pour les défis, distincte de `games:create` limitée aux classes de l'enseignant | Les défis n'ont pas de classe ; évite l'élargissement des droits des enseignants |
+| D-025 | Montants en unités mineures entières ; décimales de la devise tirées d'ICU (XAF 0, EUR 2), devise et moyens de paiement lus dans `countries` | Aucune règle nationale en dur ; pas d'erreur d'arrondi |
+| D-026 | Paiements en ligne (Mobile Money, carte) créés « en attente » ; seule la confirmation signée du prestataire (webhook) encaisse. Webhook idempotent par `(provider, event_id)` et par état du paiement ; montant du webhook comparé au montant demandé | Aucune double écriture si le prestataire rejoue un événement |
+| D-027 | Espèces, chèque, virement : enregistrés par la comptabilité uniquement (référence unique) ; espèces avec QR signé (24 h) généré pour la famille | Un parent ne peut pas s'auto-déclarer payé |
+| D-028 | Numéros de facture et de reçu séquentiels par établissement (verrou consultatif) | Exigence comptable ; unicité garantie en base |
+| D-029 | Surpaiement : le reste non affecté est tracé dans le journal d'audit (pas de crédit automatique) | Le CDC ne définit pas d'avoir ; décision comptable laissée à l'établissement |
+| D-030 | GPS : le consentement est donné par un tuteur ; l'élève peut seulement le révoquer ; chaque compte tuteur consent pour lui-même (un co-tuteur sans consentement ne voit rien) ; position en direct visible uniquement dans la plage consentie ; durée de conservation choisie ≤ limite de l'établissement | Mineurs : on ne laisse pas un mineur consentir à sa propre surveillance ; minimisation |
+| D-031 | Révocation du consentement : purge immédiate des positions de l'élève s'il ne reste aucun consentement actif | Droit à l'effacement |
+| D-032 | Positions chiffrées au repos (AES-256-GCM, `GPS_KEY`) ; alertes d'arrivée/sortie/hors zone envoyées seulement aux tuteurs consentants ; positions imprécises (> 100 m) ou périmées (> 10 min) refusées | Évite les fausses alertes ; confidentialité |
+| D-033 | Zones d'établissement (école) créées par la direction/admin ; zones personnelles (domicile) par le tuteur | Séparation des responsabilités |
 
