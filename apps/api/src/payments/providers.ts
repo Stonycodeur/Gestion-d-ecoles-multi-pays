@@ -31,7 +31,7 @@ export class SandboxProvider implements PaymentProvider {
     return { eventId: b.id, providerRef: b.provider_ref, status: b.status, amountMinor: b.amount_minor };
   }
   /** Builds a correctly signed event, exactly what the real provider would POST. */
-  static signedEvent(providerRef: string, status: 'succeeded' | 'failed', amountMinor: number, eventId = randomUUID()) {
+  static signedEvent(providerRef: string, status: 'succeeded' | 'failed', amountMinor: number, eventId: string = randomUUID()) {
     const body = JSON.stringify({ id: eventId, provider_ref: providerRef, status, amount_minor: amountMinor });
     const ts = Math.floor(Date.now() / 1000);
     return { body, headers: { 'x-webhook-timestamp': String(ts), 'x-webhook-signature': signWebhook(webhookSecret(), ts, body) } };

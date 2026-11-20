@@ -10,11 +10,11 @@ export default function PlayPage() {
   useEffect(() => { api('/quizzes').then((r) => setQuizzes(r.data ?? [])); }, []);
   useEffect(() => { api(`/leaderboards?scope=${scope}`).then((r) => setBoard(r.ok ? r.data : [])); }, [scope, result]);
   const start = async (id: string) => {
-    const r = await api(`/quizzes/${id}/start`, { method: 'POST', body: {} });
+    const r = await api(`/quizzes/${id}/start`, { method: 'POST', body: {}, online: true });
     if (r.ok) { setAttempt(r.data); setAnswers({}); setResult(null); setMsg(''); } else setMsg(r.error ?? 'error');
   };
   const submit = async () => {
-    const r = await api(`/quiz-attempts/${attempt.attempt_id}/submit`, { method: 'POST', body: { answers } });
+    const r = await api(`/quiz-attempts/${attempt.attempt_id}/submit`, { method: 'POST', body: { answers }, online: true });
     if (r.ok) { setResult(r.data); setAttempt(null); } else setMsg(r.error ?? 'error');
   };
   return (
