@@ -14,3 +14,5 @@ export * from './crypto.ts';
 export * from './oaa-axes.ts';
 export * from './gamification.ts';
 export * from './risk.ts';
+export * from './payment.ts';
+export * from './gps.ts';

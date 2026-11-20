@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Logger, BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { buildReportCard, can, detectConflicts, generateTimetable, exportICal, toNormalized, attendanceStats, absenceAlert,
   rank, subjectAverages, generalAverage, display, type GradingScale, type Principal, type Resource, type Slot } from '@ecolemanager/shared';
 import { TenantDb, type Q } from './tenant-db.service';
@@ -8,13 +8,14 @@ import { date, mapDbError, num, optStr, str, uuid } from './validate';
 import { reportPdf } from './pdf';
 import { NotificationService } from '../comms/notification.service';
 import { OaaService } from '../oaa/oaa.service';
+import { PaymentsService } from '../payments/payments.service';
 
 import { ACTIVE_SCALE_SQL, rowToScale } from './scale';
 export { ACTIVE_SCALE_SQL, rowToScale };
 
 @Injectable()
 export class PedagogyService {
-  constructor(private readonly db: TenantDb, private readonly modules: ModulesService, private readonly audit: AuditService, private readonly notif: NotificationService, private readonly oaa: OaaService) {}
+  constructor(private readonly db: TenantDb, private readonly modules: ModulesService, private readonly audit: AuditService, private readonly notif: NotificationService, private readonly oaa: OaaService, private readonly payments: PaymentsService) {}
 
   authorize(p: Principal, tenant: string, perm: string, r: Resource = {}) {
     const d = can(p, perm, { tenantId: tenant, ...r });
@@ -64,8 +65,9 @@ export class PedagogyService {
     });
     await this.audit.log({ actorId: actor, tenant: slug, action: 'student.create', entity: 'student', entityId: s.id });
     const oaaHook = await this.oaa.recompute(slug, s.id, 'onStudentCreated', 'enrolment');   // module-oaa: initial score, persisted by the core
-    const hooks = [...(oaaHook ? [oaaHook] : []), ...(await this.modules.registry.emit(slug, 'onStudentCreated', { studentId: s.id }, ['module-oaa']))];
-    return { student: s, hooks };
+    const hooks = [...(oaaHook ? [oaaHook] : []), ...(await this.modules.registry.emit(slug, 'onStudentCreated', { studentId: s.id }, ['module-oaa', 'module-payment']))];
+    const invoice = await this.payments.invoiceOnEnrollment(slug, actor, s.id).catch((e) => { new Logger('Enrolment').warn(`enrolment invoice failed: ${(e as Error).message}`); return null; });   // module-payment: invoice at enrolment (never blocks enrolment)
+    return { student: s, hooks, invoice };
   }
   listStudents(slug: string, classId?: string) {
     return this.tx(slug, (q) => classId ? q('SELECT * FROM students WHERE class_id = $1 ORDER BY last_name, first_name', [uuid(classId, 'class_id')]) : q('SELECT * FROM students ORDER BY last_name, first_name'));

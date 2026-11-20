@@ -16,10 +16,11 @@ const cacheKey = (p: string) => `em_cache:${p}`;
 export interface ApiResult<T> { ok: boolean; status: number; data?: T; error?: string; queued?: boolean; fromCache?: boolean }
 
 /** GET: network first, falls back to the last cached answer offline. Writes: queued when offline. */
-export async function api<T = any>(path: string, init: { method?: string; body?: unknown } = {}): Promise<ApiResult<T>> {
+/** `online: true` for writes that must never be queued (payments, quizzes, GPS): offline they fail visibly instead of being replayed later. */
+export async function api<T = any>(path: string, init: { method?: string; body?: unknown; headers?: Record<string, string>; online?: boolean } = {}): Promise<ApiResult<T>> {
   const s = getSession(); const method = init.method ?? 'GET';
   try {
-    const r = await fetch(`${API_BASE}${path}`, { method, headers: headers(s), body: init.body === undefined ? undefined : JSON.stringify(init.body) });
+    const r = await fetch(`${API_BASE}${path}`, { method, headers: { ...headers(s), ...(init.headers ?? {}) }, body: init.body === undefined ? undefined : JSON.stringify(init.body) });
     const text = await r.text(); let data: any; try { data = text ? JSON.parse(text) : undefined; } catch { data = text; }
     if (r.ok && method === 'GET') { try { localStorage.setItem(cacheKey(path), text); } catch { /* ignore */ } }
     return r.ok ? { ok: true, status: r.status, data } : { ok: false, status: r.status, error: data?.message ? JSON.stringify(data.message) : r.statusText };
@@ -28,6 +29,7 @@ export async function api<T = any>(path: string, init: { method?: string; body?:
       const c = localStorage.getItem(cacheKey(path));
       return c ? { ok: true, status: 200, data: JSON.parse(c) as T, fromCache: true } : { ok: false, status: 0, error: 'offline' };
     }
+    if (init.online) return { ok: false, status: 0, error: 'offline: this action needs a connection' };
     enqueue({ method, path, body: init.body });
     return { ok: true, status: 202, queued: true };
   }
@@ -44,3 +46,13 @@ export const login = async (school: string, role: string): Promise<Session> => {
   if (!r.ok) throw new Error(`login failed (${r.status})`);
   return { school, token: (await r.json()).access_token as string };
 };
+
+/** Authenticated download (PDF receipts, bulletins): opens the file in a new tab. */
+export async function openPdf(path: string): Promise<boolean> {
+  try {
+    const r = await fetch(`${API_BASE}${path}`, { headers: headers(getSession()) });
+    if (!r.ok) return false;
+    window.open(URL.createObjectURL(await r.blob()), '_blank');
+    return true;
+  } catch { return false; }
+}

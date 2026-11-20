@@ -4,7 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true })   // raw body: webhook signatures are verified on the exact bytes received;
   const origins = (process.env.CORS_ORIGINS ?? '').split(',').filter(Boolean); // strict: no wildcard
   app.enableCors({ origin: origins, credentials: true });
   const doc = SwaggerModule.createDocument(app, new DocumentBuilder().setTitle('ÉcoleManager Pro API').setVersion('0.1.0').addBearerAuth().build());

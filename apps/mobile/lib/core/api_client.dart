@@ -51,10 +51,17 @@ class ApiClient {
   }
 
   /// Online-only write that returns the decoded body (quizzes: never queued, the server enforces timing).
-  Future<dynamic> postOnline(String school, String token, String path, Map<String, dynamic> body) async {
-    final r = await _c.post(Uri.parse('$apiBase$path'), headers: _h(school, token), body: jsonEncode(body));
+  Future<dynamic> postOnline(String school, String token, String path, Map<String, dynamic> body, {Map<String, String> extraHeaders = const {}}) async {
+    final r = await _c.post(Uri.parse('$apiBase$path'), headers: {..._h(school, token), ...extraHeaders}, body: jsonEncode(body));
     if (r.statusCode >= 300) throw Exception('POST $path failed (${r.statusCode}): ${r.body}');
     return jsonDecode(r.body);
+  }
+
+  /// Online GET returning the decoded JSON object (no cache: used for live values such as the GPS policy).
+  Future<Map<String, dynamic>> getRaw(String school, String token, String path) async {
+    final r = await _c.get(Uri.parse('$apiBase$path'), headers: _h(school, token));
+    if (r.statusCode >= 300) throw Exception('GET $path failed (${r.statusCode})');
+    return jsonDecode(r.body) as Map<String, dynamic>;
   }
 
   Future<int> replay(String school, String token, QueuedOp op) async {

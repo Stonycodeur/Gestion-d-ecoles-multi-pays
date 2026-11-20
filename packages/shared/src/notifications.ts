@@ -1,4 +1,4 @@
-export type NotificationType = 'grade.published' | 'absence.recorded' | 'schedule.published' | 'message.new' | 'news.published' | 'payment.confirmed' | 'gps.alert' | 'oaa.warning' | 'ai.risk';
+export type NotificationType = 'grade.published' | 'absence.recorded' | 'schedule.published' | 'message.new' | 'news.published' | 'payment.confirmed' | 'payment.reminder' | 'invoice.issued' | 'gps.alert' | 'oaa.warning' | 'ai.risk';
 export type Lang = 'fr' | 'en' | 'ar';
 
 const T: Record<NotificationType, Record<Lang, (p: Record<string, string>) => { title: string; body: string }>> = {
@@ -25,6 +25,12 @@ const T: Record<NotificationType, Record<Lang, (p: Record<string, string>) => { 
   },
   'payment.confirmed': {
     fr: (p) => ({ title: 'Paiement confirmé', body: p.amount ?? '' }), en: (p) => ({ title: 'Payment confirmed', body: p.amount ?? '' }), ar: (p) => ({ title: 'تم تأكيد الدفع', body: p.amount ?? '' }),
+  },
+  'payment.reminder': {
+    fr: (p) => ({ title: 'Rappel de paiement', body: p.text ?? '' }), en: (p) => ({ title: 'Payment reminder', body: p.text ?? '' }), ar: (p) => ({ title: 'تذكير بالدفع', body: p.text ?? '' }),
+  },
+  'invoice.issued': {
+    fr: (p) => ({ title: 'Nouvelle facture', body: p.text ?? '' }), en: (p) => ({ title: 'New invoice', body: p.text ?? '' }), ar: (p) => ({ title: 'فاتورة جديدة', body: p.text ?? '' }),
   },
   'gps.alert': {
     fr: (p) => ({ title: 'Alerte localisation', body: p.text ?? '' }), en: (p) => ({ title: 'Location alert', body: p.text ?? '' }), ar: (p) => ({ title: 'تنبيه الموقع', body: p.text ?? '' }),

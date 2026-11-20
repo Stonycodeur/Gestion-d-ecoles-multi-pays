@@ -6,6 +6,7 @@ import '../l10n/app_localizations.dart';
 import 'pedagogy_screens.dart';
 import 'comms_screens.dart';
 import 'oaa_games_screens.dart';
+import 'payment_gps_screens.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -29,6 +30,9 @@ class HomeScreen extends ConsumerWidget {
                     // Module screens are discovered from /modules/active; only the ones with a native screen navigate.
                     final target = switch (sc) {
                       'gamification_home' || 'quiz_player' => const QuizListScreen(),
+                      'payment_home' => const PaymentScreen(),
+                      'gps_parent_map' => const GpsParentScreen(),
+                      'gps_student_tracker' => const GpsStudentScreen(),
                       'oaa_dashboard' => const OaaPickerScreen(),
                       'leaderboard' => const LeaderboardScreen(),
                       'risk_dashboard' => const RiskDashboardScreen(),

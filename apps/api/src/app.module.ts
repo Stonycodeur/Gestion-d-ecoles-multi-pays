@@ -18,14 +18,19 @@ import { GamificationController } from './gamification/gamification.controller';
 import { GamificationService } from './gamification/gamification.service';
 import { PredictiveController } from './predictive/predictive.controller';
 import { PredictiveService } from './predictive/predictive.service';
+import { PaymentsController } from './payments/payments.controller';
+import { PaymentsService } from './payments/payments.service';
+import { PaymentProviders } from './payments/providers';
+import { GpsController } from './gps/gps.controller';
+import { GpsService } from './gps/gps.service';
 import { CommsController } from './comms/comms.controller';
 import { CommsService } from './comms/comms.service';
 import { NotificationService } from './comms/notification.service';
 import { RealtimeGateway } from './comms/realtime.gateway';
 
 @Module({
-  controllers: [HealthController, AuthController, ModulesController, PedagogyController, CommsController, OaaController, GamificationController, PredictiveController],
-  providers: [AuthService, AuditService, ModulesService, TenantDb, PedagogyService, Adapters, RealtimeGateway, NotificationService, CommsService, OaaService, GamificationService, PredictiveService, { provide: APP_GUARD, useClass: CoreGuard }],
+  controllers: [HealthController, AuthController, ModulesController, PedagogyController, CommsController, OaaController, GamificationController, PredictiveController, PaymentsController, GpsController],
+  providers: [AuthService, AuditService, ModulesService, TenantDb, PedagogyService, Adapters, RealtimeGateway, NotificationService, CommsService, OaaService, GamificationService, PredictiveService, PaymentProviders, PaymentsService, GpsService, { provide: APP_GUARD, useClass: CoreGuard }],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) { consumer.apply(TenantMiddleware).forRoutes('*'); }

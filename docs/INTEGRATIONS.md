@@ -15,4 +15,11 @@ En mode sandbox, les push sont écrits dans la table `push_outbox` (consultable 
 
 | IA prédictive | `AI_MODE` (`sandbox` = modèle JSON en processus, `live` = service FastAPI) | `AI_SERVICE_URL`, `AI_SERVICE_KEY` ; sandbox : `AI_MODEL_PATH` | Entraîner avec `python apps/ai/train.py` sur des données réelles anonymisées, relire `MODEL_CARD.md` et la mesure de biais avant d'activer ; xgboost/shap optionnels (`requirements.txt`) |
 
+| Paiement (tous prestataires) | `PAYMENT_MODE` (`sandbox` par défaut, `live`) | `PAYMENT_WEBHOOK_SECRET` (≥ 16 caractères, sert aussi à signer le QR espèces), `PAYMENT_RETURN_URL` | Sandbox : le même flux que le réel (demande → webhook signé → reçu) ; `POST /payments/:id/sandbox-confirm` joue le rôle de l'opérateur et est désactivé en `live` |
+| Carte (Stripe) | `PAYMENT_MODE=live` | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Webhook : `POST /payments/webhooks/stripe/<slug-etablissement>` (événement `checkout.session.completed`) |
+| Airtel Money | `PAYMENT_MODE=live` | `AIRTEL_BASE_URL`, `AIRTEL_CLIENT_ID`, `AIRTEL_CLIENT_SECRET`, `AIRTEL_CALLBACK_SECRET` | Callback : `POST /payments/webhooks/airtel_money/<slug>` signé (HMAC) ; **adaptateur écrit d'après l'API publique Airtel, non testé en réel : à valider avec le compte marchand** |
+| Moov Money | `PAYMENT_MODE=live` | `MOOV_BASE_URL`, `MOOV_API_KEY`, `MOOV_CALLBACK_SECRET` | Callback : `POST /payments/webhooks/moov_money/<slug>` ; **format générique : à aligner sur la documentation remise par Moov à l'ouverture du compte marchand** |
+| GPS (chiffrement) | — | `GPS_KEY` (base64, 32 octets : `openssl rand -base64 32`) | Obligatoire pour enregistrer/lire des positions ; ne jamais le commiter |
+| GPS (carte mobile) | `--dart-define=MAP_TILE_URL=...` | URL de tuiles | Défaut : tuiles OpenStreetMap (usage modéré) ; en production, utiliser un fournisseur de tuiles contractuel ; le web utilise l'intégration OpenStreetMap |
+
 Les adaptateurs de paiement, GPS/cartes, IA générative et ministères seront documentés ici dans leurs phases.
