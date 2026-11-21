@@ -225,8 +225,45 @@ BEGIN
   EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.gps_access_log (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
     student_id UUID NOT NULL, user_id UUID NOT NULL, action TEXT NOT NULL, at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid);
 
+  -- Phase 6a: orientation, internships, exam fiche, visitor space, resources and forums ------------------------------------
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.career_paths (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    title TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'path' CHECK (kind IN ('path','career_sheet')), from_level TEXT, to_level TEXT,
+    description TEXT NOT NULL, steps JSONB NOT NULL DEFAULT '[]', created_by UUID, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.internships (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE, organisation TEXT NOT NULL, supervisor_name TEXT, supervisor_email TEXT,
+    start_on DATE NOT NULL, end_on DATE NOT NULL CHECK (end_on >= start_on),
+    status TEXT NOT NULL DEFAULT 'requested' CHECK (status IN ('requested','approved','rejected','in_progress','report_submitted','completed','cancelled')),
+    decision_note TEXT, report_text TEXT, report_submitted_at TIMESTAMPTZ, recommendation_doc_id UUID,
+    created_by UUID, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS internships_student ON %I.internships (student_id)', s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.exam_results (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE, exam_code TEXT NOT NULL, school_year TEXT NOT NULL, subject_code TEXT NOT NULL,
+    pct NUMERIC NOT NULL CHECK (pct BETWEEN 0 AND 100), UNIQUE (student_id, exam_code, school_year, subject_code))$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.exam_outcomes (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE, exam_code TEXT NOT NULL, school_year TEXT NOT NULL,
+    passed BOOLEAN NOT NULL, mention TEXT, recorded_by UUID, UNIQUE (student_id, exam_code, school_year))$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.visitor_applications (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    first_name TEXT NOT NULL, last_name TEXT NOT NULL, birth_date DATE, level_code TEXT NOT NULL, guardian_name TEXT NOT NULL, guardian_email TEXT, guardian_phone TEXT,
+    message TEXT, status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','accepted','rejected')), student_id UUID, decided_by UUID, decided_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.contact_messages (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    name TEXT NOT NULL, email TEXT NOT NULL, subject TEXT NOT NULL, body TEXT NOT NULL, handled BOOLEAN NOT NULL DEFAULT FALSE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.site_content (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    key TEXT NOT NULL UNIQUE, value JSONB NOT NULL, updated_by UUID, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.resources (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    title TEXT NOT NULL, description TEXT, kind TEXT NOT NULL CHECK (kind IN ('pdf','video','link','file')), url TEXT NOT NULL, subject_code TEXT, level_code TEXT,
+    tags TEXT[] NOT NULL DEFAULT '{}', school_year TEXT, shared BOOLEAN NOT NULL DEFAULT FALSE, owner_user_id UUID, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', coalesce(title,'') || ' ' || coalesce(description,'') || ' ' || coalesce(array_to_string(tags,' '),''))) STORED)$f$, s, tid);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS resources_tsv ON %I.resources USING GIN (tsv)', s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.forums (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    title TEXT NOT NULL, class_id UUID REFERENCES %I.classes(id) ON DELETE CASCADE, subject_code TEXT, created_by UUID, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.forum_posts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    forum_id UUID NOT NULL REFERENCES %I.forums(id) ON DELETE CASCADE, parent_id UUID REFERENCES %I.forum_posts(id) ON DELETE CASCADE,
+    author_user_id UUID NOT NULL, author_name TEXT NOT NULL, body TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s, s);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS forum_posts_forum ON %I.forum_posts (forum_id, created_at)', s);
+
   FOREACH t IN ARRAY ARRAY['classes','subjects','rooms','students','guardians','teachers','class_subjects','schedules','schedule_slots',
-    'substitutions','evaluations','grades','report_cards','absences','justifications','lessons','inspector_access','contracts','directory','threads','thread_members','messages','message_attachments','news','surveys','survey_votes','events','notifications','device_tokens','push_outbox','locker_documents','oaa_config','oaa_scores','oaa_history','oaa_assessments','oaa_penalties','game_results','xp_events','student_badges','challenges','challenge_completions','teams','team_members','quizzes','quiz_questions','quiz_attempts','ai_predictions','ai_feedback','fee_plans','invoices','installments','payments','payment_events','receipts','gps_consents','gps_geofences','gps_positions','gps_state','gps_events','gps_access_log'] LOOP
+    'substitutions','evaluations','grades','report_cards','absences','justifications','lessons','inspector_access','contracts','directory','threads','thread_members','messages','message_attachments','news','surveys','survey_votes','events','notifications','device_tokens','push_outbox','locker_documents','oaa_config','oaa_scores','oaa_history','oaa_assessments','oaa_penalties','game_results','xp_events','student_badges','challenges','challenge_completions','teams','team_members','quizzes','quiz_questions','quiz_attempts','ai_predictions','ai_feedback','fee_plans','invoices','installments','payments','payment_events','receipts','gps_consents','gps_geofences','gps_positions','gps_state','gps_events','gps_access_log','career_paths','internships','exam_results','exam_outcomes','visitor_applications','contact_messages','site_content','resources','forums','forum_posts'] LOOP
     EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY', s, t);
     EXECUTE format('ALTER TABLE %I.%I FORCE ROW LEVEL SECURITY', s, t);
     EXECUTE format('DROP POLICY IF EXISTS tenant_isolation ON %I.%I', s, t);

@@ -27,10 +27,16 @@ import { CommsController } from './comms/comms.controller';
 import { CommsService } from './comms/comms.service';
 import { NotificationService } from './comms/notification.service';
 import { RealtimeGateway } from './comms/realtime.gateway';
+import { OrientationController } from './orientation/orientation.controller';
+import { OrientationService } from './orientation/orientation.service';
+import { PublicController, VisitorAdminController } from './visitor/visitor.controller';
+import { VisitorService } from './visitor/visitor.service';
+import { ResourcesController } from './resources/resources.controller';
+import { ResourcesService } from './resources/resources.service';
 
 @Module({
-  controllers: [HealthController, AuthController, ModulesController, PedagogyController, CommsController, OaaController, GamificationController, PredictiveController, PaymentsController, GpsController],
-  providers: [AuthService, AuditService, ModulesService, TenantDb, PedagogyService, Adapters, RealtimeGateway, NotificationService, CommsService, OaaService, GamificationService, PredictiveService, PaymentProviders, PaymentsService, GpsService, { provide: APP_GUARD, useClass: CoreGuard }],
+  controllers: [HealthController, AuthController, ModulesController, PedagogyController, CommsController, OaaController, GamificationController, PredictiveController, PaymentsController, GpsController, OrientationController, PublicController, VisitorAdminController, ResourcesController],
+  providers: [AuthService, AuditService, ModulesService, TenantDb, PedagogyService, Adapters, RealtimeGateway, NotificationService, CommsService, OaaService, GamificationService, PredictiveService, PaymentProviders, PaymentsService, GpsService, OrientationService, VisitorService, ResourcesService, { provide: APP_GUARD, useClass: CoreGuard }],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) { consumer.apply(TenantMiddleware).forRoutes('*'); }

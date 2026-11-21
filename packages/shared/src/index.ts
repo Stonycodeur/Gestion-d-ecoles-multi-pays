@@ -16,3 +16,4 @@ export * from './gamification.ts';
 export * from './risk.ts';
 export * from './payment.ts';
 export * from './gps.ts';
+export * from './orientation.ts';

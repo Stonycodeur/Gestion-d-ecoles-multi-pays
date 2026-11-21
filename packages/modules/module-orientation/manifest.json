@@ -1,0 +1,26 @@
+{
+  "name": "module-orientation",
+  "version": "1.0.0",
+  "core_version": ">=0.1.0",
+  "description": "Orientation et stages : parcours, fiches métiers, stages (demande, validation, rapport), fiche d'examen de fin de collège (BEPC/Brevet) configurable par pays",
+  "permissions": [
+    "orientation:read",
+    "orientation:write",
+    "internships:manage",
+    "internships:request",
+    "exam:read",
+    "exam:write"
+  ],
+  "hooks": {
+    "onExamCompleted": "projectFiche"
+  },
+  "config_schema": {
+    "min_cohort_public_stats": 10
+  },
+  "mobile_screens": [
+    "orientation_home",
+    "internships",
+    "exam_fiche"
+  ],
+  "entry": "dist-cjs/modules/module-orientation/src/index.js"
+}
