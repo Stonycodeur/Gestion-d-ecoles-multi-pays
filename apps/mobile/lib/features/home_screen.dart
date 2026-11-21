@@ -7,6 +7,7 @@ import 'pedagogy_screens.dart';
 import 'comms_screens.dart';
 import 'oaa_games_screens.dart';
 import 'payment_gps_screens.dart';
+import 'orientation_screens.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -36,6 +37,9 @@ class HomeScreen extends ConsumerWidget {
                       'oaa_dashboard' => const OaaPickerScreen(),
                       'leaderboard' => const LeaderboardScreen(),
                       'risk_dashboard' => const RiskDashboardScreen(),
+                      'orientation_home' || 'internships' || 'exam_fiche' => const OrientationScreen(),
+                      'resources' || 'forums' => const ResourcesScreen(),
+                      'visitor_applications' => const VisitorApplicationsScreen(),
                       _ => null,
                     };
                     if (target != null) Navigator.of(context).push(MaterialPageRoute(builder: (_) => target));
