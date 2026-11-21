@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { SignJWT, jwtVerify, createRemoteJWKSet, type JWTPayload } from 'jose';
 import type { Principal, RoleCode } from '@ecolemanager/shared';
 
-const ROLES: RoleCode[] = ['root_super_admin', 'tenant_super_admin', 'admin', 'head', 'teacher', 'education_assistant', 'accountant', 'student', 'guardian', 'visitor'];
+const ROLES: RoleCode[] = ['root_super_admin', 'tenant_super_admin', 'admin', 'head', 'teacher', 'education_assistant', 'accountant', 'student', 'guardian', 'visitor', 'inspector'];
 
 export interface AuthContext { principal: Principal; tenantSlug?: string }
 

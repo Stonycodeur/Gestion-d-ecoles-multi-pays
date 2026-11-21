@@ -262,8 +262,29 @@ BEGIN
     author_user_id UUID NOT NULL, author_name TEXT NOT NULL, body TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s, s);
   EXECUTE format('CREATE INDEX IF NOT EXISTS forum_posts_forum ON %I.forum_posts (forum_id, created_at)', s);
 
+  -- Phase 6b: ministry transmissions, public API clients, outgoing webhooks, installed marketplace modules ---------------
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.ministry_transmissions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    connector_code TEXT NOT NULL, dataset TEXT NOT NULL, format TEXT NOT NULL CHECK (format IN ('csv','json','xml')), school_year TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'prepared' CHECK (status IN ('prepared','validated','rejected','sent','failed','cancelled')),
+    payload TEXT NOT NULL, checksum TEXT NOT NULL, rows_count INT NOT NULL, sandbox BOOLEAN NOT NULL DEFAULT TRUE, scheduled_for TIMESTAMPTZ,
+    attempts INT NOT NULL DEFAULT 0, last_error TEXT, next_retry_at TIMESTAMPTZ, prepared_by UUID, validated_by UUID, validated_at TIMESTAMPTZ, sent_at TIMESTAMPTZ,
+    response JSONB, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.ministry_logs (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    transmission_id UUID NOT NULL REFERENCES %I.ministry_transmissions(id) ON DELETE CASCADE, event TEXT NOT NULL, detail JSONB NOT NULL DEFAULT '{}', at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.api_clients (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    name TEXT NOT NULL, client_id TEXT NOT NULL UNIQUE, secret_hash TEXT NOT NULL, scopes TEXT[] NOT NULL, quota_per_hour INT NOT NULL DEFAULT 1000 CHECK (quota_per_hour BETWEEN 1 AND 1000000),
+    active BOOLEAN NOT NULL DEFAULT TRUE, created_by UUID, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), revoked_at TIMESTAMPTZ, last_used_at TIMESTAMPTZ)$f$, s, tid);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.webhooks_out (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    url TEXT NOT NULL, secret_enc TEXT NOT NULL, events TEXT[] NOT NULL, active BOOLEAN NOT NULL DEFAULT TRUE, created_by UUID, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.webhook_deliveries (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    webhook_id UUID NOT NULL REFERENCES %I.webhooks_out(id) ON DELETE CASCADE, event TEXT NOT NULL, payload JSONB NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','delivered','failed')), attempts INT NOT NULL DEFAULT 0, response_status INT, last_error TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), delivered_at TIMESTAMPTZ)$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.module_installs (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    module_name TEXT NOT NULL UNIQUE, version TEXT NOT NULL, accepted_permissions TEXT[] NOT NULL, installed_by UUID, installed_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid);
+
   FOREACH t IN ARRAY ARRAY['classes','subjects','rooms','students','guardians','teachers','class_subjects','schedules','schedule_slots',
-    'substitutions','evaluations','grades','report_cards','absences','justifications','lessons','inspector_access','contracts','directory','threads','thread_members','messages','message_attachments','news','surveys','survey_votes','events','notifications','device_tokens','push_outbox','locker_documents','oaa_config','oaa_scores','oaa_history','oaa_assessments','oaa_penalties','game_results','xp_events','student_badges','challenges','challenge_completions','teams','team_members','quizzes','quiz_questions','quiz_attempts','ai_predictions','ai_feedback','fee_plans','invoices','installments','payments','payment_events','receipts','gps_consents','gps_geofences','gps_positions','gps_state','gps_events','gps_access_log','career_paths','internships','exam_results','exam_outcomes','visitor_applications','contact_messages','site_content','resources','forums','forum_posts'] LOOP
+    'substitutions','evaluations','grades','report_cards','absences','justifications','lessons','inspector_access','contracts','directory','threads','thread_members','messages','message_attachments','news','surveys','survey_votes','events','notifications','device_tokens','push_outbox','locker_documents','oaa_config','oaa_scores','oaa_history','oaa_assessments','oaa_penalties','game_results','xp_events','student_badges','challenges','challenge_completions','teams','team_members','quizzes','quiz_questions','quiz_attempts','ai_predictions','ai_feedback','fee_plans','invoices','installments','payments','payment_events','receipts','gps_consents','gps_geofences','gps_positions','gps_state','gps_events','gps_access_log','career_paths','internships','exam_results','exam_outcomes','visitor_applications','contact_messages','site_content','resources','forums','forum_posts','ministry_transmissions','ministry_logs','api_clients','webhooks_out','webhook_deliveries','module_installs'] LOOP
     EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY', s, t);
     EXECUTE format('ALTER TABLE %I.%I FORCE ROW LEVEL SECURITY', s, t);
     EXECUTE format('DROP POLICY IF EXISTS tenant_isolation ON %I.%I', s, t);

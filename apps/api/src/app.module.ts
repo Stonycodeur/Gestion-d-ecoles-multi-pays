@@ -33,10 +33,17 @@ import { PublicController, VisitorAdminController } from './visitor/visitor.cont
 import { VisitorService } from './visitor/visitor.service';
 import { ResourcesController } from './resources/resources.controller';
 import { ResourcesService } from './resources/resources.service';
+import { MarketplaceController } from './marketplace/marketplace.controller';
+import { MarketplaceService } from './marketplace/marketplace.service';
+import { MinistryController } from './ministry/ministry.controller';
+import { MinistryService } from './ministry/ministry.service';
+import { ApiAdminController, PublicApiController } from './publicapi/publicapi.controller';
+import { PublicApiService } from './publicapi/publicapi.service';
+import { WebhooksService } from './publicapi/webhooks.service';
 
 @Module({
-  controllers: [HealthController, AuthController, ModulesController, PedagogyController, CommsController, OaaController, GamificationController, PredictiveController, PaymentsController, GpsController, OrientationController, PublicController, VisitorAdminController, ResourcesController],
-  providers: [AuthService, AuditService, ModulesService, TenantDb, PedagogyService, Adapters, RealtimeGateway, NotificationService, CommsService, OaaService, GamificationService, PredictiveService, PaymentProviders, PaymentsService, GpsService, OrientationService, VisitorService, ResourcesService, { provide: APP_GUARD, useClass: CoreGuard }],
+  controllers: [HealthController, AuthController, ModulesController, PedagogyController, CommsController, OaaController, GamificationController, PredictiveController, PaymentsController, GpsController, OrientationController, PublicController, VisitorAdminController, ResourcesController, MarketplaceController, MinistryController, PublicApiController, ApiAdminController],
+  providers: [AuthService, AuditService, ModulesService, TenantDb, PedagogyService, Adapters, RealtimeGateway, NotificationService, CommsService, OaaService, GamificationService, PredictiveService, PaymentProviders, PaymentsService, GpsService, OrientationService, VisitorService, ResourcesService, MarketplaceService, MinistryService, PublicApiService, WebhooksService, { provide: APP_GUARD, useClass: CoreGuard }],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) { consumer.apply(TenantMiddleware).forRoutes('*'); }

@@ -2,8 +2,8 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 import { isIP } from 'node:net';
 
 /** Phase 6b (spec 6.19): public API building blocks (OAuth2 client credentials, scopes, quotas, signed outgoing webhooks, SSRF guard). */
-export const API_SCOPES = ['students:read', 'classes:read', 'news:read', 'grades:read', 'absences:read', 'schedule:read'] as const;
-export const WEBHOOK_EVENTS = ['student.created', 'news.published', 'payment.confirmed', 'grade.published', 'absence.recorded'] as const;
+export const API_SCOPES = ['students:read', 'classes:read', 'news:read', 'grades:read'] as const;
+export const WEBHOOK_EVENTS = ['student.created', 'news.published', 'payment.confirmed'] as const;
 
 export function parseScopes(requested: unknown, allowed: readonly string[]): string[] {
   const list = typeof requested === 'string' ? requested.split(/[\s,]+/).filter(Boolean) : Array.isArray(requested) ? requested.map(String) : [];
