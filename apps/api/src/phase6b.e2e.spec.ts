@@ -193,15 +193,15 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
   describe('ministry connectors and inspectors', () => {
     let tx: any;
     it('the connectors come from the country reference data', async () => {
-      const c = (await call('get', '/ministry/connectors', headT).expect(200)).body; expect(c.map((x: any) => x.code).sort()).toEqual(['men', 'mesr']);
+      const c = (await call('get', '/ministry/connectors', adminT).expect(200)).body; expect(c.map((x: any) => x.code).sort()).toEqual(['men', 'mesr']);
       await call('get', '/ministry/connectors', teacherT).expect(403);
     });
     it('preparation is minimised and checksummed; unknown datasets and formats are refused', async () => {
-      await call('post', '/ministry/transmissions', headT).send({ connector: 'men', dataset: 'notes', format: 'csv', school_year: '2026-2027' }).expect(400);
-      await call('post', '/ministry/transmissions', headT).send({ connector: 'men', dataset: 'effectifs', format: 'xml', school_year: '2026-2027' }).expect(400);
-      tx = (await call('post', '/ministry/transmissions', headT).send({ connector: 'men', dataset: 'effectifs', format: 'csv', school_year: '2026-2027' }).expect(201)).body;
+      await call('post', '/ministry/transmissions', adminT).send({ connector: 'men', dataset: 'notes', format: 'csv', school_year: '2026-2027' }).expect(400);
+      await call('post', '/ministry/transmissions', adminT).send({ connector: 'men', dataset: 'effectifs', format: 'xml', school_year: '2026-2027' }).expect(400);
+      tx = (await call('post', '/ministry/transmissions', adminT).send({ connector: 'men', dataset: 'effectifs', format: 'csv', school_year: '2026-2027' }).expect(201)).body;
       expect(tx.status).toBe('prepared'); expect(tx.checksum).toMatch(/^[0-9a-f]{64}$/);
-      const file = await call('get', `/ministry/transmissions/${tx.id}/file`, headT).expect(200);
+      const file = await call('get', `/ministry/transmissions/${tx.id}/file`, adminT).expect(200);
       expect(file.text).not.toMatch(/Obiang|birth/i);
     });
     it('the direction validates against the checksum, then sends (sandbox) with a full exchange log', async () => {
@@ -210,19 +210,19 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
       await call('post', `/ministry/transmissions/${tx.id}/validate`, headT).send({ approve: true, checksum: 'f'.repeat(64) }).expect(400);
       await call('post', `/ministry/transmissions/${tx.id}/validate`, headT).send({ approve: true, checksum: tx.checksum }).expect(201);
       const s = await call('post', `/ministry/transmissions/${tx.id}/send`, headT).expect(201); expect(s.body.status).toBe('sent');
-      const d = (await call('get', `/ministry/transmissions/${tx.id}`, headT).expect(200)).body;
+      const d = (await call('get', `/ministry/transmissions/${tx.id}`, adminT).expect(200)).body;
       expect(d.logs.map((l: any) => l.event)).toEqual(expect.arrayContaining(['prepared', 'validated', 'sent']));
       await call('post', `/ministry/transmissions/${tx.id}/cancel`, headT).expect(400);   // sent is final
     });
     it('inspector accounts are time-limited, read-limited and revocable at once', async () => {
       const soon = new Date(Date.now() + 7 * 86400000).toISOString();
-      await call('post', '/ministry/inspectors', headT).send({ user_id: U(50), display_name: 'Inspecteur', expires_at: new Date(Date.now() + 200 * 86400000).toISOString() }).expect(400);
-      await call('post', '/ministry/inspectors', headT).send({ user_id: U(50), display_name: 'Inspecteur', expires_at: new Date(Date.now() - 1000).toISOString() }).expect(400);
-      const a = (await call('post', '/ministry/inspectors', headT).send({ user_id: U(50), display_name: 'Inspecteur', expires_at: soon }).expect(201)).body;
+      await call('post', '/ministry/inspectors', adminT).send({ user_id: U(50), display_name: 'Inspecteur', expires_at: new Date(Date.now() + 200 * 86400000).toISOString() }).expect(400);
+      await call('post', '/ministry/inspectors', adminT).send({ user_id: U(50), display_name: 'Inspecteur', expires_at: new Date(Date.now() - 1000).toISOString() }).expect(400);
+      const a = (await call('post', '/ministry/inspectors', adminT).send({ user_id: U(50), display_name: 'Inspecteur', expires_at: soon }).expect(201)).body;
       const it = await tok('inspector', 50);
       const ok = await call('get', '/lessons', it); expect([401, 403]).not.toContain(ok.status);
       await call('get', '/students', it).expect(403);
-      await call('post', `/ministry/inspectors/${a.id}/revoke`, headT).expect(201);
+      await call('post', `/ministry/inspectors/${a.id}/revoke`, adminT).expect(201);
       await call('get', '/lessons', it).expect(403);
     });
   });
