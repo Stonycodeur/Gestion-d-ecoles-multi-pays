@@ -201,7 +201,7 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
       await call('post', '/ministry/transmissions', adminT).send({ connector: 'men', dataset: 'effectifs', format: 'xml', school_year: '2026-2027' }).expect(400);
       tx = (await call('post', '/ministry/transmissions', adminT).send({ connector: 'men', dataset: 'effectifs', format: 'csv', school_year: '2026-2027' }).expect(201)).body;
       expect(tx.status).toBe('prepared'); expect(tx.checksum).toMatch(/^[0-9a-f]{64}$/);
-      const file = await call('get', `/ministry/transmissions/${tx.id}/file`, headT).expect(200);
+      const file = await call('get', `/ministry/transmissions/${tx.id}/file`, adminT).expect(200);
       expect(file.text).not.toMatch(/Obiang|birth/i);
     });
     it('the direction validates against the checksum, then sends (sandbox) with a full exchange log', async () => {
