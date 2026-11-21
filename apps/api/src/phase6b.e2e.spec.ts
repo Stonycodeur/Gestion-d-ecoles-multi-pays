@@ -201,14 +201,16 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
       await call('post', '/ministry/transmissions', adminT).send({ connector: 'men', dataset: 'effectifs', format: 'xml', school_year: '2026-2027' }).expect(400);
       tx = (await call('post', '/ministry/transmissions', adminT).send({ connector: 'men', dataset: 'effectifs', format: 'csv', school_year: '2026-2027' }).expect(201)).body;
       expect(tx.status).toBe('prepared'); expect(tx.checksum).toMatch(/^[0-9a-f]{64}$/);
-      const file = await call('get', `/ministry/transmissions/${tx.id}/file`, adminT).expect(200);
-      expect(file.text).not.toMatch(/Obiang|birth/i);
+      const pv = await call('get', `/ministry/transmissions/${tx.id}/preview`, adminT).expect(200);
+      expect(pv.body.payload).not.toMatch(/Obiang|birth/i); expect(pv.body.checksum).toBe(tx.checksum);
     });
     it('the direction validates against the checksum, then sends (sandbox) with a full exchange log', async () => {
       await call('post', `/ministry/transmissions/${tx.id}/send`, headT).expect(400);   // not validated yet
       await call('post', `/ministry/transmissions/${tx.id}/validate`, adminT).send({ approve: true, checksum: tx.checksum }).expect(403);
       await call('post', `/ministry/transmissions/${tx.id}/validate`, headT).send({ approve: true, checksum: 'f'.repeat(64) }).expect(400);
       await call('post', `/ministry/transmissions/${tx.id}/validate`, headT).send({ approve: true, checksum: tx.checksum }).expect(201);
+      const tsa = await tok('tenant_super_admin', 4);
+      const file = await call('get', `/ministry/transmissions/${tx.id}/file`, tsa).expect(200); expect(file.headers['x-checksum-sha256']).toBe(tx.checksum);
       const s = await call('post', `/ministry/transmissions/${tx.id}/send`, headT).expect(201); expect(s.body.status).toBe('sent');
       const d = (await call('get', `/ministry/transmissions/${tx.id}`, adminT).expect(200)).body;
       expect(d.logs.map((l: any) => l.event)).toEqual(expect.arrayContaining(['prepared', 'validated', 'sent']));
