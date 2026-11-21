@@ -253,7 +253,7 @@ BEGIN
   EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.resources (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
     title TEXT NOT NULL, description TEXT, kind TEXT NOT NULL CHECK (kind IN ('pdf','video','link','file')), url TEXT NOT NULL, subject_code TEXT, level_code TEXT,
     tags TEXT[] NOT NULL DEFAULT '{}', school_year TEXT, shared BOOLEAN NOT NULL DEFAULT FALSE, owner_user_id UUID, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', coalesce(title,'') || ' ' || coalesce(description,'') || ' ' || coalesce(array_to_string(tags,' '),''))) STORED)$f$, s, tid);
+    tsv tsvector GENERATED ALWAYS AS (to_tsvector('simple', coalesce(title,'') || ' ' || coalesce(description,''))) STORED)$f$, s, tid);
   EXECUTE format('CREATE INDEX IF NOT EXISTS resources_tsv ON %I.resources USING GIN (tsv)', s);
   EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.forums (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
     title TEXT NOT NULL, class_id UUID REFERENCES %I.classes(id) ON DELETE CASCADE, subject_code TEXT, created_by UUID, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
