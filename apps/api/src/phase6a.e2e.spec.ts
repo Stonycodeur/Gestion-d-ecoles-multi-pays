@@ -82,8 +82,8 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
   it('BEPC fiche comes from the country reference and is a projection; outcomes are recorded by humans', async () => {
     ids.math = (await call('post', '/subjects', adminT).send({ code: 'MATH', name: 'Mathématiques', coefficient: 4 }).expect(201)).body.id;
     ids.t1 = (await call('post', '/teachers', adminT).send({ first_name: 'T', last_name: 'One', user_id: U(3) }).expect(201)).body.id;
-    const ev = (await call('post', '/evaluations', adminT).send({ class_id: ids.cls, subject_id: ids.math, period_code: 'T1', title: 'DS1', coefficient: 1 }).expect(201)).body;
-    await call('post', `/evaluations/${ev.id}/grades`, adminT).send({ entries: [{ student_id: ids.s1, value: 14 }] }).expect(201);
+    const ev = (await call('post', '/evaluations', teacherT).send({ class_id: ids.cls, subject_id: ids.math, period_code: 'T1', title: 'DS1', coefficient: 1 }).expect(201)).body;
+    await call('post', `/evaluations/${ev.id}/grades`, teacherT).send({ entries: [{ student_id: ids.s1, value: 14 }] }).expect(201);
     const f = (await call('get', `/orientation/exam/fiche/${ids.s1}`, guardianT).expect(200)).body;
     expect(f.advisory).toBe(true); expect(f.fiche.exam_code).toBe('BEPC'); expect(f.fiche.continuous_pct).toBe(70); expect(f.fiche.admitted).toBe(true);
     expect(f.fiche.missing_exam).toContain('MATH');
