@@ -24,9 +24,10 @@ const AUDIENCE_OF: Record<string, string[]> = {
   teacher: ['all', 'staff'], education_assistant: ['all', 'staff'], accountant: ['all', 'staff'], student: ['all', 'students'], guardian: ['all', 'guardians'],
 };
 
+import { WebhooksService } from '../publicapi/webhooks.service';
 @Injectable()
 export class CommsService {
-  constructor(private readonly db: TenantDb, private readonly adapters: Adapters, private readonly notif: NotificationService, private readonly rt: RealtimeGateway) {}
+  constructor(private readonly db: TenantDb, private readonly adapters: Adapters, private readonly notif: NotificationService, private readonly rt: RealtimeGateway, private readonly webhooks: WebhooksService) {}
 
   private tx<T>(slug: string, fn: (q: Q, t: { id: string }) => Promise<T>): Promise<T> {
     return this.db.run(slug, fn).catch((e) => mapDbError(e));
@@ -155,6 +156,7 @@ export class CommsService {
     const row = await this.tx(slug, async (q) => (await q('INSERT INTO news(title, body, audience, is_public, published_by) VALUES ($1,$2,$3,$4,$5) RETURNING *',
       [str(b.title, 'title', 200), str(b.body, 'body', 20000), audience, b.is_public === true, p.id]))[0]);
     const roles = audience === 'staff' ? ['head', 'tenant_super_admin', 'admin', 'teacher', 'education_assistant', 'accountant'] : audience === 'students' ? ['student'] : audience === 'guardians' ? ['guardian'] : undefined;
+    if (row.is_public) this.webhooks.dispatch(slug, 'news.published', { id: row.id, title: row.title });
     await this.notif.notifyAll(slug, 'news.published', { title: row.title }, { news_id: row.id }, roles);
     return row;
   }

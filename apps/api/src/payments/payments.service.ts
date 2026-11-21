@@ -16,10 +16,11 @@ type Tenant = { id: string; slug: string; country: string; schoolType: string };
 const MANUAL = ['cash', 'cheque', 'bank_transfer'];
 const today = () => new Date().toISOString().slice(0, 10);
 
+import { WebhooksService } from '../publicapi/webhooks.service';
 @Injectable()
 export class PaymentsService {
   constructor(private readonly db: TenantDb, private readonly modules: ModulesService, private readonly notif: NotificationService,
-    private readonly providers: PaymentProviders, private readonly audit: AuditService) {}
+    private readonly providers: PaymentProviders, private readonly audit: AuditService, private readonly webhooks: WebhooksService) {}
 
   private tx<T>(slug: string, fn: (q: Q, t: Tenant) => Promise<T>): Promise<T> { return this.db.run(slug, fn).catch((e) => mapDbError(e)); }
   private authorize(p: Principal, slug: string, perm: string, r: Record<string, unknown> = {}) { const d = can(p, perm, { tenantId: slug, ...r }); if (!d.allowed) throw new ForbiddenException(d.reason); }
@@ -205,6 +206,7 @@ export class PaymentsService {
   }
   private async afterConfirm(slug: string, d: { receipt: string; unallocated: number; amount: number; currency: string; paymentId: string }, studentId: string, actor: string | null) {
     await this.audit.log({ actorId: actor ?? 'webhook', tenant: slug, action: 'payment.confirm', entity: 'payment', entityId: d.paymentId, details: { receipt: d.receipt, unallocated_minor: d.unallocated } });
+    this.webhooks.dispatch(slug, 'payment.confirmed', { payment_id: d.paymentId, amount_minor: d.amount, currency: d.currency, receipt: d.receipt });
     await this.notif.notifyFamily(slug, studentId, 'payment.confirmed', { amount: formatMoney(d.amount, d.currency) }, { payment_id: d.paymentId });
   }
 

@@ -13,9 +13,10 @@ import { PaymentsService } from '../payments/payments.service';
 import { ACTIVE_SCALE_SQL, rowToScale } from './scale';
 export { ACTIVE_SCALE_SQL, rowToScale };
 
+import { WebhooksService } from '../publicapi/webhooks.service';
 @Injectable()
 export class PedagogyService {
-  constructor(private readonly db: TenantDb, private readonly modules: ModulesService, private readonly audit: AuditService, private readonly notif: NotificationService, private readonly oaa: OaaService, private readonly payments: PaymentsService) {}
+  constructor(private readonly db: TenantDb, private readonly modules: ModulesService, private readonly audit: AuditService, private readonly notif: NotificationService, private readonly oaa: OaaService, private readonly payments: PaymentsService, private readonly webhooks: WebhooksService) {}
 
   authorize(p: Principal, tenant: string, perm: string, r: Resource = {}) {
     const d = can(p, perm, { tenantId: tenant, ...r });
@@ -64,6 +65,7 @@ export class PedagogyService {
       return row;
     });
     await this.audit.log({ actorId: actor, tenant: slug, action: 'student.create', entity: 'student', entityId: s.id });
+    this.webhooks.dispatch(slug, 'student.created', { id: s.id, class_id: s.class_id ?? null });   // minimised: no names, no contact data
     const oaaHook = await this.oaa.recompute(slug, s.id, 'onStudentCreated', 'enrolment');   // module-oaa: initial score, persisted by the core
     const hooks = [...(oaaHook ? [oaaHook] : []), ...(await this.modules.registry.emit(slug, 'onStudentCreated', { studentId: s.id }, ['module-oaa', 'module-payment']))];
     const invoice = await this.payments.invoiceOnEnrollment(slug, actor, s.id).catch((e) => { new Logger('Enrolment').warn(`enrolment invoice failed: ${(e as Error).message}`); return null; });   // module-payment: invoice at enrolment (never blocks enrolment)
