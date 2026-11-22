@@ -37,7 +37,8 @@ services:
     ports: [ "9200:9200" ]
   keycloak:
     image: quay.io/keycloak/keycloak:25.0
-    command: start-dev
+    command: ["start-dev", "--import-realm"]
+    volumes: [ "./keycloak:/opt/keycloak/data/import:ro" ]
     environment: { KEYCLOAK_ADMIN: "${KC_ADMIN:-admin}", KEYCLOAK_ADMIN_PASSWORD: "${KC_ADMIN_PASSWORD:?set in .env}" }
     ports: [ "8080:8080" ]
   api:
@@ -56,6 +57,9 @@ services:
       MODULES_DIR: /repo/packages/modules
       CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:3001}"
       METRICS_TOKEN: "${METRICS_TOKEN:-}"
+      OIDC_ISSUER: "${OIDC_ISSUER:-}"            # e.g. http://keycloak:8080/realms/ecolemanager with AUTH_MODE=oidc
+      OIDC_JWKS_URI: "${OIDC_JWKS_URI:-}"
+      OIDC_AUDIENCE: "${OIDC_AUDIENCE:-ecolemanager-api}"
     ports: [ "3000:3000" ]
   seed:   # one-shot Gabon demo data: `docker compose --profile seed run --rm seed`
     profiles: ["seed"]

@@ -71,5 +71,19 @@ class Release(unittest.TestCase):
             self.assertFalse(c.patch_android_signing(Path(d))); self.assertFalse(c.patch_ios_entitlements(Path(d)))
 
 
+class OidcRedirect(unittest.TestCase):
+    def test_android_placeholder_and_ios_scheme_are_added_once(self):
+        for gradle, name in ((KTS, "build.gradle.kts"), (GROOVY, "build.gradle")):
+            with tempfile.TemporaryDirectory() as d:
+                root = Path(d); (root / "android/app").mkdir(parents=True); (root / "android/app" / name).write_text(gradle)
+                (root / "ios/Runner").mkdir(parents=True); (root / "ios/Runner/Info.plist").write_bytes(plistlib.dumps({}))
+                for _ in range(2):
+                    self.assertEqual(c.patch_oidc_redirect(root, "com.ecolemanager.pro"), {"android": True, "ios": True})
+                g = (root / "android/app" / name).read_text()
+                self.assertEqual(g.count("appAuthRedirectScheme"), 1); self.assertIn("com.ecolemanager.pro", g)
+                self.assertLess(g.index("appAuthRedirectScheme"), g.index("buildTypes"))   # inside defaultConfig
+                plist = plistlib.loads((root / "ios/Runner/Info.plist").read_bytes())
+                self.assertEqual(plist["CFBundleURLTypes"], [{"CFBundleURLName": "oidc-redirect", "CFBundleURLSchemes": ["com.ecolemanager.pro"]}])
+
 if __name__ == "__main__":
     unittest.main()

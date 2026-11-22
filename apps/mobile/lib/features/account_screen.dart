@@ -50,6 +50,7 @@ class _AccountState extends ConsumerState<AccountScreen> {
       final s = ref.read(sessionProvider);
       await ref.read(apiProvider).deleteOnline(s.school!, s.token!, '/account', {'confirm': 'DELETE'});
       await ref.read(sessionProvider.notifier).signOut();
+      await ref.read(tokenStoreProvider).clear(); // deleted account: nothing of it stays on the device, including unsent writes
     } catch (e) {
       setState(() => message = '$e');
     }

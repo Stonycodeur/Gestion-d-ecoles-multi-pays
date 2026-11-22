@@ -1,6 +1,6 @@
 // Offline writes (spec 12.4): failed mutations are queued in the browser and replayed in order when the connection returns.
 // Only definitive refusals (4xx other than 401/408/425/429) go to the conflict journal; transient failures (5xx, 429, expired session, no answer) keep the write and its order.
-import { classifyReplay } from '@ecolemanager/shared';
+import { classifyReplay } from './sync-rules';
 export interface QueuedOp { id: string; method: string; path: string; body?: unknown; at: string }
 export interface ConflictEntry { op: QueuedOp; status: number; message: string; at: string }
 

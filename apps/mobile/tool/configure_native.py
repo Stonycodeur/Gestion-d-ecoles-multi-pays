@@ -160,6 +160,31 @@ def patch_ios_entitlements(root: Path, bundle_id: str | None = None) -> bool:
     return True
 
 
+def patch_oidc_redirect(root: Path, scheme: str) -> dict:
+    """Custom-scheme redirect used by AppAuth for the OIDC + PKCE sign-in (Keycloak client `ecolemanager-mobile`, redirect `<scheme>:/oauthredirect`)."""
+    done = {"android": False, "ios": False}
+    for name in ("build.gradle.kts", "build.gradle"):
+        f = root / "android/app" / name
+        if not f.exists():
+            continue
+        g = f.read_text(encoding="utf-8")
+        if "appAuthRedirectScheme" not in g:
+            line = f'        manifestPlaceholders["appAuthRedirectScheme"] = "{scheme}"\n' if name.endswith(".kts") else f"        manifestPlaceholders = [appAuthRedirectScheme: '{scheme}']\n"
+            g = re.sub(r"(\n\s*defaultConfig \{\n)", lambda m: m.group(1) + line, g, count=1)
+            f.write_text(g, encoding="utf-8")
+        done["android"] = "appAuthRedirectScheme" in g
+        break
+    p = root / "ios/Runner/Info.plist"
+    if p.exists():
+        d = plistlib.loads(p.read_bytes())
+        types = d.get("CFBundleURLTypes", [])
+        if not any(scheme in t.get("CFBundleURLSchemes", []) for t in types):
+            types.append({"CFBundleURLName": "oidc-redirect", "CFBundleURLSchemes": [scheme]})
+            d["CFBundleURLTypes"] = types; p.write_bytes(plistlib.dumps(d))
+        done["ios"] = True
+    return done
+
+
 def patch_app_name(root: Path, name: str) -> None:
     m = root / "android/app/src/main/AndroidManifest.xml"
     if m.exists():
@@ -189,6 +214,7 @@ if __name__ == "__main__":
         patch_android_xr(base)
     import os
     app_id = os.environ.get("APP_ID", "com.ecolemanager.pro.work")   # working identifier until the publisher communicates the real one
+    patch_oidc_redirect(base, os.environ.get("OIDC_REDIRECT_SCHEME", "com.ecolemanager.pro"))
     patch_android_signing(base, app_id); patch_ios_entitlements(base, app_id); patch_app_name(base, os.environ.get("APP_NAME", "ÉcoleManager Pro"))
     print(f"android={'patched' if a else 'absent'} ios={'patched' if i else 'absent'}")
     if not (a or i):
