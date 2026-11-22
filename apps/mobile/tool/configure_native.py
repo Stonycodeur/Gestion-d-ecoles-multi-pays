@@ -160,7 +160,7 @@ def patch_ios_entitlements(root: Path, bundle_id: str | None = None) -> bool:
     return True
 
 
-COMPILE_SDK = 35
+COMPILE_SDK = 36
 ROOT_KTS = """// ecole-compile-sdk: plugin libraries compiled against an old SDK (e.g. flutter_appauth) fail the AAR metadata check; compile every library module against a recent SDK.
 subprojects {
     val raise = { p: Project ->
