@@ -1,12 +1,29 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'encrypted_store.dart';
 import 'api_client.dart';
 import 'models.dart';
 import 'offline_data.dart';
 import 'oidc_auth.dart';
 import 'token_store.dart';
 
-final tokenStoreProvider = Provider<TokenStore>((_) => SecureTokenStore());
+/// Credentials in Keychain/Keystore, offline data (cache, write queue, conflict journal) in the AES-GCM encrypted database.
+/// The directory is resolved lazily: the first operation awaits it.
+final tokenStoreProvider = Provider<TokenStore>((_) => HybridTokenStore(SecureTokenStore(), _LazyEncryptedStore()));
+
+class _LazyEncryptedStore implements TokenStore {
+  EncryptedFileStore? _s;
+  Future<EncryptedFileStore> _open() async => _s ??= EncryptedFileStore(await getApplicationSupportDirectory(), EncryptedFileStore.secureKey);
+  @override
+  Future<String?> read(String key) async => (await _open()).read(key);
+  @override
+  Future<void> write(String key, String value) async => (await _open()).write(key, value);
+  @override
+  Future<void> clear() async => (await _open()).clear();
+  @override
+  Future<void> deleteWhere(bool Function(String key) test) async => (await _open()).deleteWhere(test);
+}
 final apiProvider = Provider<ApiClient>((_) => ApiClient());
 final oidcProvider = Provider<OidcAuth>((_) => OidcAuth());
 

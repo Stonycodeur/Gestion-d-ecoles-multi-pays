@@ -160,6 +160,49 @@ def patch_ios_entitlements(root: Path, bundle_id: str | None = None) -> bool:
     return True
 
 
+MIN_SDK = 23   # firebase_messaging / ARCore-capable devices; Flutter's default (21) is refused by the Firebase libraries
+GOOGLE_SERVICES_VERSION = "4.4.2"
+
+
+def patch_android_min_sdk(root: Path) -> bool:
+    for name in ("build.gradle.kts", "build.gradle"):
+        f = root / "android/app" / name
+        if not f.exists():
+            continue
+        g = f.read_text(encoding="utf-8")
+        g2 = re.sub(r"minSdk(Version)?(\s*=\s*|\s+)flutter\.minSdkVersion", lambda m: f"minSdk{m.group(1) or ''}{m.group(2)}{MIN_SDK}", g)
+        if g2 != g:
+            f.write_text(g2, encoding="utf-8")
+        return True
+    return False
+
+
+def patch_android_firebase(root: Path) -> bool:
+    """Applies the Google services plugin ONLY when the publisher's google-services.json is present (never committed). Without it the app builds and push stays in sandbox."""
+    if not (root / "android/app/google-services.json").exists():
+        return False
+    for sname in ("settings.gradle.kts", "settings.gradle"):
+        sf = root / "android" / sname
+        if sf.exists():
+            t = sf.read_text(encoding="utf-8")
+            if "com.google.gms.google-services" not in t:
+                kts = sname.endswith(".kts")
+                line = f'    id("com.google.gms.google-services") version "{GOOGLE_SERVICES_VERSION}" apply false\n' if kts else f'    id "com.google.gms.google-services" version "{GOOGLE_SERVICES_VERSION}" apply false\n'
+                t = re.sub(r"(\n[ \t]*id\(?\s*[\"']com\.android\.application[\"']\)?[^\n]*\n)", lambda m: m.group(1) + line, t, count=1)
+                sf.write_text(t, encoding="utf-8")
+            break
+    for name in ("build.gradle.kts", "build.gradle"):
+        f = root / "android/app" / name
+        if f.exists():
+            g = f.read_text(encoding="utf-8")
+            if "com.google.gms.google-services" not in g:
+                line = '    id("com.google.gms.google-services")\n' if name.endswith(".kts") else '    id "com.google.gms.google-services"\n'
+                g = re.sub(r"(plugins \{\n)", lambda m: m.group(1) + line, g, count=1)
+                f.write_text(g, encoding="utf-8")
+            return "com.google.gms.google-services" in g
+    return False
+
+
 COMPILE_SDK = 36
 ROOT_KTS = """// ecole-compile-sdk: plugin libraries compiled against an old SDK (e.g. flutter_appauth) fail the AAR metadata check; compile every library module against a recent SDK.
 subprojects {
@@ -247,7 +290,7 @@ if __name__ == "__main__":
         patch_android_xr(base)
     import os
     app_id = os.environ.get("APP_ID", "com.ecolemanager.pro.work")   # working identifier until the publisher communicates the real one
-    patch_android_root_compile_sdk(base)
+    patch_android_root_compile_sdk(base); patch_android_min_sdk(base); patch_android_firebase(base)
     patch_oidc_redirect(base, os.environ.get("OIDC_REDIRECT_SCHEME", "com.ecolemanager.pro"))
     patch_android_signing(base, app_id); patch_ios_entitlements(base, app_id); patch_app_name(base, os.environ.get("APP_NAME", "ÉcoleManager Pro"))
     print(f"android={'patched' if a else 'absent'} ios={'patched' if i else 'absent'}")

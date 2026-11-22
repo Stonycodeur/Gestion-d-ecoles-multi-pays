@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'pinned_client.dart';
 import 'json_cache.dart';
 import 'models.dart';
 import 'offline_queue.dart';
@@ -8,7 +9,7 @@ const apiBase = String.fromEnvironment('API_BASE', defaultValue: 'http://10.0.2.
 
 class ApiClient {
   final http.Client _c;
-  ApiClient([http.Client? c]) : _c = c ?? http.Client();
+  ApiClient([http.Client? c]) : _c = c ?? buildHttpClient();
 
   Map<String, String> _h(String school, String? token) => {
         'content-type': 'application/json',

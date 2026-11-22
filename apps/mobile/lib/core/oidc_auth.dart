@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_appauth/flutter_appauth.dart';
 import 'package:http/http.dart' as http;
+import 'pinned_client.dart';
 
 /// Public sign-in configuration served by the API (`GET /auth/config`). Contains no secret: the mobile client is a public PKCE client.
 class AuthConfig {
@@ -53,7 +54,7 @@ Duration refreshDelay(DateTime? expiresAt, DateTime now) {
 class OidcAuth {
   final FlutterAppAuth _a;
   final http.Client _c;
-  OidcAuth({FlutterAppAuth? appAuth, http.Client? client}) : _a = appAuth ?? const FlutterAppAuth(), _c = client ?? http.Client();
+  OidcAuth({FlutterAppAuth? appAuth, http.Client? client}) : _a = appAuth ?? const FlutterAppAuth(), _c = client ?? buildHttpClient();
 
   Future<AuthConfig> fetchConfig(String apiBase) async {
     final r = await _c.get(Uri.parse('$apiBase/auth/config'));
