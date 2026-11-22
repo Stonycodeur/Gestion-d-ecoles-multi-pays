@@ -41,12 +41,46 @@ def patch_android(root: Path) -> bool:
     return True
 
 
+NETWORK_CONFIG = """<?xml version="1.0" encoding="utf-8"?>
+<!-- model_viewer_plus serves its viewer page from a local http server: cleartext is allowed for the device itself ONLY. Everything else stays https. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false"/>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>
+"""
+AR_QUERIES = """    <queries>
+        <intent><action android:name="android.intent.action.VIEW"/><data android:scheme="https"/></intent>
+    </queries>
+"""
+
+
+def patch_android_xr(root: Path) -> bool:
+    """3D/AR viewer (ARCore Scene Viewer through model_viewer_plus): local-only cleartext and the intent query needed to launch Scene Viewer."""
+    f = root / "android/app/src/main/AndroidManifest.xml"
+    if not f.exists():
+        return False
+    res = root / "android/app/src/main/res/xml"
+    res.mkdir(parents=True, exist_ok=True)
+    (res / "network_security_config.xml").write_text(NETWORK_CONFIG, encoding="utf-8")
+    xml = f.read_text(encoding="utf-8")
+    if "android:networkSecurityConfig" not in xml:
+        xml = re.sub(r"<application", '<application android:networkSecurityConfig="@xml/network_security_config"', xml, count=1)
+    if "<queries>" not in xml:
+        xml = re.sub(r"(<manifest[^>]*>\s*\n)", lambda m: m.group(1) + AR_QUERIES, xml, count=1)
+    f.write_text(xml, encoding="utf-8")
+    return True
+
+
 def patch_ios(root: Path) -> bool:
     f = root / "ios/Runner/Info.plist"
     if not f.exists():
         return False
     data = plistlib.loads(f.read_bytes())
     data.update(IOS_STRINGS)
+    data["io.flutter.embedded_views_preview"] = True          # WebView-based 3D/AR viewer (AR Quick Look)
     modes = list(data.get("UIBackgroundModes", []))
     data["UIBackgroundModes"] = modes + [m for m in IOS_BACKGROUND_MODES if m not in modes]
     f.write_bytes(plistlib.dumps(data))
@@ -56,6 +90,8 @@ def patch_ios(root: Path) -> bool:
 if __name__ == "__main__":
     base = Path(sys.argv[1] if len(sys.argv) > 1 else ".")
     a, i = patch_android(base), patch_ios(base)
+    if a:
+        patch_android_xr(base)
     print(f"android={'patched' if a else 'absent'} ios={'patched' if i else 'absent'}")
     if not (a or i):
         sys.exit("no platform folder found: run `flutter create --platforms=android,ios .` first")
