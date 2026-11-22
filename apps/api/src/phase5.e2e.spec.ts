@@ -79,8 +79,9 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
     await call('post', `/invoices/${ids.inv}/pay`, otherGuardianT).send({ method: 'airtel_money', payer: '077000000' }).expect(403);
     const a = (await call('post', `/invoices/${ids.inv}/pay`, guardianT).set('Idempotency-Key', 'k-1').send({ method: 'airtel_money', amount_minor: 100000, payer: '077000000' }).expect(201)).body;
     expect(a.payment.status).toBe('pending'); expect(a.idempotent_replay).toBe(false); ids.pay1 = a.payment.id; ids.ref1 = a.payment.provider_ref;
-    const b = (await call('post', `/invoices/${ids.inv}/pay`, guardianT).set('Idempotency-Key', 'k-1').send({ method: 'airtel_money', amount_minor: 100000, payer: '077000000' }).expect(201)).body;
-    expect(b.idempotent_replay).toBe(true); expect(b.payment.id).toBe(ids.pay1);
+    const bRes = await call('post', `/invoices/${ids.inv}/pay`, guardianT).set('Idempotency-Key', 'k-1').send({ method: 'airtel_money', amount_minor: 100000, payer: '077000000' }).expect(201);
+    const b = bRes.body;   // replayed by the global idempotency interceptor (the service-level check remains as a second line of defence)
+    expect(bRes.headers['idempotent-replay']).toBe('true'); expect(b.payment.id).toBe(ids.pay1);
     expect((await call('get', `/invoices/${ids.inv}`, guardianT).expect(200)).body.paid_minor).toBe(0);   // nothing is paid until the provider confirms
   });
 

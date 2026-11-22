@@ -19,8 +19,9 @@ export interface ApiResult<T> { ok: boolean; status: number; data?: T; error?: s
 /** `online: true` for writes that must never be queued (payments, quizzes, GPS): offline they fail visibly instead of being replayed later. */
 export async function api<T = any>(path: string, init: { method?: string; body?: unknown; headers?: Record<string, string>; online?: boolean } = {}): Promise<ApiResult<T>> {
   const s = getSession(); const method = init.method ?? 'GET';
+  const idem = method === 'GET' ? undefined : crypto.randomUUID();   // same key for the first attempt and the queued replay
   try {
-    const r = await fetch(`${API_BASE}${path}`, { method, headers: { ...headers(s), ...(init.headers ?? {}) }, body: init.body === undefined ? undefined : JSON.stringify(init.body) });
+    const r = await fetch(`${API_BASE}${path}`, { method, headers: { ...headers(s), ...(idem ? { 'idempotency-key': idem } : {}), ...(init.headers ?? {}) }, body: init.body === undefined ? undefined : JSON.stringify(init.body) });
     const text = await r.text(); let data: any; try { data = text ? JSON.parse(text) : undefined; } catch { data = text; }
     if (r.ok && method === 'GET') { try { localStorage.setItem(cacheKey(path), text); } catch { /* ignore */ } }
     return r.ok ? { ok: true, status: r.status, data } : { ok: false, status: r.status, error: data?.message ? JSON.stringify(data.message) : r.statusText };
@@ -30,13 +31,13 @@ export async function api<T = any>(path: string, init: { method?: string; body?:
       return c ? { ok: true, status: 200, data: JSON.parse(c) as T, fromCache: true } : { ok: false, status: 0, error: 'offline' };
     }
     if (init.online) return { ok: false, status: 0, error: 'offline: this action needs a connection' };
-    enqueue({ method, path, body: init.body });
+    enqueue({ id: idem, method, path, body: init.body });
     return { ok: true, status: 202, queued: true };
   }
 }
 
 export const replayQueue = () => flush(async (op) => {
-  const r = await fetch(`${API_BASE}${op.path}`, { method: op.method, headers: headers(getSession()), body: op.body === undefined ? undefined : JSON.stringify(op.body) });
+  const r = await fetch(`${API_BASE}${op.path}`, { method: op.method, headers: { ...headers(getSession()), 'idempotency-key': op.id }, body: op.body === undefined ? undefined : JSON.stringify(op.body) });
   return { status: r.status, message: r.statusText };
 });
 

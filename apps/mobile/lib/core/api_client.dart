@@ -40,12 +40,13 @@ class ApiClient {
 
   /// Write: sent now, or queued when offline. `priority` > 0 for teacher grade entries.
   Future<bool> post(String school, String token, String path, Map<String, dynamic> body, OfflineQueue queue, {int priority = 0}) async {
+    final key = OfflineQueue.newKey();   // same Idempotency-Key for the first attempt and the queued replay
     try {
-      final r = await _c.post(Uri.parse('$apiBase$path'), headers: _h(school, token), body: jsonEncode(body));
+      final r = await _c.post(Uri.parse('$apiBase$path'), headers: {..._h(school, token), 'idempotency-key': key}, body: jsonEncode(body));
       if (r.statusCode >= 300) throw Exception('POST $path failed (${r.statusCode})');
       return false;
     } on http.ClientException {
-      await queue.enqueue('POST', path, body, priority: priority);
+      await queue.enqueue('POST', path, body, priority: priority, id: key);
       return true; // queued
     }
   }
@@ -73,7 +74,7 @@ class ApiClient {
   }
 
   Future<int> replay(String school, String token, QueuedOp op) async {
-    final r = await _c.post(Uri.parse('$apiBase${op.path}'), headers: _h(school, token), body: jsonEncode(op.body));
+    final r = await _c.post(Uri.parse('$apiBase${op.path}'), headers: {..._h(school, token), 'idempotency-key': op.id}, body: jsonEncode(op.body));
     return r.statusCode;
   }
 
