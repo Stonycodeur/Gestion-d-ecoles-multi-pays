@@ -110,7 +110,7 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
       const list = (await call('get', `/xr/assets?lesson_id=${lesson}`, childT).expect(200)).body; expect(list.map((x: any) => x.id)).toEqual([a.id]);
       await call('get', '/xr/assets', guardianT).expect(200);
       const other = (await call('post', '/classes', adminT).send({ name: '6e B', level_code: '6e', school_year: '2026-2027' }).expect(201)).body.id;
-      const lesson2 = (await call('post', '/lessons', adminT).send({ class_id: other, subject_id: math, on_date: '2026-11-20', title: 'Autre', content: 'x' }).expect(201)).body.id;
+      const lesson2 = (await admin.query("INSERT INTO tenant_e2e_k.lessons(tenant_id, class_id, subject_id, on_date, title, content, status) VALUES ((SELECT id FROM tenants WHERE slug = 'e2e_k'), $1, $2, '2026-11-20', 'Autre', 'x', 'published') RETURNING id", [other, math])).rows[0].id;   // admins cannot author lessons
       await call('post', '/xr/assets', teacherT).send(asset({ lesson_id: lesson2 })).expect(403);   // not their class
       await call('delete', `/xr/assets/${a.id}`, childT).expect(403);
       await call('delete', `/xr/assets/${a.id}`, teacherT).expect(200);
