@@ -2,18 +2,20 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { pub } from '../../../lib/public';
+import XrViewer from '../../../components/XrViewer';
 
 /** Public showcase: no login. History, programmes, news, statistics, online enrolment, contact, 360° virtual tour. */
 export default function PublicSchool() {
   const school = String(useParams().school);
   const [site, setSite] = useState<any>(null); const [news, setNews] = useState<any[]>([]); const [stats, setStats] = useState<any>(null); const [levels, setLevels] = useState<string[]>([]);
-  const [err, setErr] = useState(''); const [msg, setMsg] = useState(''); const [scene, setScene] = useState(0);
+  const [err, setErr] = useState(''); const [panos, setPanos] = useState<any[]>([]); const [pano, setPano] = useState(0); const [msg, setMsg] = useState(''); const [scene, setScene] = useState(0);
   const [form, setForm] = useState<any>({ first_name: '', last_name: '', birth_date: '', level_code: '', guardian_name: '', guardian_email: '', guardian_phone: '', message: '', consent: false, website: '' });
   const [contact, setContact] = useState<any>({ name: '', email: '', subject: '', body: '', website: '' });
 
   useEffect(() => { (async () => {
     const s = await pub(school, '/site'); if (!s.ok) { setErr(s.status === 404 ? 'Espace public indisponible / Public space unavailable' : String(s.error)); return; }
     setSite(s.data); setNews((await pub(school, '/news')).data ?? []); setStats((await pub(school, '/stats')).data); setLevels((await pub(school, '/levels')).data ?? []);
+    const tr = await pub(school, '/tour'); if (tr.ok) setPanos(tr.data ?? []);
   })(); }, [school]);
 
   const apply = async (e: React.FormEvent) => { e.preventDefault(); const r = await pub(school, '/apply', { method: 'POST', body: { ...form, birth_date: form.birth_date || undefined } });
@@ -29,7 +31,10 @@ export default function PublicSchool() {
       <header><h1>{site.school}</h1><p>{site.country?.name_fr}</p></header>
       <p role="status" aria-live="polite">{msg}</p>
       {(['history', 'values', 'facilities', 'faculty', 'programs'] as const).map((k) => text(k) && <section key={k}><h2>{({ history: 'Histoire', values: 'Valeurs', facilities: 'Infrastructures', faculty: 'Corps professoral', programs: 'Programmes et filières' } as any)[k]}</h2><p>{text(k)}</p></section>)}
-      {cur && <section aria-label="Visite virtuelle"><h2>Visite virtuelle à 360°</h2>
+      {panos.length > 0 && <section aria-label="Visite virtuelle immersive"><h2>Visite virtuelle à 360°</h2>
+        <XrViewer asset={{ ...panos[pano], kind: 'panorama_360' }} />
+        <p>{panos.map((a: any, i: number) => <button key={a.id} onClick={() => setPano(i)} aria-pressed={i === pano}>{a.title}</button>)}</p></section>}
+      {!panos.length && cur && <section aria-label="Visite virtuelle"><h2>Visite virtuelle à 360°</h2>
         <div style={{ overflowX: 'auto', border: '1px solid #ccc' }}><img src={cur.image_url} alt={cur.title} style={{ height: 320, maxWidth: 'none' }} /></div>
         <p>{cur.title} {tour.map((s: any, i: number) => <button key={s.id} onClick={() => setScene(i)} aria-pressed={i === scene}>{s.title}</button>)}</p></section>}
       <section><h2>Actualités</h2>{news.length ? <ul>{news.map((n) => <li key={n.id}><strong>{n.title}</strong> — {new Date(n.published_at).toLocaleDateString('fr')}<br />{n.body}</li>)}</ul> : <p>Aucune actualité.</p>}</section>
