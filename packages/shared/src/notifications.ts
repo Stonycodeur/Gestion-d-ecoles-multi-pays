@@ -1,4 +1,4 @@
-export type NotificationType = 'grade.published' | 'absence.recorded' | 'schedule.published' | 'message.new' | 'news.published' | 'payment.confirmed' | 'payment.reminder' | 'invoice.issued' | 'gps.alert' | 'oaa.warning' | 'ai.risk' | 'internship.update' | 'application.received' | 'ministry.update';
+export type NotificationType = 'grade.published' | 'absence.recorded' | 'schedule.published' | 'message.new' | 'news.published' | 'payment.confirmed' | 'payment.reminder' | 'invoice.issued' | 'gps.alert' | 'oaa.warning' | 'ai.risk' | 'internship.update' | 'application.received' | 'ministry.update' | 'account.erasure';
 export type Lang = 'fr' | 'en' | 'ar';
 
 const T: Record<NotificationType, Record<Lang, (p: Record<string, string>) => { title: string; body: string }>> = {
@@ -37,6 +37,9 @@ const T: Record<NotificationType, Record<Lang, (p: Record<string, string>) => { 
   },
   'ministry.update': {
     fr: (p) => ({ title: 'Transmission ministère', body: p.text ?? '' }), en: (p) => ({ title: 'Ministry transmission', body: p.text ?? '' }), ar: (p) => ({ title: 'إرسال إلى الوزارة', body: p.text ?? '' }),
+  },
+  'account.erasure': {
+    fr: (p) => ({ title: 'Demande de suppression de compte', body: p.text ?? '' }), en: (p) => ({ title: 'Account erasure request', body: p.text ?? '' }), ar: (p) => ({ title: 'طلب حذف حساب', body: p.text ?? '' }),
   },
   'invoice.issued': {
     fr: (p) => ({ title: 'Nouvelle facture', body: p.text ?? '' }), en: (p) => ({ title: 'New invoice', body: p.text ?? '' }), ar: (p) => ({ title: 'فاتورة جديدة', body: p.text ?? '' }),
