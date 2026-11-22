@@ -5,7 +5,7 @@ import { catchError, mergeMap } from 'rxjs/operators';
 import { ModulesService } from '../modules/modules.service';
 import type { CoreRequest } from './request-context';
 
-const KEY_RE = /^[A-Za-z0-9_.:-]{8,128}$/;
+const KEY_RE = /^[A-Za-z0-9_.:-]{1,128}$/;
 const MAX_BODY = 64 * 1024;
 
 /**
