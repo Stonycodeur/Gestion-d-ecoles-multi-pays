@@ -306,6 +306,19 @@ BEGIN
       USING (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid OR current_setting('app.root_bypass', true) = 'on')
       WITH CHECK (tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid OR current_setting('app.root_bypass', true) = 'on')$f$, s, t);
   END LOOP;
+  -- Hot-path indexes (spec 12.1, API p95 < 200 ms): lookups by student, class and date that the foreign keys alone do not cover.
+  EXECUTE format('CREATE INDEX IF NOT EXISTS students_class ON %I.students (class_id, last_name, first_name)', s);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS students_order ON %I.students (last_name, first_name, id)', s);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS guardians_student ON %I.guardians (student_id)', s);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS guardians_user ON %I.guardians (user_id) WHERE user_id IS NOT NULL', s);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS grades_student ON %I.grades (student_id)', s);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS evaluations_class ON %I.evaluations (class_id, period_code)', s);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS absences_student_date ON %I.absences (student_id, on_date DESC)', s);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS lessons_class_date ON %I.lessons (class_id, on_date DESC)', s);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS slots_schedule ON %I.schedule_slots (schedule_id, class_id)', s);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS installments_invoice ON %I.installments (invoice_id)', s);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS gps_events_student ON %I.gps_events (student_id, occurred_at DESC)', s);
+
   -- Runtime role (non-superuser, so RLS applies). Created by ops/CI as: CREATE ROLE app_runtime LOGIN PASSWORD '...'.
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'app_runtime') THEN
     EXECUTE format('GRANT USAGE ON SCHEMA %I TO app_runtime', s);
