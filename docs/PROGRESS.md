@@ -73,7 +73,13 @@
 - Quotas API en mémoire (un seul processus) ; le connecteur HTTP ministériel est générique (à aligner sur les API réelles) ; sandbox des modules tiers : pas d'isolation conteneur.
 - Préparation des transmissions et administration des clients API / soumission de modules : web uniquement (administration lourde, documenté).
 - Pas de tâche planifiée automatique pour `run-due` ni pour la relance des webhooks (endpoints prêts).
-**Reste dans la Phase 6** : IA générative (6c) et VR/AR (6c).
+**Lot 6c (CI verte)** : assistant pédagogique génératif (résumés, QCM → brouillon de quiz, exercices, traduction, aide à la correction validée, tuteur filtré par âge) et VR/AR (`xr_assets`, rattachés aux leçons et ressources, visite publique 360°, visionneuse WebXR et mobile) ; web (/assistant, /xr, leçons, site public) et mobile (assistant, tuteur, visionneuse). Tests : 87 shared, e2e API 6c.
+**Limites 6c**
+- Sans `LLM_MODE=live` les réponses sont simulées et signalées comme telles ; la traduction simulée ne traduit pas (marqueur seulement).
+- Les fichiers 3D/360° sont référencés par adresse : le téléversement vers MinIO n'est pas encore branché dans l'interface.
+- AR mobile : dépend d'ARCore / AR Quick Look de l'appareil ; non vérifié sur appareil réel (aucun émulateur ici).
+- L'assistant mobile n'enregistre pas les QCM en brouillon (web seulement).
+**Phase 6 terminée** côté code ; fusion dans `main` après CI verte.
 
 ## Prochaine étape
-Lot 6c : IA générative et VR/AR ; puis fusion de la Phase 6, Phases 7 et 8.
+Phase 7 (tests, sécurité, performance, seed Gabon, hors ligne, builds signables, stores) puis Phase 8.
