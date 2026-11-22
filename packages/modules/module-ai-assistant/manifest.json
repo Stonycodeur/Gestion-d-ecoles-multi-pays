@@ -1,0 +1,9 @@
+{
+  "name": "module-ai-assistant",
+  "version": "1.0.0",
+  "core_version": ">=0.1.0",
+  "description": "Assistant pédagogique génératif : résumés, QCM et exercices, traduction FR/EN, aide à la correction validée par l'enseignant, tutorat filtré selon l'âge ; pseudonymisation avant tout appel au modèle",
+  "permissions": ["ai:use", "ai:tutor", "ai:configure"],
+  "config_schema": { "tutor_enabled": true, "hourly_limit": 60, "extra_blocked_terms": [] },
+  "mobile_screens": ["ai_assistant", "ai_tutor"]
+}

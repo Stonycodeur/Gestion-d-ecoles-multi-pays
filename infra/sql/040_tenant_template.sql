@@ -283,8 +283,22 @@ BEGIN
   EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.module_installs (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
     module_name TEXT NOT NULL UNIQUE, version TEXT NOT NULL, accepted_permissions TEXT[] NOT NULL, installed_by UUID, installed_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid);
 
+  -- Phase 6c: generative assistant (no content stored in the usage log) and XR assets ------------------------------------
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.ai_usage_log (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    user_id UUID NOT NULL, role TEXT NOT NULL, kind TEXT NOT NULL, adapter TEXT NOT NULL, chars_in INT NOT NULL, chars_out INT NOT NULL, redactions INT NOT NULL DEFAULT 0,
+    blocked BOOLEAN NOT NULL DEFAULT FALSE, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid);
+  EXECUTE format('CREATE INDEX IF NOT EXISTS ai_usage_user_time ON %I.ai_usage_log (user_id, created_at DESC)', s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.ai_proposals (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    kind TEXT NOT NULL, requested_by UUID NOT NULL, student_id UUID REFERENCES %I.students(id) ON DELETE SET NULL, proposal JSONB NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','accepted','rejected')), decided_by UUID, decided_at TIMESTAMPTZ, note TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.xr_assets (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    title TEXT NOT NULL, kind TEXT NOT NULL CHECK (kind IN ('model_3d','panorama_360')), format TEXT NOT NULL, url TEXT NOT NULL, ios_url TEXT, size_bytes BIGINT NOT NULL CHECK (size_bytes > 0),
+    lesson_id UUID REFERENCES %I.lessons(id) ON DELETE SET NULL, resource_id UUID REFERENCES %I.resources(id) ON DELETE SET NULL, subject_code TEXT, level_code TEXT,
+    is_public BOOLEAN NOT NULL DEFAULT FALSE, alt_text TEXT NOT NULL, created_by UUID, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s, s);
+
   FOREACH t IN ARRAY ARRAY['classes','subjects','rooms','students','guardians','teachers','class_subjects','schedules','schedule_slots',
-    'substitutions','evaluations','grades','report_cards','absences','justifications','lessons','inspector_access','contracts','directory','threads','thread_members','messages','message_attachments','news','surveys','survey_votes','events','notifications','device_tokens','push_outbox','locker_documents','oaa_config','oaa_scores','oaa_history','oaa_assessments','oaa_penalties','game_results','xp_events','student_badges','challenges','challenge_completions','teams','team_members','quizzes','quiz_questions','quiz_attempts','ai_predictions','ai_feedback','fee_plans','invoices','installments','payments','payment_events','receipts','gps_consents','gps_geofences','gps_positions','gps_state','gps_events','gps_access_log','career_paths','internships','exam_results','exam_outcomes','visitor_applications','contact_messages','site_content','resources','forums','forum_posts','ministry_transmissions','ministry_logs','api_clients','webhooks_out','webhook_deliveries','module_installs'] LOOP
+    'substitutions','evaluations','grades','report_cards','absences','justifications','lessons','inspector_access','contracts','directory','threads','thread_members','messages','message_attachments','news','surveys','survey_votes','events','notifications','device_tokens','push_outbox','locker_documents','oaa_config','oaa_scores','oaa_history','oaa_assessments','oaa_penalties','game_results','xp_events','student_badges','challenges','challenge_completions','teams','team_members','quizzes','quiz_questions','quiz_attempts','ai_predictions','ai_feedback','fee_plans','invoices','installments','payments','payment_events','receipts','gps_consents','gps_geofences','gps_positions','gps_state','gps_events','gps_access_log','career_paths','internships','exam_results','exam_outcomes','visitor_applications','contact_messages','site_content','resources','forums','forum_posts','ministry_transmissions','ministry_logs','api_clients','webhooks_out','webhook_deliveries','module_installs','ai_usage_log','ai_proposals','xr_assets'] LOOP
     EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY', s, t);
     EXECUTE format('ALTER TABLE %I.%I FORCE ROW LEVEL SECURITY', s, t);
     EXECUTE format('DROP POLICY IF EXISTS tenant_isolation ON %I.%I', s, t);

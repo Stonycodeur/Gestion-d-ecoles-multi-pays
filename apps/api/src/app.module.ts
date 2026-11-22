@@ -41,9 +41,12 @@ import { ApiAdminController, PublicApiController } from './publicapi/publicapi.c
 import { PublicApiService } from './publicapi/publicapi.service';
 import { WebhooksService } from './publicapi/webhooks.service';
 
+import { GenAiController } from './genai/genai.controller';
+import { GenAiService } from './genai/genai.service';
+
 @Module({
-  controllers: [HealthController, AuthController, ModulesController, PedagogyController, CommsController, OaaController, GamificationController, PredictiveController, PaymentsController, GpsController, OrientationController, PublicController, VisitorAdminController, ResourcesController, MarketplaceController, MinistryController, PublicApiController, ApiAdminController],
-  providers: [AuthService, AuditService, ModulesService, TenantDb, PedagogyService, Adapters, RealtimeGateway, NotificationService, CommsService, OaaService, GamificationService, PredictiveService, PaymentProviders, PaymentsService, GpsService, OrientationService, VisitorService, ResourcesService, MarketplaceService, MinistryService, PublicApiService, WebhooksService, { provide: APP_GUARD, useClass: CoreGuard }],
+  controllers: [HealthController, AuthController, ModulesController, PedagogyController, CommsController, OaaController, GamificationController, PredictiveController, PaymentsController, GpsController, OrientationController, PublicController, VisitorAdminController, ResourcesController, MarketplaceController, MinistryController, PublicApiController, ApiAdminController, GenAiController],
+  providers: [AuthService, AuditService, ModulesService, TenantDb, PedagogyService, Adapters, RealtimeGateway, NotificationService, CommsService, OaaService, GamificationService, PredictiveService, PaymentProviders, PaymentsService, GpsService, OrientationService, VisitorService, ResourcesService, MarketplaceService, MinistryService, PublicApiService, WebhooksService, GenAiService, { provide: APP_GUARD, useClass: CoreGuard }],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) { consumer.apply(TenantMiddleware).forRoutes('*'); }

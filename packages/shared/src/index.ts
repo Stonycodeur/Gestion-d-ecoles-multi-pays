@@ -19,4 +19,5 @@ export * from './gps.ts';
 export * from './orientation.ts';
 export * from './ministry.ts';
 export * from './publicapi.ts';
+export * from './genai.ts';
 export * from './marketplace.ts';
