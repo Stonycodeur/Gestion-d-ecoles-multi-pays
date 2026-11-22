@@ -40,7 +40,7 @@ jobs:
         run: |
           createdb em_e2e
           psql -v ON_ERROR_STOP=1 -c "CREATE ROLE app_runtime LOGIN PASSWORD 'rt'"
-          for f in 010_core.sql 020_seed_roles.sql 030_seed_countries.sql 040_tenant_template.sql 050_marketplace.sql; do psql -v ON_ERROR_STOP=1 -q -d em_e2e -f infra/sql/$f; done
+          for f in 010_core.sql 020_seed_roles.sql 030_seed_countries.sql 040_tenant_template.sql 050_marketplace.sql 060_idempotency.sql; do psql -v ON_ERROR_STOP=1 -q -d em_e2e -f infra/sql/$f; done
           psql -v ON_ERROR_STOP=1 -d em_e2e -c "GRANT USAGE ON SCHEMA public TO app_runtime; GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_runtime; GRANT INSERT ON audit_logs TO app_runtime; GRANT USAGE ON SEQUENCE audit_logs_id_seq TO app_runtime"
       - run: npm install
       - run: npm run test:shared
@@ -74,5 +74,5 @@ jobs:
         working-directory: apps/mobile/tool
         run: python3 -m unittest test_configure_native && python3 configure_native.py ..
       - working-directory: apps/mobile
-        run: flutter pub get && flutter gen-l10n && flutter analyze --no-fatal-infos && flutter test && flutter build apk --debug
+        run: flutter pub get && dart run flutter_launcher_icons && dart run flutter_native_splash:create && flutter gen-l10n && flutter analyze --no-fatal-infos && flutter test && flutter build apk --debug
   # iOS signed build: added in phase 7, only when signing secrets exist (never read from the repo).

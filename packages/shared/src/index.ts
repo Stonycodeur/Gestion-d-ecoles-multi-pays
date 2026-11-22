@@ -22,3 +22,5 @@ export * from './publicapi.ts';
 export * from './genai.ts';
 export * from './xr.ts';
 export * from './marketplace.ts';
+export * from './offline.ts';
+export * from './pkce.ts';

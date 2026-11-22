@@ -71,8 +71,14 @@ export class PedagogyService {
     const invoice = await this.payments.invoiceOnEnrollment(slug, actor, s.id).catch((e) => { new Logger('Enrolment').warn(`enrolment invoice failed: ${(e as Error).message}`); return null; });   // module-payment: invoice at enrolment (never blocks enrolment)
     return { student: s, hooks, invoice };
   }
-  listStudents(slug: string, classId?: string) {
-    return this.tx(slug, (q) => classId ? q('SELECT * FROM students WHERE class_id = $1 ORDER BY last_name, first_name', [uuid(classId, 'class_id')]) : q('SELECT * FROM students ORDER BY last_name, first_name'));
+  /** Paginated (spec 12.1): `limit` 1..1000 (default 500), `offset` >= 0; stable order so pages never overlap. */
+  listStudents(slug: string, classId?: string, limit?: string, offset?: string) {
+    const lim = limit === undefined ? 500 : Number(limit); const off = offset === undefined ? 0 : Number(offset);
+    if (!Number.isInteger(lim) || lim < 1 || lim > 1000) throw new BadRequestException('limit must be an integer between 1 and 1000');
+    if (!Number.isInteger(off) || off < 0) throw new BadRequestException('offset must be a non-negative integer');
+    return this.tx(slug, (q) => classId
+      ? q('SELECT * FROM students WHERE class_id = $1 ORDER BY last_name, first_name, id LIMIT $2 OFFSET $3', [uuid(classId, 'class_id'), lim, off])
+      : q('SELECT * FROM students ORDER BY last_name, first_name, id LIMIT $1 OFFSET $2', [lim, off]));
   }
   async getStudent(slug: string, id: string) {
     const r = await this.tx(slug, (q) => q('SELECT * FROM students WHERE id = $1', [uuid(id, 'id')]));

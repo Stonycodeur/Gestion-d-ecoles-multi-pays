@@ -7,6 +7,7 @@ import 'pedagogy_screens.dart';
 import 'comms_screens.dart';
 import 'oaa_games_screens.dart';
 import 'payment_gps_screens.dart';
+import 'account_screen.dart';
 import 'ai_xr_screens.dart';
 import 'integrations_screens.dart';
 import 'orientation_screens.dart';
@@ -21,6 +22,7 @@ class HomeScreen extends ConsumerWidget {
     final screens = visibleScreens(s.modules).toList()..sort();
     return Scaffold(
       appBar: AppBar(title: Text(t.appTitle), actions: [
+        IconButton(icon: const Icon(Icons.settings), tooltip: 'Paramètres', onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AccountScreen()))),
         IconButton(icon: const Icon(Icons.logout), tooltip: t.signOut, onPressed: () => ref.read(sessionProvider.notifier).signOut()),
       ]),
       body: screens.isEmpty

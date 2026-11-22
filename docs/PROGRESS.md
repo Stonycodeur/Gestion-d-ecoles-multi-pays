@@ -81,5 +81,25 @@
 - L'assistant mobile n'enregistre pas les QCM en brouillon (web seulement).
 **Phase 6 terminée** côté code ; fusion dans `main` après CI verte.
 
+## Phase 7 (qualité, sécurité, exploitation, stores) : branche `phase-7-quality`
+**Livré (CI verte sauf mention)**
+- Sécurité HTTP (`applySecurity`) : en-têtes, CSP, CORS strict, limites de débit (général et /auth), taille de corps ; tests e2e.
+- Suppression de compte dans l'application, demande d'effacement d'un enfant par le parent, effacement d'un élève par l'établissement (`students:erase`) ; pages légales FR/EN (modèles à compléter).
+- Seed de démonstration Gabon (`npm run seed:demo`) : 4 établissements (primaire, collège, lycée, université), comptes pour chaque rôle, notes dans l'échelle locale, idempotent, refusé en production ; test e2e. Comptes sans mot de passe en mode sandbox ; `npm run seed:keycloak` les crée dans Keycloak avec le même identifiant.
+- **Connexion réelle OIDC code + PKCE** (web et mobile/AppAuth), `GET /auth/config`, realm Keycloak importable (`infra/keycloak`, jetons 5 min, rotation du refresh, MFA possible), renouvellement silencieux, déconnexion unique.
+- **Hors ligne corrigé** : 5xx/429/jeton expiré ne sont plus rangés à tort dans le journal des conflits (écriture conservée, ordre gardé) ; clés d'idempotence de bout en bout (table `idempotency_keys`, intercepteur global, files web et mobile) ; règles de synchronisation partagées et testées (priorité aux notes des enseignants, fusion des absences) ; données hors ligne isolées par utilisateur (poste partagé).
+- Tâches planifiées (`SchedulerService`) : purge GPS, purge du casier, rappels de paiement, transmissions ministères dues, relance des webhooks ; verrou consultatif PostgreSQL (un seul réplica par cycle) ; test e2e.
+- Exploitation : `/metrics` Prometheus protégé par jeton, alertes (p95 > 200 ms, 5xx, API arrêtée), tableau Grafana, Sentry sans corps ni en-têtes, Dockerfiles API/web, compose complet (API, web, seed, Keycloak avec import du realm), manifestes Kubernetes durcis (non-root, NetworkPolicy, HPA, PDB, limite au bord). Corrigés : tests SQL montés dans l'init Postgres, port du service IA.
+- Préparation des stores : icône et splash, signature release depuis `key.properties`, entitlements iOS, Fastlane (piste interne Play, TestFlight), workflows `release-android` / `release-ios`, dossier `store/`, `docs/PUBLICATION_STORES.md`.
+- Tests IA (qualité, biais/équité) déjà présents dans `apps/ai/tests`.
+**Reste à faire en Phase 7**
+- Certificate pinning mobile ; base locale chiffrée (Drift/SQLCipher) : aujourd'hui files et caches dans le stockage sécurisé de l'appareil.
+- Jeton FCM réel côté mobile (envoi simulé tant que Firebase n'est pas configuré) ; tests e2e web (Playwright) ; test de charge (script p95).
+- Mobile : écrans EDT, notes et absences en saisie ; remplacement de professeur ; contrats/charge horaire.
+**Limites connues**
+- Limiteur de débit en mémoire (par réplica) : la limite partagée est portée par l'ingress (`limit-rps`) ; quotas API idem.
+- Un jeton d'accès reste valide jusqu'à son expiration (5 min avec Keycloak) après suppression de compte ; la désactivation côté Keycloak se fait avec l'API d'administration (voir INTEGRATIONS).
+- Les builds signés (AAB/IPA) ne sont pas exécutables sans vos secrets.
+
 ## Prochaine étape
-Phase 7 (tests, sécurité, performance, seed Gabon, hors ligne, builds signables, stores) puis Phase 8.
+Terminer la Phase 7 (liste ci-dessus), fusionner dans `main`, puis Phase 8 (guides par rôle FR/EN, manuel d'administration, déploiement, README, rapport final).

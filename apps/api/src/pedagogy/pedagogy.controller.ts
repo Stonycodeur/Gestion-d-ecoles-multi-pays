@@ -26,10 +26,10 @@ export class PedagogyController {
   createStudent(@Req() r: CoreRequest, @Body() b: any) { const { slug, p } = need(r); return this.svc.createStudent(slug, p.id, b); }
 
   @Get('students')
-  listStudents(@Req() r: CoreRequest, @Query('class_id') classId?: string) {
+  listStudents(@Req() r: CoreRequest, @Query('class_id') classId?: string, @Query('limit') limit?: string, @Query('offset') offset?: string) {
     const { slug, p } = need(r);
     this.svc.authorize(p, slug, 'students:read', { classId });   // teachers: only their classes
-    return this.svc.listStudents(slug, classId);
+    return this.svc.listStudents(slug, classId, limit, offset);
   }
 
   // timetable ----------------------------------------------------------------------------------------------------

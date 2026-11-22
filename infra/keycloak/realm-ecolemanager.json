@@ -1,0 +1,55 @@
+{
+  "realm": "ecolemanager",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "bruteForceProtected": true,
+  "failureFactor": 5,
+  "maxFailureWaitSeconds": 900,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "passwordPolicy": "length(10) and notUsername and passwordHistory(3)",
+  "otpPolicyType": "totp",
+  "defaultSignatureAlgorithm": "RS256",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["fr", "en", "ar"],
+  "defaultLocale": "fr",
+  "requiredActions": [ { "alias": "CONFIGURE_TOTP", "name": "Configure OTP", "providerId": "CONFIGURE_TOTP", "enabled": true, "defaultAction": false, "priority": 10 } ],
+  "clientScopes": [
+    {
+      "name": "ecole-claims", "protocol": "openid-connect", "attributes": { "include.in.token.scope": "false", "display.on.consent.screen": "false" },
+      "protocolMappers": [
+        { "name": "roles", "protocol": "openid-connect", "protocolMapper": "oidc-usermodel-attribute-mapper", "config": { "user.attribute": "roles", "claim.name": "roles", "jsonType.label": "String", "multivalued": "true", "access.token.claim": "true", "id.token.claim": "false", "userinfo.token.claim": "false" } },
+        { "name": "tenant", "protocol": "openid-connect", "protocolMapper": "oidc-usermodel-attribute-mapper", "config": { "user.attribute": "tenant", "claim.name": "tenant", "jsonType.label": "String", "access.token.claim": "true", "id.token.claim": "false", "userinfo.token.claim": "false" } },
+        { "name": "class_ids", "protocol": "openid-connect", "protocolMapper": "oidc-usermodel-attribute-mapper", "config": { "user.attribute": "class_ids", "claim.name": "class_ids", "jsonType.label": "String", "multivalued": "true", "access.token.claim": "true", "id.token.claim": "false", "userinfo.token.claim": "false" } },
+        { "name": "child_ids", "protocol": "openid-connect", "protocolMapper": "oidc-usermodel-attribute-mapper", "config": { "user.attribute": "child_ids", "claim.name": "child_ids", "jsonType.label": "String", "multivalued": "true", "access.token.claim": "true", "id.token.claim": "false", "userinfo.token.claim": "false" } },
+        { "name": "student_id", "protocol": "openid-connect", "protocolMapper": "oidc-usermodel-attribute-mapper", "config": { "user.attribute": "student_id", "claim.name": "student_id", "jsonType.label": "String", "access.token.claim": "true", "id.token.claim": "false", "userinfo.token.claim": "false" } },
+        { "name": "audience", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper", "config": { "included.custom.audience": "ecolemanager-api", "access.token.claim": "true", "id.token.claim": "false" } }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "ecolemanager-web", "name": "ÉcoleManager Pro (web)", "enabled": true, "publicClient": true, "standardFlowEnabled": true,
+      "implicitFlowEnabled": false, "directAccessGrantsEnabled": false, "serviceAccountsEnabled": false, "protocol": "openid-connect",
+      "redirectUris": ["http://localhost:3001/auth/callback", "https://app.example.org/auth/callback"],
+      "webOrigins": ["http://localhost:3001", "https://app.example.org"],
+      "attributes": { "pkce.code.challenge.method": "S256", "post.logout.redirect.uris": "http://localhost:3001/*##https://app.example.org/*" },
+      "defaultClientScopes": ["openid", "profile", "email", "ecole-claims"], "optionalClientScopes": ["offline_access"]
+    },
+    {
+      "clientId": "ecolemanager-mobile", "name": "ÉcoleManager Pro (mobile)", "enabled": true, "publicClient": true, "standardFlowEnabled": true,
+      "implicitFlowEnabled": false, "directAccessGrantsEnabled": false, "serviceAccountsEnabled": false, "protocol": "openid-connect",
+      "redirectUris": ["com.ecolemanager.pro:/oauthredirect"],
+      "attributes": { "pkce.code.challenge.method": "S256", "post.logout.redirect.uris": "com.ecolemanager.pro:/oauthredirect" },
+      "defaultClientScopes": ["openid", "profile", "email", "ecole-claims"], "optionalClientScopes": ["offline_access"]
+    }
+  ],
+  "users": []
+}

@@ -47,4 +47,29 @@ void main() {
     expect(r.sent, 1);
     expect((await q.pending()).map((o) => o.path), ['/2', '/3']);
   });
+
+  test('transient failures (5xx, 429, expired token) keep the write queued, in order, and never reach the journal', () async {
+    final q = OfflineQueue(MemoryTokenStore());
+    await q.enqueue('POST', '/a', {});
+    await q.enqueue('POST', '/b', {});
+    final r = await q.flush((op) async => op.path == '/a' ? 503 : 201);
+    expect(r.sent, 0);
+    expect(r.conflicts, 0);
+    expect((await q.pending()).map((o) => o.path), ['/a', '/b']);
+    expect(await q.conflicts(), isEmpty);
+    final again = await q.flush((op) async => 201);
+    expect(again.sent, 2);
+  });
+
+  test('classifyReplay mirrors the shared table', () {
+    for (final s in [200, 201, 204]) { expect(classifyReplay(s), ReplayVerdict.done); }
+    for (final s in [0, 401, 408, 425, 429, 500, 503]) { expect(classifyReplay(s), ReplayVerdict.retry); }
+    for (final s in [400, 403, 404, 409, 422]) { expect(classifyReplay(s), ReplayVerdict.conflict); }
+  });
+
+  test('a queued write keeps the idempotency key of the first attempt', () async {
+    final q = OfflineQueue(MemoryTokenStore());
+    await q.enqueue('POST', '/x', {}, id: 'key-from-first-attempt');
+    expect((await q.pending()).single.id, 'key-from-first-attempt');
+  });
 }

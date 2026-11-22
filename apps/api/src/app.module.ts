@@ -1,5 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { IdempotencyInterceptor } from './core/idempotency';
+import { SchedulerService } from './core/scheduler';
 import { HealthController } from './health.controller';
 import { AuthController } from './core/auth.controller';
 import { AuthService } from './core/auth.service';
@@ -47,9 +49,12 @@ import { GenAiService } from './genai/genai.service';
 import { XrController, XrPublicController } from './xr/xr.controller';
 import { XrService } from './xr/xr.service';
 
+import { AccountController } from './account/account.controller';
+import { AccountService } from './account/account.service';
+
 @Module({
-  controllers: [HealthController, AuthController, ModulesController, PedagogyController, CommsController, OaaController, GamificationController, PredictiveController, PaymentsController, GpsController, OrientationController, PublicController, VisitorAdminController, ResourcesController, MarketplaceController, MinistryController, PublicApiController, ApiAdminController, GenAiController, XrController, XrPublicController],
-  providers: [AuthService, AuditService, ModulesService, TenantDb, PedagogyService, Adapters, RealtimeGateway, NotificationService, CommsService, OaaService, GamificationService, PredictiveService, PaymentProviders, PaymentsService, GpsService, OrientationService, VisitorService, ResourcesService, MarketplaceService, MinistryService, PublicApiService, WebhooksService, GenAiService, XrService, { provide: APP_GUARD, useClass: CoreGuard }],
+  controllers: [HealthController, AuthController, ModulesController, PedagogyController, CommsController, OaaController, GamificationController, PredictiveController, PaymentsController, GpsController, OrientationController, PublicController, VisitorAdminController, ResourcesController, MarketplaceController, MinistryController, PublicApiController, ApiAdminController, GenAiController, XrController, XrPublicController, AccountController],
+  providers: [AuthService, AuditService, ModulesService, TenantDb, PedagogyService, Adapters, RealtimeGateway, NotificationService, CommsService, OaaService, GamificationService, PredictiveService, PaymentProviders, PaymentsService, GpsService, OrientationService, VisitorService, ResourcesService, MarketplaceService, MinistryService, PublicApiService, WebhooksService, GenAiService, XrService, AccountService, SchedulerService, { provide: APP_GUARD, useClass: CoreGuard }, { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor }],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) { consumer.apply(TenantMiddleware).forRoutes('*'); }

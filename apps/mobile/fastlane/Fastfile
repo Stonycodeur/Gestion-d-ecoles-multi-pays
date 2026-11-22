@@ -1,0 +1,23 @@
+# Upload of already-built binaries to the test tracks. Building and signing are done by the GitHub workflows (or locally, see docs/PUBLICATION_STORES.md).
+# Credentials are read from the environment / CI secrets, never from the repository.
+
+platform :android do
+  desc "Upload the release AAB to Google Play internal testing (needs PLAY_JSON_KEY_FILE: path to the service-account JSON, created by the publisher)"
+  lane :internal do
+    upload_to_play_store(
+      track: "internal",
+      aab: "../build/app/outputs/bundle/release/app-release.aab",
+      json_key: ENV.fetch("PLAY_JSON_KEY_FILE"),
+      release_status: "draft",
+      skip_upload_metadata: true, skip_upload_images: true, skip_upload_screenshots: true
+    )
+  end
+end
+
+platform :ios do
+  desc "Upload the IPA to TestFlight (needs an App Store Connect API key: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_BASE64)"
+  lane :beta do
+    key = app_store_connect_api_key(key_id: ENV.fetch("ASC_KEY_ID"), issuer_id: ENV.fetch("ASC_ISSUER_ID"), key_content: ENV.fetch("ASC_KEY_BASE64"), is_key_content_base64: true)
+    upload_to_testflight(api_key: key, ipa: Dir["../build/ios/ipa/*.ipa"].first, skip_waiting_for_build_processing: true)
+  end
+end

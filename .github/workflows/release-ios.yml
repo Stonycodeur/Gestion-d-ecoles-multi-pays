@@ -1,0 +1,100 @@
+name: release-ios
+# Builds the signed IPA on a macOS runner. Runs ONLY when signing secrets exist (never read from the repository):
+#   IOS_CERT_P12_BASE64, IOS_CERT_PASSWORD, IOS_PROVISIONING_PROFILE_BASE64, IOS_TEAM_ID, APP_ID
+# Optional for TestFlight: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_BASE64.
+on:
+  workflow_dispatch:
+    inputs:
+      upload_testflight:
+        description: Upload to TestFlight
+        type: boolean
+        default: false
+  push:
+    tags: ['mobile-v*']
+jobs:
+  build:
+    runs-on: macos-latest
+    env:
+      HAS_SIGNING: ${{ secrets.IOS_CERT_P12_BASE64 != '' && secrets.IOS_PROVISIONING_PROFILE_BASE64 != '' }}
+      APP_ID: ${{ secrets.APP_ID }}
+      APP_NAME: ${{ secrets.APP_NAME }}
+    steps:
+      - name: Signing secrets present?
+        run: echo "signing=$HAS_SIGNING"
+      - uses: actions/checkout@v4
+        if: env.HAS_SIGNING == 'true'
+      - uses: subosito/flutter-action@v2
+        if: env.HAS_SIGNING == 'true'
+        with: { channel: stable }
+      - name: Generate native folders and configure
+        if: env.HAS_SIGNING == 'true'
+        working-directory: apps/mobile
+        run: |
+          flutter create --platforms=android,ios --org com.ecolemanager --project-name ecolemanager_mobile .
+          cd tool
+          [ -n "$APP_ID" ] || unset APP_ID
+          [ -n "$APP_NAME" ] || unset APP_NAME
+          python3 configure_native.py ..
+      - name: Import certificate and provisioning profile
+        if: env.HAS_SIGNING == 'true'
+        env:
+          P12: ${{ secrets.IOS_CERT_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.IOS_CERT_PASSWORD }}
+          PROFILE: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          KC="$RUNNER_TEMP/build.keychain"
+          security create-keychain -p tmp "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p tmp "$KC"
+          echo "$P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KC"
+          security set-key-partition-list -S apple-tool:,apple: -k tmp "$KC"
+          security list-keychains -d user -s "$KC" login.keychain
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "$PROFILE" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/app.mobileprovision
+      - name: Firebase config (optional secret)
+        if: env.HAS_SIGNING == 'true'
+        working-directory: apps/mobile/ios/Runner
+        run: |
+          if [ -n "${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}" ]; then echo "${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}" | base64 --decode > GoogleService-Info.plist; fi
+      - name: Export options
+        if: env.HAS_SIGNING == 'true'
+        working-directory: apps/mobile
+        run: |
+          UUID=$(security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/app.mobileprovision | plutil -extract UUID raw -)
+          NAME=$(security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/app.mobileprovision | plutil -extract Name raw -)
+          cat > ios/ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>teamID</key><string>${{ secrets.IOS_TEAM_ID }}</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>provisioningProfiles</key><dict><key>${APP_ID:-com.ecolemanager.pro.work}</key><string>$NAME</string></dict>
+          </dict></plist>
+          PLIST
+      - name: Icons, splash, tests, IPA
+        if: env.HAS_SIGNING == 'true'
+        working-directory: apps/mobile
+        run: |
+          flutter pub get
+          dart run flutter_launcher_icons
+          dart run flutter_native_splash:create
+          flutter gen-l10n
+          flutter test
+          flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+      - uses: actions/upload-artifact@v4
+        if: env.HAS_SIGNING == 'true'
+        with:
+          name: ios-release
+          path: apps/mobile/build/ios/ipa/*.ipa
+      - name: Upload to TestFlight (Fastlane)
+        if: env.HAS_SIGNING == 'true' && inputs.upload_testflight == true
+        working-directory: apps/mobile
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_BASE64: ${{ secrets.ASC_KEY_BASE64 }}
+        run: |
+          gem install bundler && bundle install
+          bundle exec fastlane ios beta

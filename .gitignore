@@ -22,3 +22,13 @@ fastlane/report.xml
 build/
 .flutter-plugins*
 Pods/
+key.properties
+*.mobileprovision
+*.provisionprofile
+**/ios/Runner/GoogleService-Info.plist
+**/android/key.properties
+google-services.json
+!**/google-services.json.example
+play-service-account*.json
+AuthKey_*.p8
+*.keystore.base64

@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../core/api_client.dart';
 import '../core/session.dart';
 import 'pedagogy_screens.dart';
+import '../core/push_token.dart';
 
 /// Registers this device for push. Sandbox mode: a local token the API stores like a real FCM/APNs token
 /// (the API then writes to push_outbox instead of calling Firebase). With a real Firebase project,
@@ -14,10 +15,14 @@ final pushRegistrationProvider = FutureProvider<void>((ref) async {
   final s = ref.watch(sessionProvider);
   if (s.token == null || s.school == null) return;
   final platform = defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
+  Future<void> register(String token) => http.post(Uri.parse('$apiBase/devices'),
+      headers: {'content-type': 'application/json', 'x-tenant': s.school!, 'authorization': 'Bearer ${s.token}'},
+      body: jsonEncode({'platform': platform, 'token': token}));
   try {
-    await http.post(Uri.parse('$apiBase/devices'),
-        headers: {'content-type': 'application/json', 'x-tenant': s.school!, 'authorization': 'Bearer ${s.token}'},
-        body: jsonEncode({'platform': platform, 'token': 'sandbox-${s.school}-${s.token!.hashCode}'}));
+    // Real FCM/APNs token when Firebase is configured for this build, otherwise a local sandbox token (same API flow).
+    final real = await realPushToken();
+    await register(real ?? 'sandbox-${s.school}-${s.token!.hashCode}');
+    listenPushTokenRefresh((t) { register(t).catchError((_) => http.Response('', 0)); });
   } catch (_) {/* offline: retried at next start */}
 });
 

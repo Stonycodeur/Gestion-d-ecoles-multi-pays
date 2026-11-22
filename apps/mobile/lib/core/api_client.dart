@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'pinned_client.dart';
 import 'json_cache.dart';
 import 'models.dart';
 import 'offline_queue.dart';
@@ -8,7 +9,7 @@ const apiBase = String.fromEnvironment('API_BASE', defaultValue: 'http://10.0.2.
 
 class ApiClient {
   final http.Client _c;
-  ApiClient([http.Client? c]) : _c = c ?? http.Client();
+  ApiClient([http.Client? c]) : _c = c ?? buildHttpClient();
 
   Map<String, String> _h(String school, String? token) => {
         'content-type': 'application/json',
@@ -40,12 +41,13 @@ class ApiClient {
 
   /// Write: sent now, or queued when offline. `priority` > 0 for teacher grade entries.
   Future<bool> post(String school, String token, String path, Map<String, dynamic> body, OfflineQueue queue, {int priority = 0}) async {
+    final key = OfflineQueue.newKey();   // same Idempotency-Key for the first attempt and the queued replay
     try {
-      final r = await _c.post(Uri.parse('$apiBase$path'), headers: _h(school, token), body: jsonEncode(body));
+      final r = await _c.post(Uri.parse('$apiBase$path'), headers: {..._h(school, token), 'idempotency-key': key}, body: jsonEncode(body));
       if (r.statusCode >= 300) throw Exception('POST $path failed (${r.statusCode})');
       return false;
     } on http.ClientException {
-      await queue.enqueue('POST', path, body, priority: priority);
+      await queue.enqueue('POST', path, body, priority: priority, id: key);
       return true; // queued
     }
   }
@@ -57,6 +59,14 @@ class ApiClient {
     return jsonDecode(r.body);
   }
 
+  /// Online DELETE with a JSON body (account deletion): never queued.
+  Future<dynamic> deleteOnline(String school, String token, String path, Map<String, dynamic> body) async {
+    final req = http.Request('DELETE', Uri.parse('$apiBase$path'))..headers.addAll(_h(school, token))..body = jsonEncode(body);
+    final r = await http.Response.fromStream(await _c.send(req));
+    if (r.statusCode >= 300) throw Exception('DELETE $path failed (${r.statusCode}): ${r.body}');
+    return jsonDecode(r.body);
+  }
+
   /// Online GET returning the decoded JSON object (no cache: used for live values such as the GPS policy).
   Future<Map<String, dynamic>> getRaw(String school, String token, String path) async {
     final r = await _c.get(Uri.parse('$apiBase$path'), headers: _h(school, token));
@@ -65,7 +75,7 @@ class ApiClient {
   }
 
   Future<int> replay(String school, String token, QueuedOp op) async {
-    final r = await _c.post(Uri.parse('$apiBase${op.path}'), headers: _h(school, token), body: jsonEncode(op.body));
+    final r = await _c.post(Uri.parse('$apiBase${op.path}'), headers: {..._h(school, token), 'idempotency-key': op.id}, body: jsonEncode(op.body));
     return r.statusCode;
   }
 
