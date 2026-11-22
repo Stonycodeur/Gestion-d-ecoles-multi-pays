@@ -66,5 +66,14 @@
 - Surpaiement non crédité (D-029). Rappels : pas encore de tâche planifiée automatique (endpoint prêt).
 - Pas de test automatisé de l'envoi de position en arrière-plan sur appareil réel (nécessite émulateur/appareil).
 
+## Phase 6 (orientation, visiteur, ministères, API publique, marketplace…) : branche `phase-6-extensions`
+**Lot 6a (CI verte)** : orientation et stages, fiche BEPC/CEP, ressources et forums, espace visiteur public (site, inscription en ligne, contact, statistiques) : API, web, mobile, tests e2e.
+**Lot 6b (CI verte)** : marketplace de modules (soumission, revue automatique, décision racine, installation avec consentement, mises à jour, avis, retrait), connecteurs ministères (Gabon : MEN, MESR ; sandbox et HTTP), comptes d'inspecteurs, API publique (OAuth2 client credentials, REST, GraphQL, quotas, portail `/developers`), webhooks sortants signés avec relance, modules du registre correspondants ; web (Ministères, API, Marketplace, Développeurs) et mobile (Ministères, Marketplace). 75 tests e2e API, 80 tests shared.
+**Limites connues**
+- Quotas API en mémoire (un seul processus) ; le connecteur HTTP ministériel est générique (à aligner sur les API réelles) ; sandbox des modules tiers : pas d'isolation conteneur.
+- Préparation des transmissions et administration des clients API / soumission de modules : web uniquement (administration lourde, documenté).
+- Pas de tâche planifiée automatique pour `run-due` ni pour la relance des webhooks (endpoints prêts).
+**Reste dans la Phase 6** : IA générative (6c) et VR/AR (6c).
+
 ## Prochaine étape
-Fusionner la Phase 5, puis Phase 6 (orientation, stages, espace visiteur, ministères, API publique, marketplace, IA générative, VR/AR).
+Lot 6c : IA générative et VR/AR ; puis fusion de la Phase 6, Phases 7 et 8.
