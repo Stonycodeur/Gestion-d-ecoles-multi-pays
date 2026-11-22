@@ -43,6 +43,9 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
     ids.cls = (await call('post', '/classes', adminT).send({ name: '3e A', level_code: '3e', school_year: '2026-2027' }).expect(201)).body.id;
     ids.s1 = (await call('post', '/students', adminT).send({ first_name: 'Ada', last_name: 'Obiang', class_id: ids.cls }).expect(201)).body.student.id;
     teacherT = await tok('teacher', 3, { class_ids: [ids.cls] });
+    await call('post', '/modules/module-public-api/enable', adminT).expect(201);
+    await call('post', '/modules/module-marketplace/enable', adminT).expect(201);
+    await call('post', '/modules/module-ministry/enable', adminT).expect(201);
   });
   afterAll(async () => { await app.close(); recv.close(); await admin.end(); });
 

@@ -7,10 +7,11 @@ import { TenantDb } from '../pedagogy/tenant-db.service';
 const MAX_ATTEMPTS = 5;
 
 /** Signed outgoing webhooks (spec 6.19). Each delivery is recorded; failures can be retried; targets are checked against SSRF (static + resolved addresses). */
+import { ModulesService } from '../modules/modules.service';
 @Injectable()
 export class WebhooksService {
   private readonly log = new Logger('Webhooks');
-  constructor(private readonly db: TenantDb) {}
+  constructor(private readonly db: TenantDb, private readonly modules: ModulesService) {}
   private get allowPrivate() { return process.env.WEBHOOK_ALLOW_PRIVATE === 'true'; }
   private key() { const k = process.env.WEBHOOK_KEY ?? process.env.MESSAGE_KEY; if (!k) throw new Error('WEBHOOK_KEY (32 bytes, base64) is required'); return k; }
 
@@ -20,6 +21,7 @@ export class WebhooksService {
   /** Fire-and-forget from the core: never throws and never blocks the business transaction. */
   dispatch(slug: string, event: string, data: unknown): void { void this.dispatchAsync(slug, event, data).catch((e) => this.log.warn(`dispatch ${event} failed: ${(e as Error).message}`)); }
   async dispatchAsync(slug: string, event: string, data: unknown): Promise<number> {
+    if (!this.modules.registry.isEnabled(slug, 'module-public-api')) return 0;
     const deliveries = await this.db.run(slug, async (q) => {
       const hooks = await q('SELECT id FROM webhooks_out WHERE active AND $1 = ANY(events)', [event]);
       const out: string[] = [];

@@ -11,7 +11,7 @@ import { AuditService } from '../core/audit.service';
 export class MarketplaceService {
   constructor(private readonly db: TenantDb, private readonly modules: ModulesService, private readonly audit: AuditService) {}
   private pool(): Pool { if (!this.modules.pool) throw new ServiceUnavailableException('marketplace needs DATABASE_URL'); return this.modules.pool; }
-  private authorize(p: Principal, slug: string | undefined, perm: string) { const d = can(p, perm, slug ? { tenantId: slug } : {}); if (!d.allowed) throw new ForbiddenException(d.reason); }
+  private authorize(p: Principal, slug: string | undefined, perm: string) { if (slug && !this.modules.registry.isEnabled(slug, 'module-marketplace')) throw new ForbiddenException('marketplace module is not enabled for this school'); const d = can(p, perm, slug ? { tenantId: slug } : {}); if (!d.allowed) throw new ForbiddenException(d.reason); }
 
   /** Names that third parties may not take: every module loaded from the platform itself (marketplace modules are the ones recorded in the catalogue). */
   private async firstPartyNames(): Promise<string[]> { const t = await this.pool().query('SELECT name FROM marketplace_modules'); const tp = new Set(t.rows.map((r: any) => r.name)); return this.modules.registry.list().map((m) => m.name).filter((n) => !tp.has(n)); }

@@ -9,12 +9,13 @@ import { makeMinistryAdapter, type MinistryAdapter } from './ministry.adapter';
 type Tenant = { id: string; slug: string; country: string; schoolType: string };
 
 /** Ministry integration (spec 6.18): connectors come from the country reference; prepare -> head validates -> send (or schedule) -> log -> retry. */
+import { ModulesService } from '../modules/modules.service';
 @Injectable()
 export class MinistryService {
   private readonly adapter: MinistryAdapter = makeMinistryAdapter();
-  constructor(private readonly db: TenantDb, private readonly notif: NotificationService, private readonly audit: AuditService) {}
+  constructor(private readonly db: TenantDb, private readonly notif: NotificationService, private readonly audit: AuditService, private readonly modules: ModulesService) {}
   private tx<T>(slug: string, fn: (q: Q, t: Tenant) => Promise<T>): Promise<T> { return this.db.run(slug, fn).catch((e) => mapDbError(e)); }
-  private authorize(p: Principal, slug: string, perm: string) { const d = can(p, perm, { tenantId: slug }); if (!d.allowed) throw new ForbiddenException(d.reason); }
+  private authorize(p: Principal, slug: string, perm: string) { if (!this.modules.registry.isEnabled(slug, 'module-ministry')) throw new ForbiddenException('ministry module is not enabled for this school'); const d = can(p, perm, { tenantId: slug }); if (!d.allowed) throw new ForbiddenException(d.reason); }
   private live() { return (process.env.MINISTRY_MODE ?? 'sandbox') === 'live'; }
 
   private async connectorsOf(q: Q, t: Tenant): Promise<ConnectorConfig[]> {

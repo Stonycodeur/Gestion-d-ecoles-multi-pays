@@ -7,6 +7,7 @@ import 'pedagogy_screens.dart';
 import 'comms_screens.dart';
 import 'oaa_games_screens.dart';
 import 'payment_gps_screens.dart';
+import 'integrations_screens.dart';
 import 'orientation_screens.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -40,6 +41,8 @@ class HomeScreen extends ConsumerWidget {
                       'orientation_home' || 'internships' || 'exam_fiche' => const OrientationScreen(),
                       'resources' || 'forums' => const ResourcesScreen(),
                       'visitor_applications' => const VisitorApplicationsScreen(),
+                      'ministry_transmissions' => const MinistryScreen(),
+                      'marketplace_catalogue' => const MarketplaceScreen(),
                       _ => null,
                     };
                     if (target != null) Navigator.of(context).push(MaterialPageRoute(builder: (_) => target));

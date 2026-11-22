@@ -1,0 +1,9 @@
+{
+  "name": "module-marketplace",
+  "version": "1.0.0",
+  "core_version": ">=0.1.0",
+  "description": "Marketplace de modules tiers : catalogue, installation avec consentement aux permissions, mises à jour, avis",
+  "permissions": ["marketplace:install","marketplace:submit"],
+  "config_schema": {},
+  "mobile_screens": ["marketplace_catalogue"]
+}

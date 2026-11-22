@@ -25,13 +25,15 @@ const SDL = `
 const schema = buildSchema(SDL);
 
 /** Public API (spec 6.19): OAuth2 client credentials per school, scoped read-only REST + GraphQL, quotas, developer docs. Data is minimised: no birth dates, guardians, payments. */
+import { ModulesService } from '../modules/modules.service';
 @Injectable()
 export class PublicApiService {
   private readonly quota = new QuotaCounter();
   private readonly tokenLimiter = new QuotaCounter();
-  constructor(private readonly db: TenantDb, private readonly audit: AuditService, readonly webhooks: WebhooksService) {}
+  constructor(private readonly db: TenantDb, private readonly audit: AuditService, readonly webhooks: WebhooksService, private readonly modules: ModulesService) {}
   private tx<T>(slug: string, fn: (q: Q) => Promise<T>): Promise<T> { return this.db.run(slug, (q) => fn(q)).catch((e) => mapDbError(e)); }
-  private authorize(p: Principal, slug: string, perm: string) { const d = can(p, perm, { tenantId: slug }); if (!d.allowed) throw new ForbiddenException(d.reason); }
+  private requireModule(slug: string) { if (!this.modules.registry.isEnabled(slug, 'module-public-api')) throw new ForbiddenException('public API module is not enabled for this school'); }
+  private authorize(p: Principal, slug: string, perm: string) { this.requireModule(slug); const d = can(p, perm, { tenantId: slug }); if (!d.allowed) throw new ForbiddenException(d.reason); }
   private secret(): string { const s = process.env.API_TOKEN_SECRET ?? process.env.SANDBOX_JWT_SECRET; if (!s || s.length < 32) throw new HttpException('API_TOKEN_SECRET (>=32 chars) is not configured', 500); return s; }
 
   // ---- client administration (school admins) ---------------------------------------------------------------------------
@@ -86,6 +88,7 @@ export class PublicApiService {
     const cid = typeof b?.client_id === 'string' ? b.client_id : '', sec = typeof b?.client_secret === 'string' ? b.client_secret : '';
     const c = await this.db.run(slug, async (q) => (await q('SELECT client_id, secret_hash, scopes, active FROM api_clients WHERE client_id = $1', [cid]))[0]).catch(() => undefined);
     if (!c || !c.active || !secretMatches(sec, c.secret_hash)) throw bad();
+    this.requireModule(slug);
     let scopes = c.scopes as string[];
     if (b.scope) { try { scopes = parseScopes(b.scope, c.scopes); } catch { throw new BadRequestException({ error: 'invalid_scope' }); } }
     return { access_token: signAccessToken(this.secret(), { cid, tenant: slug, scopes, exp: Math.floor(Date.now() / 1000) + TOKEN_TTL }), token_type: 'Bearer', expires_in: TOKEN_TTL, scope: scopes.join(' ') };
@@ -96,6 +99,7 @@ export class PublicApiService {
     const claims = verifyAccessToken(this.secret(), m[1]!); if (!claims) throw new UnauthorizedException('invalid or expired token');
     const c = await this.db.run(claims.tenant, async (q) => { const r = (await q('SELECT client_id, scopes, quota_per_hour, active FROM api_clients WHERE client_id = $1', [claims.cid]))[0]; if (r?.active) await q('UPDATE api_clients SET last_used_at = NOW() WHERE client_id = $1', [claims.cid]); return r; }).catch(() => undefined);
     if (!c || !c.active) throw new UnauthorizedException('client revoked');
+    this.requireModule(claims.tenant);
     const qt = this.quota.hit(`${claims.tenant}|${claims.cid}`, c.quota_per_hour);
     res?.setHeader('X-RateLimit-Limit', String(c.quota_per_hour)); res?.setHeader('X-RateLimit-Remaining', String(qt.remaining));
     if (!qt.allowed) { res?.setHeader('Retry-After', String(Math.ceil((qt.resetAt - Date.now()) / 1000))); throw new HttpException('quota exceeded', 429); }

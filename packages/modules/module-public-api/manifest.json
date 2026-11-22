@@ -1,0 +1,9 @@
+{
+  "name": "module-public-api",
+  "version": "1.0.0",
+  "core_version": ">=0.1.0",
+  "description": "API publique : clients OAuth2 par établissement, portées, quotas, webhooks sortants signés, portail développeur",
+  "permissions": ["api:manage"],
+  "config_schema": {},
+  "mobile_screens": []
+}

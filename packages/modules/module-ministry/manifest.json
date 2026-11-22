@@ -1,0 +1,9 @@
+{
+  "name": "module-ministry",
+  "version": "1.0.0",
+  "core_version": ">=0.1.0",
+  "description": "Intégration avec les ministères : connecteurs par pays, transmissions validées par la direction, journal des échanges, comptes d'inspecteurs à durée limitée",
+  "permissions": ["ministry:prepare","ministry:send","inspectors:manage"],
+  "config_schema": {},
+  "mobile_screens": ["ministry_transmissions"]
+}
