@@ -87,3 +87,17 @@ class OidcRedirect(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RootCompileSdk(unittest.TestCase):
+    def test_added_once_before_allprojects_for_kts_and_groovy(self):
+        for name in ("build.gradle.kts", "build.gradle"):
+            with tempfile.TemporaryDirectory() as d:
+                root = Path(d); (root / "android").mkdir(); (root / "android" / name).write_text("allprojects {\n    repositories { google() }\n}\n")
+                for _ in range(2):
+                    self.assertTrue(c.patch_android_root_compile_sdk(root))
+                g = (root / "android" / name).read_text()
+                self.assertEqual(g.count("ecole-compile-sdk"), 1); self.assertLess(g.index("ecole-compile-sdk"), g.index("allprojects {"))
+                self.assertIn(str(c.COMPILE_SDK), g)
+        with tempfile.TemporaryDirectory() as d:
+            self.assertFalse(c.patch_android_root_compile_sdk(Path(d)))

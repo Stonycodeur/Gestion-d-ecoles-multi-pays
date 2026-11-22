@@ -160,6 +160,39 @@ def patch_ios_entitlements(root: Path, bundle_id: str | None = None) -> bool:
     return True
 
 
+COMPILE_SDK = 35
+ROOT_KTS = """// ecole-compile-sdk: plugin libraries compiled against an old SDK (e.g. flutter_appauth) fail the AAR metadata check; compile every library module against a recent SDK.
+subprojects {
+    val raise = { p: Project ->
+        val ext = p.extensions.findByName("android")
+        if (ext != null) { try { ext.javaClass.getMethod("setCompileSdkVersion", Int::class.javaPrimitiveType).invoke(ext, %d) } catch (_: Exception) { } }
+    }
+    if (state.executed) raise(this) else afterEvaluate { raise(this) }
+}
+
+""" % COMPILE_SDK
+ROOT_GROOVY = """// ecole-compile-sdk: plugin libraries compiled against an old SDK (e.g. flutter_appauth) fail the AAR metadata check; compile every library module against a recent SDK.
+subprojects {
+    def raise = { p -> if (p.hasProperty('android')) { try { p.android.compileSdkVersion %d } catch (ignored) { } } }
+    if (state.executed) { raise(it) } else { afterEvaluate { raise(it) } }
+}
+
+""" % COMPILE_SDK
+
+
+def patch_android_root_compile_sdk(root: Path) -> bool:
+    for name, snippet in (("build.gradle.kts", ROOT_KTS), ("build.gradle", ROOT_GROOVY)):
+        f = root / "android" / name
+        if not f.exists():
+            continue
+        g = f.read_text(encoding="utf-8")
+        if "ecole-compile-sdk" not in g:
+            g = g.replace("allprojects", snippet + "allprojects", 1) if "allprojects" in g else snippet + g
+            f.write_text(g, encoding="utf-8")
+        return True
+    return False
+
+
 def patch_oidc_redirect(root: Path, scheme: str) -> dict:
     """Custom-scheme redirect used by AppAuth for the OIDC + PKCE sign-in (Keycloak client `ecolemanager-mobile`, redirect `<scheme>:/oauthredirect`)."""
     done = {"android": False, "ios": False}
@@ -214,6 +247,7 @@ if __name__ == "__main__":
         patch_android_xr(base)
     import os
     app_id = os.environ.get("APP_ID", "com.ecolemanager.pro.work")   # working identifier until the publisher communicates the real one
+    patch_android_root_compile_sdk(base)
     patch_oidc_redirect(base, os.environ.get("OIDC_REDIRECT_SCHEME", "com.ecolemanager.pro"))
     patch_android_signing(base, app_id); patch_ios_entitlements(base, app_id); patch_app_name(base, os.environ.get("APP_NAME", "ÉcoleManager Pro"))
     print(f"android={'patched' if a else 'absent'} ios={'patched' if i else 'absent'}")
