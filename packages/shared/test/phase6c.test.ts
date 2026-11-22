@@ -43,3 +43,29 @@ test('loose JSON parsing handles fences and prose, and fails clearly', () => {
   assert.deepEqual(parseJsonLoose('{"x":2} fin'), { x: 2 });
   assert.throws(() => parseJsonLoose('aucun json')); assert.throws(() => parseJsonLoose('[1,2'));
 });
+
+import { validateXrAsset, viewerMode, XR_MAX_BYTES } from '../src/index.ts';
+const good = { title: 'Volcan', kind: 'model_3d', format: 'glb', url: 'https://cdn.ecole.ga/volcan.glb', size_bytes: 1_000_000, alt_text: 'Modèle 3D d’un volcan en coupe' };
+test('xr: asset validation (formats, size, url, alt text, iOS companion)', () => {
+  assert.deepEqual(validateXrAsset(good), []);
+  assert.deepEqual(validateXrAsset({ ...good, ios_url: 'https://cdn.ecole.ga/volcan.usdz' }), []);
+  assert.deepEqual(validateXrAsset({ title: 'T', kind: 'panorama_360', format: 'jpg', url: '/media/cour.jpg', size_bytes: 5, alt_text: 'Cour de récréation' }), []);
+  assert.ok(validateXrAsset({ ...good, alt_text: '' }).some((e) => /alt_text/.test(e)));
+  assert.ok(validateXrAsset({ ...good, format: 'exe' }).length);
+  assert.ok(validateXrAsset({ ...good, format: 'usdz', url: 'https://x.ga/a.usdz' }).some((e) => /usdz/.test(e)));
+  assert.ok(validateXrAsset({ ...good, url: 'http://insecure.ga/volcan.glb' }).length);
+  assert.ok(validateXrAsset({ ...good, url: '//evil.ga/volcan.glb' }).length);
+  assert.ok(validateXrAsset({ ...good, url: 'https://cdn.ecole.ga/volcan.png' }).some((e) => /extension/.test(e)));
+  assert.ok(validateXrAsset({ ...good, size_bytes: XR_MAX_BYTES.model_3d + 1 }).some((e) => /too heavy/.test(e)));
+  assert.ok(validateXrAsset({ ...good, size_bytes: 0 }).length); assert.ok(validateXrAsset({ ...good, kind: 'video' }).length);
+  assert.ok(validateXrAsset({ ...good, ios_url: 'https://x.ga/a.glb' }).length);
+  assert.ok(validateXrAsset({ title: 'P', kind: 'panorama_360', format: 'jpg', url: 'https://x.ga/a.jpg', size_bytes: 1, alt_text: 'Un panorama', ios_url: 'https://x.ga/a.usdz' }).length);
+});
+test('xr: the viewer always degrades to something that works', () => {
+  assert.equal(viewerMode('model_3d', { webxrAr: true, webgl: true }), 'ar');
+  assert.equal(viewerMode('model_3d', { webgl: true }), 'orbit_3d');
+  assert.equal(viewerMode('model_3d', { webgl: false }), 'image_only');
+  assert.equal(viewerMode('panorama_360', { webxrVr: true, webgl: true }), 'vr');
+  assert.equal(viewerMode('panorama_360', {}), 'panorama_drag');
+  assert.equal(viewerMode('panorama_360', { webgl: false }), 'image_only');
+});

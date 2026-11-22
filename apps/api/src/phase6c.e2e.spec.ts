@@ -98,4 +98,33 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
       const u = (await call('get', '/ai/usage', adminT).expect(200)).body; expect(u.length).toBeGreaterThan(0); expect(Object.keys(u[0]).sort()).toEqual(['adapter', 'blocked', 'calls', 'chars_in', 'kind', 'redactions', 'role']);
     });
   });
+
+  describe('XR assets', () => {
+    const asset = (o: object = {}) => ({ title: 'Volcan', kind: 'model_3d', format: 'glb', url: 'https://cdn.ecole.ga/volcan.glb', ios_url: 'https://cdn.ecole.ga/volcan.usdz', size_bytes: 2_000_000, alt_text: 'Modèle 3D d’un volcan en coupe', ...o });
+    it('is off until enabled', async () => { await call('post', '/xr/assets', teacherT).send(asset()).expect(403); await call('post', '/modules/module-xr/enable', adminT).expect(201); });
+    it('teachers attach a 3D model to a lesson of their class; students and guardians only read', async () => {
+      const math = (await call('post', '/subjects', adminT).send({ code: 'SVT', name: 'SVT', coefficient: 2 }).expect(201)).body.id;
+      const lesson = (await call('post', '/lessons', teacherT).send({ class_id: ids.cls, subject_id: math, on_date: '2026-11-20', title: 'Le volcanisme', content: 'x' }).expect(201)).body.id;
+      const a = (await call('post', '/xr/assets', teacherT).send(asset({ lesson_id: lesson })).expect(201)).body; expect(a.lesson_id).toBe(lesson);
+      await call('post', '/xr/assets', childT).send(asset()).expect(403);
+      const list = (await call('get', `/xr/assets?lesson_id=${lesson}`, childT).expect(200)).body; expect(list.map((x: any) => x.id)).toEqual([a.id]);
+      await call('get', '/xr/assets', guardianT).expect(200);
+      const other = (await call('post', '/classes', adminT).send({ name: '6e B', level_code: '6e', school_year: '2026-2027' }).expect(201)).body.id;
+      const lesson2 = (await call('post', '/lessons', adminT).send({ class_id: other, subject_id: math, on_date: '2026-11-20', title: 'Autre', content: 'x' }).expect(201)).body.id;
+      await call('post', '/xr/assets', teacherT).send(asset({ lesson_id: lesson2 })).expect(403);   // not their class
+      await call('delete', `/xr/assets/${a.id}`, childT).expect(403);
+      await call('delete', `/xr/assets/${a.id}`, teacherT).expect(200);
+    });
+    it('invalid assets are refused with the reasons (format, weight, alt text, insecure address)', async () => {
+      for (const bad of [{ alt_text: '' }, { format: 'exe', url: 'https://x.ga/a.exe' }, { size_bytes: 999_999_999 }, { url: 'http://insecure.ga/volcan.glb' }]) await call('post', '/xr/assets', teacherT).send(asset(bad)).expect(400);
+    });
+    it('the public 360° tour shows only public panoramas, published by the administration', async () => {
+      const pano = (o: object = {}) => ({ title: 'Cour', kind: 'panorama_360', format: 'jpg', url: 'https://cdn.ecole.ga/cour.jpg', size_bytes: 3_000_000, alt_text: 'Vue à 360° de la cour de récréation', ...o });
+      await call('post', '/xr/assets', teacherT).send(pano({ is_public: true })).expect(403);   // site:write needed
+      await call('post', '/xr/assets', adminT).send(asset({ is_public: true })).expect(400);    // only panoramas are public
+      await call('post', '/xr/assets', adminT).send(pano({ is_public: true })).expect(201);
+      await call('post', '/xr/assets', adminT).send(pano({ title: 'Privé', url: 'https://cdn.ecole.ga/prive.jpg' })).expect(201);
+      const t = (await request(server).get('/public/e2e_k/tour').expect(200)).body; expect(t.map((x: any) => x.title)).toEqual(['Cour']); expect(t[0].alt_text).toBeDefined();
+    });
+  });
 });
