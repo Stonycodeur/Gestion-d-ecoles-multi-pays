@@ -69,7 +69,7 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
     expect(await count("SELECT COUNT(*) n FROM tenant_e2e_l.gps_consents WHERE student_id = $1", [ids.stu])).toBe(0);
     expect(await count("SELECT COUNT(*) n FROM tenant_e2e_l.device_tokens WHERE user_id = $1", [U(3)])).toBe(0);
     expect((await admin.query("SELECT role, display_name FROM tenant_e2e_l.directory WHERE user_id = $1", [U(3)])).rows[0]).toMatchObject({ role: 'deleted', display_name: 'Compte supprimé' });
-    expect(await count("SELECT COUNT(*) n FROM audit_logs WHERE action IN ('student.erased','account.delete','account.erasure_requested') AND tenant_id = (SELECT id FROM tenants WHERE slug='e2e_l')")).toBe(3);
+    expect(await count("SELECT COUNT(*) n FROM audit_logs WHERE action IN ('student.erased','account.delete','account.erasure_requested') AND details->>'tenant' = 'e2e_l'")).toBe(3);
   });
   it('tenant isolation: a token of another school cannot read or erase this school’s data', async () => {
     const other = await tok('admin', 1, 'e2e_m');
