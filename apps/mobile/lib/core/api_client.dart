@@ -57,6 +57,14 @@ class ApiClient {
     return jsonDecode(r.body);
   }
 
+  /// Online DELETE with a JSON body (account deletion): never queued.
+  Future<dynamic> deleteOnline(String school, String token, String path, Map<String, dynamic> body) async {
+    final req = http.Request('DELETE', Uri.parse('$apiBase$path'))..headers.addAll(_h(school, token))..body = jsonEncode(body);
+    final r = await http.Response.fromStream(await _c.send(req));
+    if (r.statusCode >= 300) throw Exception('DELETE $path failed (${r.statusCode}): ${r.body}');
+    return jsonDecode(r.body);
+  }
+
   /// Online GET returning the decoded JSON object (no cache: used for live values such as the GPS policy).
   Future<Map<String, dynamic>> getRaw(String school, String token, String path) async {
     final r = await _c.get(Uri.parse('$apiBase$path'), headers: _h(school, token));
