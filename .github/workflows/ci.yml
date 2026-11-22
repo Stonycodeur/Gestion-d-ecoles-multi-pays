@@ -74,5 +74,5 @@ jobs:
         working-directory: apps/mobile/tool
         run: python3 -m unittest test_configure_native && python3 configure_native.py ..
       - working-directory: apps/mobile
-        run: flutter pub get && flutter gen-l10n && flutter analyze --no-fatal-infos && flutter test && flutter build apk --debug
+        run: flutter pub get && dart run flutter_launcher_icons && dart run flutter_native_splash:create && flutter gen-l10n && flutter analyze --no-fatal-infos && flutter test && flutter build apk --debug
   # iOS signed build: added in phase 7, only when signing secrets exist (never read from the repo).

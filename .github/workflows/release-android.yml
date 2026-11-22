@@ -1,0 +1,79 @@
+name: release-android
+# Builds the signed AAB (Google Play) and a release APK. Signing material comes ONLY from GitHub secrets:
+#   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+# Optional: APP_ID (applicationId), APP_NAME, PLAY_JSON_KEY (service-account JSON) to upload to the internal track.
+on:
+  workflow_dispatch:
+    inputs:
+      upload_internal:
+        description: Upload to Google Play internal testing
+        type: boolean
+        default: false
+  push:
+    tags: ['mobile-v*']
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      APP_ID: ${{ secrets.APP_ID }}
+      APP_NAME: ${{ secrets.APP_NAME }}
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - name: Generate native folders
+        working-directory: apps/mobile
+        run: flutter create --platforms=android,ios --org com.ecolemanager --project-name ecolemanager_mobile .
+      - name: Apply native configuration (permissions, signing, app id)
+        working-directory: apps/mobile/tool
+        run: |
+          [ -n "$APP_ID" ] || unset APP_ID
+          [ -n "$APP_NAME" ] || unset APP_NAME
+          python3 configure_native.py ..
+      - name: Keystore from secrets
+        if: env.HAS_KEYSTORE == 'true'
+        working-directory: apps/mobile/android
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > app/upload-keystore.jks
+          cat > key.properties <<PROPS
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=upload-keystore.jks
+          PROPS
+      - name: Firebase config (optional secret)
+        working-directory: apps/mobile/android/app
+        run: |
+          if [ -n "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" ]; then echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 -d > google-services.json; fi
+      - name: Icons, splash, dependencies, tests
+        working-directory: apps/mobile
+        run: |
+          flutter pub get
+          dart run flutter_launcher_icons
+          dart run flutter_native_splash:create
+          flutter gen-l10n
+          flutter analyze --no-fatal-infos
+          flutter test
+      - name: Build AAB and APK (release)
+        working-directory: apps/mobile
+        run: |
+          flutter build appbundle --release
+          flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: |
+            apps/mobile/build/app/outputs/bundle/release/app-release.aab
+            apps/mobile/build/app/outputs/flutter-apk/app-release.apk
+      - name: Upload to Google Play internal testing (Fastlane)
+        if: inputs.upload_internal == true && env.HAS_KEYSTORE == 'true'
+        working-directory: apps/mobile
+        env:
+          PLAY_JSON: ${{ secrets.PLAY_JSON_KEY }}
+        run: |
+          printf '%s' "$PLAY_JSON" > "$RUNNER_TEMP/play.json"
+          gem install bundler && bundle install
+          PLAY_JSON_KEY_FILE="$RUNNER_TEMP/play.json" bundle exec fastlane android internal
