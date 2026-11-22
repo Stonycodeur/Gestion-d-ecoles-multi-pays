@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Namespace
+metadata: { name: ecolemanager, labels: { pod-security.kubernetes.io/enforce: restricted } }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: { name: ecolemanager-config, namespace: ecolemanager }
+data:
+  NODE_ENV: production
+  AUTH_MODE: oidc
+  MODULES_DIR: /repo/packages/modules
+  TRUST_PROXY: "true"
+  RATE_LIMIT_PER_MIN: "600"
+  RATE_LIMIT_AUTH_PER_MIN: "30"
+  CORS_ORIGINS: https://app.example.org            # adapt
+  OIDC_ISSUER: https://sso.example.org/realms/ecolemanager   # adapt (Keycloak)
+  OIDC_JWKS_URI: https://sso.example.org/realms/ecolemanager/protocol/openid-connect/certs
+  OIDC_AUDIENCE: ecolemanager-api
+  PAYMENT_MODE: sandbox      # switch to live once credentials are in the Secret (docs/INTEGRATIONS.md)
+  PUSH_MODE: sandbox
+  LLM_MODE: sandbox
+  MINISTRY_MODE: sandbox
+---
+# Template only. Create the real Secret out of band (sealed-secrets / external-secrets / kubectl create secret), never commit values.
+apiVersion: v1
+kind: Secret
+metadata: { name: ecolemanager-secrets, namespace: ecolemanager }
+type: Opaque
+stringData:
+  DATABASE_URL: postgres://app_runtime:CHANGE@postgres:5432/ecolemanager
+  DATABASE_ADMIN_URL: postgres://ecole:CHANGE@postgres:5432/ecolemanager
+  MESSAGE_KEY: CHANGE_BASE64_32_BYTES
+  WEBHOOK_KEY: CHANGE_BASE64_32_BYTES
+  GPS_KEY: CHANGE_BASE64_32_BYTES
+  PAYMENT_WEBHOOK_SECRET: CHANGE_AT_LEAST_16_CHARS
+  API_TOKEN_SECRET: CHANGE_AT_LEAST_32_CHARS
+  METRICS_TOKEN: CHANGE_AT_LEAST_16_CHARS
+  SENTRY_DSN: ""

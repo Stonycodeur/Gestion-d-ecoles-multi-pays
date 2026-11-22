@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ecolemanager
+  namespace: ecolemanager
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    nginx.ingress.kubernetes.io/limit-rps: "20"            # shared edge limit; the app's own limiter is per replica
+    nginx.ingress.kubernetes.io/proxy-body-size: 2m
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls: [ { hosts: [app.example.org, api.example.org, "*.schools.example.org"], secretName: ecolemanager-tls } ]
+  rules:
+    - host: app.example.org
+      http: { paths: [ { path: /, pathType: Prefix, backend: { service: { name: web, port: { number: 3001 } } } } ] }
+    - host: api.example.org
+      http: { paths: [ { path: /, pathType: Prefix, backend: { service: { name: api, port: { number: 3000 } } } } ] }
+---
+# Default deny, then open only what is needed.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny, namespace: ecolemanager }
+spec: { podSelector: {}, policyTypes: [Ingress] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-ingress-to-web-api, namespace: ecolemanager }
+spec:
+  podSelector: { matchExpressions: [ { key: app, operator: In, values: [web, api] } ] }
+  policyTypes: [Ingress]
+  ingress: [ { from: [ { namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ingress-nginx } } } ] } ]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-api-to-ai, namespace: ecolemanager }
+spec:
+  podSelector: { matchLabels: { app: ai } }
+  policyTypes: [Ingress]
+  ingress: [ { from: [ { podSelector: { matchLabels: { app: api } } } ], ports: [ { port: 8000 } ] } ]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-prometheus-to-api, namespace: ecolemanager }
+spec:
+  podSelector: { matchLabels: { app: api } }
+  policyTypes: [Ingress]
+  ingress: [ { from: [ { namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: monitoring } } } ], ports: [ { port: 3000 } ] } ]

@@ -2,6 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import { json, urlencoded } from 'express';
 import { QuotaCounter } from '@ecolemanager/shared';
+import { metricsMiddleware } from './metrics';
 
 /** HTTP hardening applied in main.ts: security headers, body size limits (raw body kept for webhook signatures), global and sensitive-route rate limits, strict CORS. */
 export function applySecurity(app: INestApplication, env: NodeJS.ProcessEnv = process.env): void {
@@ -16,6 +17,7 @@ export function applySecurity(app: INestApplication, env: NodeJS.ProcessEnv = pr
     if (!req.path.startsWith('/docs')) res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");   // the API serves data only; Swagger UI needs its own scripts
     next();
   });
+  x.use(metricsMiddleware(env));   // before the limiter: scraping must not consume or be blocked by the client quota
   const limiter = new QuotaCounter(); const general = Number(env.RATE_LIMIT_PER_MIN ?? 600); const sensitive = Number(env.RATE_LIMIT_AUTH_PER_MIN ?? 30);
   x.use((req: Request, res: Response, next: NextFunction) => {
     if (req.path === '/health' || req.method === 'OPTIONS') return next();

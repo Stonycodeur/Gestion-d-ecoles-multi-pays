@@ -1,0 +1,3 @@
+apiVersion: 1
+providers:
+  - { name: ecolemanager, type: file, options: { path: /var/lib/grafana/dashboards } }

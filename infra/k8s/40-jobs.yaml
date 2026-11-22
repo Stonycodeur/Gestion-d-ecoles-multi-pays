@@ -1,0 +1,17 @@
+# Demo seed (never in production): kubectl apply -f 40-jobs.yaml -l job=seed   after setting ALLOW_DEMO_SEED=1 consciously.
+apiVersion: batch/v1
+kind: Job
+metadata: { name: demo-seed, namespace: ecolemanager, labels: { job: seed } }
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext: { runAsNonRoot: true, runAsUser: 1000 }
+      containers:
+        - name: seed
+          image: ghcr.io/stonycodeur/ecolemanager-api:latest
+          command: ["node", "dist/seed/demo-seed.js"]
+          workingDir: /repo/apps/api
+          envFrom: [ { configMapRef: { name: ecolemanager-config } }, { secretRef: { name: ecolemanager-secrets } } ]
+          env: [ { name: ALLOW_DEMO_SEED, value: "1" } ]

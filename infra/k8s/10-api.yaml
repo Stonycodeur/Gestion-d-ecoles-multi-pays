@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: api, namespace: ecolemanager, labels: { app: api } }
+spec:
+  replicas: 2
+  strategy: { type: RollingUpdate, rollingUpdate: { maxUnavailable: 0, maxSurge: 1 } }
+  selector: { matchLabels: { app: api } }
+  template:
+    metadata:
+      labels: { app: api }
+      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "3000", prometheus.io/path: /metrics }
+    spec:
+      automountServiceAccountToken: false
+      securityContext: { runAsNonRoot: true, runAsUser: 1000, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: api
+          image: ghcr.io/stonycodeur/ecolemanager-api:latest      # built by CI; pin a digest in production
+          ports: [ { containerPort: 3000 } ]
+          envFrom: [ { configMapRef: { name: ecolemanager-config } }, { secretRef: { name: ecolemanager-secrets } } ]
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          resources: { requests: { cpu: 200m, memory: 256Mi }, limits: { cpu: "1", memory: 512Mi } }
+          readinessProbe: { httpGet: { path: /health, port: 3000 }, periodSeconds: 5 }
+          livenessProbe: { httpGet: { path: /health, port: 3000 }, initialDelaySeconds: 15, periodSeconds: 15 }
+          volumeMounts: [ { name: tmp, mountPath: /tmp } ]
+      volumes: [ { name: tmp, emptyDir: {} } ]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: api, namespace: ecolemanager }
+spec: { selector: { app: api }, ports: [ { port: 3000, targetPort: 3000 } ] }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: api, namespace: ecolemanager }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: api }
+  minReplicas: 2
+  maxReplicas: 10
+  metrics: [ { type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 70 } } } ]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: api, namespace: ecolemanager }
+spec: { minAvailable: 1, selector: { matchLabels: { app: api } } }

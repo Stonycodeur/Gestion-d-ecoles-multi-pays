@@ -12,6 +12,7 @@ process.env.CORS_ORIGINS = 'https://app.ecole.ga';
 process.env.RATE_LIMIT_PER_MIN = '40';
 process.env.RATE_LIMIT_AUTH_PER_MIN = '5';
 process.env.NODE_ENV = 'production';
+process.env.METRICS_TOKEN = 'm'.repeat(24);
 
 const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
 (enabled ? describe : describe.skip)('HTTP hardening', () => {
@@ -27,6 +28,13 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
     const r = await request(server).get('/health').expect(200);
     expect(r.headers['x-content-type-options']).toBe('nosniff'); expect(r.headers['x-frame-options']).toBe('DENY'); expect(r.headers['strict-transport-security']).toMatch(/max-age/);
     expect(r.headers['content-security-policy']).toContain("default-src 'none'"); expect(r.headers['x-powered-by']).toBeUndefined(); expect(r.headers['referrer-policy']).toBe('no-referrer');
+  });
+  it('/metrics requires its bearer token and exposes latency histograms', async () => {
+    await request(server).get('/metrics').expect(401);
+    await request(server).get('/metrics').set('Authorization', 'Bearer wrong-wrong-wrong-wrong').expect(401);
+    await request(server).get('/health').expect(200);
+    const r = await request(server).get('/metrics').set('Authorization', `Bearer ${'m'.repeat(24)}`).expect(200);
+    expect(r.text).toContain('http_request_duration_seconds_bucket'); expect(r.text).toContain('route="/health"');
   });
   it('CORS is strict: only configured origins, never a wildcard', async () => {
     const ok = await request(server).get('/health').set('Origin', 'https://app.ecole.ga'); expect(ok.headers['access-control-allow-origin']).toBe('https://app.ecole.ga');
