@@ -4,6 +4,7 @@ import { resolveTenant } from '@ecolemanager/shared';
 import { AuthService } from './auth.service';
 import { AuditService } from './audit.service';
 import { can } from '@ecolemanager/shared';
+import { MinistryService } from '../ministry/ministry.service';
 import type { CoreRequest } from './request-context';
 
 export const PUBLIC = 'isPublic';
@@ -14,7 +15,7 @@ export const RequirePermission = (p: string) => SetMetadata(PERMISSION, p);
 /** Global guard: authenticates, binds the tenant (token vs subdomain must agree), then enforces @RequirePermission via RBAC+ABAC. */
 @Injectable()
 export class CoreGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector, private readonly auth: AuthService, private readonly audit: AuditService) {}
+  constructor(private readonly reflector: Reflector, private readonly auth: AuthService, private readonly audit: AuditService, private readonly ministry: MinistryService) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     if (this.reflector.getAllAndOverride<boolean>(PUBLIC, [ctx.getHandler(), ctx.getClass()])) return true;
@@ -28,6 +29,12 @@ export class CoreGuard implements CanActivate {
       if ('error' in r) throw new ForbiddenException(r.error);
       if (req.tenantSlug && req.tenantSlug !== r.slug) throw new ForbiddenException('tenant mismatch');
       req.tenantSlug = r.slug;
+    }
+    if (!principal.isRoot && principal.roles.includes('inspector') && req.tenantSlug) {
+      // time-limited inspector access: checked against the directory on every call, so revocation is immediate
+      const until = await this.ministry.inspectorUntil(req.tenantSlug, principal.id);
+      if (!until || until.getTime() <= Date.now()) throw new ForbiddenException('inspector access expired or revoked');
+      principal.inspectorUntil = until.toISOString();
     }
     req.principal = principal;
 

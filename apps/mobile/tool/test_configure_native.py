@@ -19,6 +19,16 @@ class T(unittest.TestCase):
             self.assertEqual(plist["UIBackgroundModes"], ["fetch", "location", "remote-notification"])
             self.assertIn("NSLocationAlwaysAndWhenInUseUsageDescription", plist)
 
+    def test_xr_android_is_local_cleartext_only_and_idempotent(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d); (root / "android/app/src/main").mkdir(parents=True); (root / "android/app/src/main/AndroidManifest.xml").write_text(MANIFEST)
+            for _ in range(2):
+                self.assertTrue(c.patch_android_xr(root))
+            xml = (root / "android/app/src/main/AndroidManifest.xml").read_text()
+            self.assertEqual(xml.count("android:networkSecurityConfig"), 1); self.assertEqual(xml.count("<queries>"), 1)
+            cfg = (root / "android/app/src/main/res/xml/network_security_config.xml").read_text()
+            self.assertIn('<base-config cleartextTrafficPermitted="false"/>', cfg); self.assertIn("localhost", cfg)
+
     def test_missing_platform_folders(self):
         with tempfile.TemporaryDirectory() as d:
             self.assertFalse(c.patch_android(Path(d))); self.assertFalse(c.patch_ios(Path(d)))

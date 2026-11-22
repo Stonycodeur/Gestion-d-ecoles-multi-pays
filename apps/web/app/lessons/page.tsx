@@ -19,7 +19,7 @@ export default function LessonsPage() {
     <Shell>
       <h1>Cahier de textes</h1>
       <input aria-label="recherche" placeholder="Recherche plein texte" value={q} onChange={(e) => setQ(e.target.value)} /> <button onClick={load}>Chercher</button>
-      <ul>{lessons.map((l) => <li key={l.id}><strong>{l.on_date?.slice(0, 10)}</strong> {l.title}{l.homework ? ` — À faire : ${l.homework}` : ''}{l.visa_at ? ' ✔ visa' : ''}</li>)}</ul>
+      <ul>{lessons.map((l) => <li key={l.id}><strong>{l.on_date?.slice(0, 10)}</strong> {l.title}{l.homework ? ` — À faire : ${l.homework}` : ''}{l.visa_at ? ' ✔ visa' : ''} <a href={`/xr?lesson_id=${l.id}`}>3D/AR</a></li>)}</ul>
       <fieldset><legend>Nouvelle séance</legend>
         <select aria-label="classe" value={f.class_id} onChange={set('class_id')}><option value="">Classe…</option>{classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>{' '}
         <select aria-label="matière" value={f.subject_id} onChange={set('subject_id')}><option value="">Matière…</option>{subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>{' '}

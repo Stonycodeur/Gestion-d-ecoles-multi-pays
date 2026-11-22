@@ -1,0 +1,9 @@
+{
+  "name": "module-xr",
+  "version": "1.0.0",
+  "core_version": ">=0.1.0",
+  "description": "Réalité virtuelle et augmentée : modèles 3D (AR) et panoramas 360° rattachés au cahier de textes et aux ressources, visite virtuelle publique, repli en vue 3D",
+  "permissions": ["xr:read", "xr:write"],
+  "config_schema": {},
+  "mobile_screens": ["xr_viewer"]
+}

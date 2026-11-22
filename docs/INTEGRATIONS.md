@@ -22,4 +22,11 @@ En mode sandbox, les push sont écrits dans la table `push_outbox` (consultable 
 | GPS (chiffrement) | — | `GPS_KEY` (base64, 32 octets : `openssl rand -base64 32`) | Obligatoire pour enregistrer/lire des positions ; ne jamais le commiter |
 | GPS (carte mobile) | `--dart-define=MAP_TILE_URL=...` | URL de tuiles | Défaut : tuiles OpenStreetMap (usage modéré) ; en production, utiliser un fournisseur de tuiles contractuel ; le web utilise l'intégration OpenStreetMap |
 
-Les adaptateurs de paiement, GPS/cartes, IA générative et ministères seront documentés ici dans leurs phases.
+| Ministères | `MINISTRY_MODE` (`sandbox` par défaut, `live`) | `MINISTRY_<CODE_PAYS>_URL`, `MINISTRY_<CODE_PAYS>_TOKEN` ; sandbox : `MINISTRY_SANDBOX_FAIL_FIRST=n` pour simuler n échecs | Les connecteurs (API ou fichier CSV/XML/JSON) sont dans `countries.ministry_connectors` ; en production, aligner le format de l'adaptateur HTTP sur la documentation du ministère |
+| API publique | — | `API_TOKEN_SECRET` (≥ 32 caractères ; sinon `SANDBOX_JWT_SECRET`) | Clients créés par l'établissement (secret montré une fois) ; `POST /oauth/token` |
+| Webhooks sortants | — | `WEBHOOK_KEY` (base64, 32 octets) chiffre les secrets de signature ; `WEBHOOK_ALLOW_PRIVATE` réservé aux tests | Signature `x-em-signature` = HMAC-SHA256(secret, `timestamp.corps`) |
+| Marketplace | — | aucune | Publication réservée au Super-Admin racine ; pour une exécution de code tiers non fiable, isoler dans un conteneur |
+
+
+| IA générative | `LLM_MODE` (`sandbox` par défaut, `live`) | `LLM_URL` (endpoint chat-completions compatible OpenAI), `LLM_API_KEY`, `LLM_MODEL` | Seuls des textes pseudonymisés quittent le serveur ; vérifier le contrat avec le fournisseur (hébergement, conservation) |
+| VR/AR | — | aucune | Déposer les fichiers glb/usdz/jpg dans le stockage objet (MinIO/S3) et enregistrer leur adresse https ; poids max 25 Mo (3D) / 15 Mo (360°) |

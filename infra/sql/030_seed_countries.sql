@@ -46,3 +46,12 @@ INSERT INTO academic_calendars (country_code,label,periods) VALUES
 ('GA','trimestres','[{"code":"T1","start_month":10,"end_month":12},{"code":"T2","start_month":1,"end_month":3},{"code":"T3","start_month":4,"end_month":6}]'),
 ('CI','trimestres','[{"code":"T1","start_month":9,"end_month":12},{"code":"T2","start_month":1,"end_month":3},{"code":"T3","start_month":4,"end_month":6}]'),
 ('XL','semestres','[{"code":"S1","start_month":9,"end_month":1},{"code":"S2","start_month":2,"end_month":6}]');
+
+-- Phase 6a: exam fiche configuration per country (data, not code). Weights, thresholds and mentions are to be validated with the ministries (phase 0).
+UPDATE education_systems SET national_exam = national_exam || '{"fiche":{"exam_code":"BEPC","continuous_weight":0.4,"exam_weight":0.6,"pass_pct":50,
+  "components":[{"subject_code":"MATH","coefficient":3},{"subject_code":"FR","coefficient":3},{"subject_code":"EN","coefficient":2},{"subject_code":"SVT","coefficient":2},{"subject_code":"HG","coefficient":2},{"subject_code":"PC","coefficient":2},{"subject_code":"EPS","coefficient":1}],
+  "mentions":[{"label":"Passable","min_pct":50},{"label":"Assez bien","min_pct":60},{"label":"Bien","min_pct":70},{"label":"Très bien","min_pct":80}]}}'::jsonb
+  WHERE country_code IN ('GA','CI') AND cycle = 'lower_secondary';
+UPDATE education_systems SET national_exam = national_exam || '{"fiche":{"exam_code":"CEP","continuous_weight":0.5,"exam_weight":0.5,"pass_pct":50,
+  "components":[{"subject_code":"MATH","coefficient":2},{"subject_code":"FR","coefficient":2},{"subject_code":"EVEIL","coefficient":1}],"mentions":[]}}'::jsonb
+  WHERE country_code = 'GA' AND cycle = 'primary';

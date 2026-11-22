@@ -1,0 +1,18 @@
+{
+  "name": "module-visitor",
+  "version": "1.0.0",
+  "core_version": ">=0.1.0",
+  "description": "Espace visiteur public : site vitrine, inscription en ligne, actualités publiques, contact, statistiques, visite virtuelle à 360°",
+  "permissions": [
+    "applications:manage",
+    "site:write",
+    "public:read"
+  ],
+  "config_schema": {
+    "min_cohort_public_stats": 10,
+    "applications_open": true
+  },
+  "mobile_screens": [
+    "visitor_applications"
+  ]
+}

@@ -66,5 +66,20 @@
 - Surpaiement non crédité (D-029). Rappels : pas encore de tâche planifiée automatique (endpoint prêt).
 - Pas de test automatisé de l'envoi de position en arrière-plan sur appareil réel (nécessite émulateur/appareil).
 
+## Phase 6 (orientation, visiteur, ministères, API publique, marketplace…) : branche `phase-6-extensions`
+**Lot 6a (CI verte)** : orientation et stages, fiche BEPC/CEP, ressources et forums, espace visiteur public (site, inscription en ligne, contact, statistiques) : API, web, mobile, tests e2e.
+**Lot 6b (CI verte)** : marketplace de modules (soumission, revue automatique, décision racine, installation avec consentement, mises à jour, avis, retrait), connecteurs ministères (Gabon : MEN, MESR ; sandbox et HTTP), comptes d'inspecteurs, API publique (OAuth2 client credentials, REST, GraphQL, quotas, portail `/developers`), webhooks sortants signés avec relance, modules du registre correspondants ; web (Ministères, API, Marketplace, Développeurs) et mobile (Ministères, Marketplace). 75 tests e2e API, 80 tests shared.
+**Limites connues**
+- Quotas API en mémoire (un seul processus) ; le connecteur HTTP ministériel est générique (à aligner sur les API réelles) ; sandbox des modules tiers : pas d'isolation conteneur.
+- Préparation des transmissions et administration des clients API / soumission de modules : web uniquement (administration lourde, documenté).
+- Pas de tâche planifiée automatique pour `run-due` ni pour la relance des webhooks (endpoints prêts).
+**Lot 6c (CI verte)** : assistant pédagogique génératif (résumés, QCM → brouillon de quiz, exercices, traduction, aide à la correction validée, tuteur filtré par âge) et VR/AR (`xr_assets`, rattachés aux leçons et ressources, visite publique 360°, visionneuse WebXR et mobile) ; web (/assistant, /xr, leçons, site public) et mobile (assistant, tuteur, visionneuse). Tests : 87 shared, e2e API 6c.
+**Limites 6c**
+- Sans `LLM_MODE=live` les réponses sont simulées et signalées comme telles ; la traduction simulée ne traduit pas (marqueur seulement).
+- Les fichiers 3D/360° sont référencés par adresse : le téléversement vers MinIO n'est pas encore branché dans l'interface.
+- AR mobile : dépend d'ARCore / AR Quick Look de l'appareil ; non vérifié sur appareil réel (aucun émulateur ici).
+- L'assistant mobile n'enregistre pas les QCM en brouillon (web seulement).
+**Phase 6 terminée** côté code ; fusion dans `main` après CI verte.
+
 ## Prochaine étape
-Fusionner la Phase 5, puis Phase 6 (orientation, stages, espace visiteur, ministères, API publique, marketplace, IA générative, VR/AR).
+Phase 7 (tests, sécurité, performance, seed Gabon, hors ligne, builds signables, stores) puis Phase 8.
