@@ -172,6 +172,7 @@ BEGIN
   EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.quiz_attempts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
     quiz_id UUID NOT NULL REFERENCES %I.quizzes(id) ON DELETE CASCADE, student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE,
     started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), submitted_at TIMESTAMPTZ, score100 INT, flags JSONB NOT NULL DEFAULT '[]', result JSONB)$f$, s, tid, s, s);
+  EXECUTE format('ALTER TABLE %I.lessons ADD COLUMN IF NOT EXISTS quiz_id UUID REFERENCES %I.quizzes(id) ON DELETE SET NULL', s, s);
   EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.ai_predictions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
     student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE, probability NUMERIC NOT NULL CHECK (probability BETWEEN 0 AND 1),
     level TEXT NOT NULL CHECK (level IN ('low','medium','high')), factors JSONB NOT NULL, model_version TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s);
@@ -297,8 +298,22 @@ BEGIN
     lesson_id UUID REFERENCES %I.lessons(id) ON DELETE SET NULL, resource_id UUID REFERENCES %I.resources(id) ON DELETE SET NULL, subject_code TEXT, level_code TEXT,
     is_public BOOLEAN NOT NULL DEFAULT FALSE, alt_text TEXT NOT NULL, created_by UUID, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, tid, s, s);
 
+  -- Competencies (spec 6.7: competency-based evaluation) and university course units with ECTS (spec 6.7, transcripts).
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.competencies (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    subject_id UUID NOT NULL REFERENCES %I.subjects(id) ON DELETE CASCADE, code TEXT NOT NULL, label TEXT NOT NULL, UNIQUE (subject_id, code))$f$, s, tid, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.competency_assessments (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE, competency_id UUID NOT NULL REFERENCES %I.competencies(id) ON DELETE CASCADE,
+    period_code TEXT NOT NULL, level TEXT NOT NULL CHECK (level IN ('not_acquired','in_progress','acquired','mastered')), comment TEXT,
+    assessed_by UUID, assessed_on DATE NOT NULL DEFAULT CURRENT_DATE, UNIQUE (student_id, competency_id, period_code))$f$, s, tid, s, s);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.course_units (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    code TEXT NOT NULL UNIQUE, title TEXT NOT NULL, credits INT NOT NULL CHECK (credits BETWEEN 1 AND 60), semester TEXT NOT NULL)$f$, s, tid);
+  EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.unit_results (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
+    student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE, unit_id UUID NOT NULL REFERENCES %I.course_units(id) ON DELETE CASCADE,
+    school_year TEXT NOT NULL, raw_value TEXT NOT NULL, normalized NUMERIC NOT NULL CHECK (normalized BETWEEN 0 AND 100), scale_snapshot JSONB NOT NULL,
+    entered_by UUID, UNIQUE (student_id, unit_id, school_year))$f$, s, tid, s, s);
+
   FOREACH t IN ARRAY ARRAY['classes','subjects','rooms','students','guardians','teachers','class_subjects','schedules','schedule_slots',
-    'substitutions','evaluations','grades','report_cards','absences','justifications','lessons','inspector_access','contracts','directory','threads','thread_members','messages','message_attachments','news','surveys','survey_votes','events','notifications','device_tokens','push_outbox','locker_documents','oaa_config','oaa_scores','oaa_history','oaa_assessments','oaa_penalties','game_results','xp_events','student_badges','challenges','challenge_completions','teams','team_members','quizzes','quiz_questions','quiz_attempts','ai_predictions','ai_feedback','fee_plans','invoices','installments','payments','payment_events','receipts','gps_consents','gps_geofences','gps_positions','gps_state','gps_events','gps_access_log','career_paths','internships','exam_results','exam_outcomes','visitor_applications','contact_messages','site_content','resources','forums','forum_posts','ministry_transmissions','ministry_logs','api_clients','webhooks_out','webhook_deliveries','module_installs','ai_usage_log','ai_proposals','xr_assets'] LOOP
+    'substitutions','evaluations','grades','report_cards','absences','justifications','lessons','inspector_access','contracts','competencies','competency_assessments','course_units','unit_results','directory','threads','thread_members','messages','message_attachments','news','surveys','survey_votes','events','notifications','device_tokens','push_outbox','locker_documents','oaa_config','oaa_scores','oaa_history','oaa_assessments','oaa_penalties','game_results','xp_events','student_badges','challenges','challenge_completions','teams','team_members','quizzes','quiz_questions','quiz_attempts','ai_predictions','ai_feedback','fee_plans','invoices','installments','payments','payment_events','receipts','gps_consents','gps_geofences','gps_positions','gps_state','gps_events','gps_access_log','career_paths','internships','exam_results','exam_outcomes','visitor_applications','contact_messages','site_content','resources','forums','forum_posts','ministry_transmissions','ministry_logs','api_clients','webhooks_out','webhook_deliveries','module_installs','ai_usage_log','ai_proposals','xr_assets'] LOOP
     EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY', s, t);
     EXECUTE format('ALTER TABLE %I.%I FORCE ROW LEVEL SECURITY', s, t);
     EXECUTE format('DROP POLICY IF EXISTS tenant_isolation ON %I.%I', s, t);

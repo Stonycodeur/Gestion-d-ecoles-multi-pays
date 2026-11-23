@@ -14,7 +14,7 @@ docker compose -f infra/docker-compose.yml --env-file .env --profile seed run --
 Web : `http://localhost:3001` · API et Swagger : `http://localhost:3000/docs` · Grafana : `http://localhost:3002`. Les scripts SQL `infra/sql/010` à `070` sont appliqués dans l'ordre à la première création de la base.
 
 ### Production (Kubernetes)
-1. **Base de données** : PostgreSQL 16 géré ou opéré par vous. Créez le rôle d'exécution non-superutilisateur `app_runtime` (`infra/sql/000_runtime_role.sh`), puis appliquez dans l'ordre `010_core.sql`, `020_seed_roles.sql`, `030_seed_countries.sql`, `040_tenant_template.sql`, `050_marketplace.sql`, `060_idempotency.sql`, `070_settings.sql` (avec `psql` depuis un poste d'exploitation ou votre outil de migration ; `infra/k8s/40-jobs.yaml` ne contient que le seed de démonstration). Les établissements existants reçoivent les nouveautés en rejouant `SELECT provision_tenant_schema('<slug>')`, qui est idempotent.
+1. **Base de données** : PostgreSQL 16 géré ou opéré par vous. Créez le rôle d'exécution non-superutilisateur `app_runtime` (`infra/sql/000_runtime_role.sh`), puis appliquez dans l'ordre `010_core.sql`, `020_seed_roles.sql`, `030_seed_countries.sql`, `040_tenant_template.sql`, `050_marketplace.sql`, `060_idempotency.sql`, `070_settings.sql`, `080_tenants_admin.sql` (avec `psql` depuis un poste d'exploitation ou votre outil de migration ; `infra/k8s/40-jobs.yaml` ne contient que le seed de démonstration). Les établissements existants reçoivent les nouveautés en rejouant `SELECT provision_tenant_schema('<slug>')`, qui est idempotent.
 2. **Secrets** : créez `ecolemanager-secrets` hors dépôt (sealed-secrets, external-secrets ou `kubectl create secret`) à partir du gabarit de `infra/k8s/00-namespace-config.yaml` : `DATABASE_URL` (rôle `app_runtime`), `DATABASE_ADMIN_URL`, `MESSAGE_KEY`, `WEBHOOK_KEY`, `GPS_KEY` (base64 de 32 octets : `openssl rand -base64 32`), `PAYMENT_WEBHOOK_SECRET`, `API_TOKEN_SECRET`, `METRICS_TOKEN`, `SENTRY_DSN` si utilisé.
 3. **Configuration** : adaptez `ecolemanager-config` (`CORS_ORIGINS`, `OIDC_ISSUER`, `OIDC_JWKS_URI`, `OIDC_AUDIENCE`). `AUTH_MODE=oidc` obligatoire en production ; le mode `sandbox` est réservé au développement.
 4. **Keycloak** : importez `infra/keycloak/realm-ecolemanager.json` (clients publics `ecolemanager-web` et `ecolemanager-mobile` avec PKCE, MFA, mappeurs de rôles et d'établissement) ; en production, changez les URI de redirection et créez les comptes (`npm --prefix apps/api run seed:keycloak` pour la démonstration).
@@ -41,10 +41,10 @@ cp .env.example .env
 docker compose -f infra/docker-compose.yml --env-file .env up -d --build
 docker compose -f infra/docker-compose.yml --env-file .env --profile seed run --rm seed
 ```
-Web `http://localhost:3001`, API and Swagger `http://localhost:3000/docs`, Grafana `http://localhost:3002`. SQL scripts `010` to `070` run in order when the database is first created.
+Web `http://localhost:3001`, API and Swagger `http://localhost:3000/docs`, Grafana `http://localhost:3002`. SQL scripts `010` to `080` run in order when the database is first created.
 
 ### Production (Kubernetes)
-1. Database: create the non-superuser runtime role `app_runtime`, then apply `010` to `070` in order. Existing schools pick up changes by replaying the idempotent `SELECT provision_tenant_schema('<slug>')`.
+1. Database: create the non-superuser runtime role `app_runtime`, then apply `010` to `080` in order. Existing schools pick up changes by replaying the idempotent `SELECT provision_tenant_schema('<slug>')`.
 2. Secrets: create `ecolemanager-secrets` out of band from the template in `infra/k8s/00-namespace-config.yaml`; generate keys with `openssl rand -base64 32`.
 3. Config: adapt `CORS_ORIGINS`, `OIDC_ISSUER`, `OIDC_JWKS_URI`, `OIDC_AUDIENCE`; `AUTH_MODE=oidc` is mandatory in production.
 4. Keycloak: import `infra/keycloak/realm-ecolemanager.json`, adjust redirect URIs, create accounts.

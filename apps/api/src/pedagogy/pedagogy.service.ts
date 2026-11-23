@@ -246,7 +246,8 @@ export class PedagogyService {
       const d = await this.reportData(q, slug, studentId, str(period, 'period', 10));
       const card = buildReportCard({ grades: d.grades, subjectCoefs: d.subjectCoefs, scale: d.scale, locale, rank: d.rank, classSize: d.classSize });
       return { student: { id: d.st.id, first_name: d.st.first_name, last_name: d.st.last_name, class: d.st.class_name }, period, scale: d.scale.code,
-        lines: card.lines.map((l) => ({ ...l, subject: d.subjectNames.get(l.subjectId) })), general: card.general, rank: card.rank, classSize: card.classSize };
+        lines: card.lines.map((l) => ({ ...l, subject: d.subjectNames.get(l.subjectId) })), general: card.general, rank: card.rank, classSize: card.classSize,
+        competencies: await q(`SELECT c.code, c.label, sub.name AS subject, a.level, a.comment FROM competency_assessments a JOIN competencies c ON c.id = a.competency_id JOIN subjects sub ON sub.id = c.subject_id WHERE a.student_id = $1 AND a.period_code = $2 ORDER BY sub.name, c.code`, [studentId, period]) };
     });
   }
   async reportPdf(slug: string, studentId: string, period: string, locale = 'fr') {
@@ -312,10 +313,19 @@ export class PedagogyService {
 
   // ---- lessons (cahier de textes) ---------------------------------------------------------------------------------
   createLesson(slug: string, actor: string, b: any) {
-    return this.tx(slug, async (q) => (await q(`INSERT INTO lessons(class_id, subject_id, on_date, title, content, homework, homework_due, is_exam, status)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'published') RETURNING *`,
-      [uuid(b.class_id, 'class_id'), uuid(b.subject_id, 'subject_id'), date(b.on_date, 'on_date'), str(b.title, 'title', 200), typeof b.content === 'string' ? b.content : '',
-        optStr(b.homework, 'homework', 4000), b.homework_due ? date(b.homework_due, 'homework_due') : null, b.is_exam === true]))[0]);
+    return this.tx(slug, async (q) => {
+      const classId = uuid(b.class_id, 'class_id');
+      let quizId: string | null = null;
+      if (b.quiz_id) {   // interactive homework: the quiz must exist and belong to the same class
+        quizId = uuid(b.quiz_id, 'quiz_id');
+        const z = (await q('SELECT class_id FROM quizzes WHERE id = $1', [quizId]))[0];
+        if (!z || z.class_id !== classId) throw new BadRequestException('quiz not found for this class');
+      }
+      return (await q(`INSERT INTO lessons(class_id, subject_id, on_date, title, content, homework, homework_due, is_exam, status, quiz_id)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'published',$9) RETURNING *`,
+        [classId, uuid(b.subject_id, 'subject_id'), date(b.on_date, 'on_date'), str(b.title, 'title', 200), typeof b.content === 'string' ? b.content : '',
+          optStr(b.homework, 'homework', 4000), b.homework_due ? date(b.homework_due, 'homework_due') : null, b.is_exam === true, quizId]))[0];
+    });
   }
   listLessons(slug: string, classId?: string, text?: string) {
     return this.tx(slug, (q) => q(`SELECT id, class_id, subject_id, on_date, title, content, homework, homework_due, is_exam, visa_at FROM lessons

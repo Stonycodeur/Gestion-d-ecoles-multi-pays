@@ -169,7 +169,7 @@ export class SchoolConfigService {
 
   // ---- timetable of a student / class / teacher, for every role (ABAC checked here, not by route) -----------------------
   /** One call for web and mobile: latest published timetable (staff also see a draft), slots with names, upcoming substitutions. */
-  async timetable(slug: string, p: Principal, q0: { student_id?: string; class_id?: string; mine?: string }) {
+  async timetable(slug: string, p: Principal, q0: { student_id?: string; class_id?: string; mine?: string }, range?: { from: string; to: string }) {
     const staff = p.isRoot || p.roles.some((r) => ['tenant_super_admin', 'admin', 'head', 'teacher', 'education_assistant'].includes(r));
     return this.tx(slug, async (q, t) => {
       let classId: string | undefined; let teacherId: string | undefined;
@@ -200,7 +200,7 @@ export class SchoolConfigService {
       const ids = slots.map((x: any) => x.id);
       const subs = ids.length ? await q(`SELECT x.id, x.slot_id, x.on_date, (st.first_name || ' ' || st.last_name) AS substitute_name, x.substitute_teacher_id
         FROM substitutions x JOIN teachers st ON st.id = x.substitute_teacher_id
-        WHERE x.slot_id = ANY($1::uuid[]) AND x.on_date BETWEEN CURRENT_DATE AND CURRENT_DATE + 14 ORDER BY x.on_date`, [ids]) : [];
+        WHERE x.slot_id = ANY($1::uuid[]) AND x.on_date BETWEEN COALESCE($2::date, CURRENT_DATE) AND COALESCE($3::date, CURRENT_DATE + 14) ORDER BY x.on_date`, [ids, range?.from ?? null, range?.to ?? null]) : [];
       return { schedule: sch, slots, substitutions: subs };
     });
   }

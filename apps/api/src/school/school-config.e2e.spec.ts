@@ -23,8 +23,13 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
   beforeAll(async () => {
     admin = new Pool({ connectionString: process.env.DATABASE_ADMIN_URL });
     for (const [slug, id] of [['e2e_q', U(9101)], ['e2e_r', U(9102)]]) {
-      await admin.query("INSERT INTO tenants(id, slug, name, school_type, country_code, schema_name) VALUES ($1,$2,$3,'lycee','GA',$4) ON CONFLICT DO NOTHING", [id, slug, `Lycée ${slug}`, `tenant_${slug}`]);
-      await admin.query('SELECT provision_tenant_schema($1)', [slug]);
+      const c = await admin.connect();                       // one transaction: the row is never visible without its schema
+      try {
+        await c.query('BEGIN');
+        await c.query("INSERT INTO tenants(id, slug, name, school_type, country_code, schema_name) VALUES ($1,$2,$3,'lycee','GA',$4) ON CONFLICT DO NOTHING", [id, slug, `Lycée ${slug}`, `tenant_${slug}`]);
+        await c.query('SELECT provision_tenant_schema($1)', [slug]);
+        await c.query('COMMIT');
+      } catch (e) { await c.query('ROLLBACK'); throw e; } finally { c.release(); }
     }
     const { AppModule } = await import('../app.module');
     const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -136,7 +141,7 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
     await admin.query('UPDATE tenant_e2e_q.teachers SET user_id = $1 WHERE id = $2', [U(23), ids.t1]);
     const teacher = await tok('teacher', 'e2e_q', 23, { class_ids: [ids.cls] });
     expect((await call('get', '/timetable?mine=1', teacher).expect(200)).body.slots.length).toBeGreaterThanOrEqual(1);
-    await call('get', '/timetable', adminOther).expect(400);                                                       // staff must say which class
+    await call('get', '/timetable', adminOther).expect(200);                                                       // school staff without filter see the whole school (empty here)
     expect((await call('get', `/timetable?class_id=${ids.cls}`, headT).expect(200)).body.slots.length).toBeGreaterThanOrEqual(1);
     expect((await call('get', '/me/abilities', headT).expect(200)).body).toMatchObject({ grades_write: true, absences_write: true });
     expect((await call('get', '/me/abilities', fam).expect(200)).body).toMatchObject({ grades_write: false, absences_write: false, absences_justify: true });
