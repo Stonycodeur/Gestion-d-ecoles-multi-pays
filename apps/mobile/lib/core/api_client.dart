@@ -60,6 +60,13 @@ class ApiClient {
     return jsonDecode(r.body);
   }
 
+  /// Online PUT returning the decoded body (settings such as notification channels): never queued.
+  Future<dynamic> putOnline(String school, String token, String path, Map<String, dynamic> body) async {
+    final r = await _c.put(Uri.parse('$apiBase$path'), headers: _h(school, token), body: jsonEncode(body));
+    if (r.statusCode >= 300) throw Exception('PUT $path failed (${r.statusCode}): ${r.body}');
+    return jsonDecode(r.body);
+  }
+
   /// Online DELETE with a JSON body (account deletion): never queued.
   Future<dynamic> deleteOnline(String school, String token, String path, Map<String, dynamic> body) async {
     final req = http.Request('DELETE', Uri.parse('$apiBase$path'))..headers.addAll(_h(school, token))..body = jsonEncode(body);

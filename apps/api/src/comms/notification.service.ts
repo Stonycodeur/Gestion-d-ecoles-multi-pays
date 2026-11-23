@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { buildNotification, type Lang, type NotificationType } from '@ecolemanager/shared';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { buildNotification, externalChannelsFor, smsText, type Lang, type NotificationType } from '@ecolemanager/shared';
 import { TenantDb, type Q } from '../pedagogy/tenant-db.service';
 import { Adapters } from '../adapters/adapters';
 import { RealtimeGateway } from './realtime.gateway';
@@ -43,7 +43,8 @@ export class NotificationService {
 
   private async deliver(q: Q, slug: string, userIds: string[], type: NotificationType, params: Params, data: Record<string, string>): Promise<number> {
     if (!userIds.length) return 0;
-    const dir = await q('SELECT user_id, locale FROM directory WHERE user_id = ANY($1::uuid[])', [userIds]);
+    const dir = await q('SELECT user_id, locale, email, phone, notify_sms, notify_email FROM directory WHERE user_id = ANY($1::uuid[])', [userIds]);
+    const contact = new Map<string, any>(dir.map((d: any) => [d.user_id, d]));
     const locale = new Map<string, Lang>(dir.map((d: any) => [d.user_id, (LANGS.includes(d.locale) ? d.locale : 'fr') as Lang]));
     const push = this.adapters.push();
     let n = 0;
@@ -59,8 +60,26 @@ export class NotificationService {
           if (push.mode === 'sandbox') await q('INSERT INTO push_outbox(user_id, platform, title, body, mode) VALUES ($1,$2,$3,$4,$5)', [uid, t.platform, msg.title, msg.body, 'sandbox']);
         } catch (e) { this.log.warn(`push failed: ${(e as Error).message}`); }
       }
+      const c = contact.get(uid);
+      if (c) {   // e-mail / SMS for the types that need them, best effort like push
+        for (const ch of externalChannelsFor(type, { sms: c.notify_sms !== false, email: c.notify_email !== false }, { phone: c.phone, email: c.email })) {
+          try { if (ch === 'sms') await this.adapters.sms().send(c.phone, smsText(msg.title, msg.body)); else await this.adapters.email().send(c.email, msg.title, msg.body); }
+          catch (e) { this.log.warn(`${ch} failed: ${(e as Error).message}`); }
+        }
+      }
       n++;
     }
     return n;
+  }
+
+  /** The person's own switches for the optional channels (push and in-app are always on; the OS controls push). */
+  async getPrefs(slug: string, userId: string) {
+    const r = (await this.db.run(slug, (q) => q('SELECT notify_sms, notify_email, (phone IS NOT NULL) AS has_phone, (email IS NOT NULL) AS has_email FROM directory WHERE user_id = $1', [userId])))[0];
+    return { sms: r ? r.notify_sms : true, email: r ? r.notify_email : true, has_phone: !!r?.has_phone, has_email: !!r?.has_email };
+  }
+  async setPrefs(slug: string, userId: string, b: any) {
+    if (typeof b?.sms !== 'boolean' && typeof b?.email !== 'boolean') throw new BadRequestException('sms and/or email must be boolean');
+    await this.db.run(slug, (q) => q('UPDATE directory SET notify_sms = COALESCE($2, notify_sms), notify_email = COALESCE($3, notify_email) WHERE user_id = $1', [userId, typeof b.sms === 'boolean' ? b.sms : null, typeof b.email === 'boolean' ? b.email : null]));
+    return this.getPrefs(slug, userId);
   }
 }

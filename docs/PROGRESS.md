@@ -104,8 +104,11 @@
 - Seed de démonstration : établissement et schéma créés dans une seule transaction.
 **Livré en `phase-9b-keycloak`**
 - Suppression de compte : désactivation de l'utilisateur Keycloak (adaptateur `IdentityAdapter`, sandbox/live, test unitaire avec faux serveur, e2e du chemin d'échec). Jamais essayé contre un vrai Keycloak.
+**Livré en `phase-9c-mobile`**
+- Notifications par SMS et e-mail (absences, rappels de paiement, factures, confirmations) en plus du push, avec interrupteurs par personne (`GET/PUT /me/notification-preferences`, web et mobile) ; adaptateurs sandbox/live existants (`SMS_MODE`, `EMAIL_MODE`).
+- Mobile : enregistrement d'un QCM généré par l'assistant (classe + matière + validation de l'enseignant).
+- Écart de lecture corrigé : la « modération des messages » citée dans les anciens restes à faire ne figure pas dans le cahier des charges ; elle n'est pas développée.
 **Reste à faire (aucun report silencieux ; voir `RAPPORT_FINAL.md`)**
-- Mobile : modération des messages ; envoi automatique SMS/e-mail selon les préférences ; enregistrement d'un brouillon de QCM depuis l'assistant.
 - Captures d'écran du README (nécessitent un appareil/navigateur) ; vérification visuelle RTL sur appareil.
 - Le script de charge n'a pas été exécuté dans la CI : aucune mesure p95 réelle n'est revendiquée.
 **Limites connues** : code vérifié par la CI (pas compilé localement) ; chemin xgboost/shap non testé ; création de jeux et configuration OAA web uniquement (D-023) ; écart D-020 à valider.

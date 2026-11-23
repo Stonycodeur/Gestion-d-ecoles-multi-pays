@@ -172,6 +172,7 @@ BEGIN
   EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.quiz_attempts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
     quiz_id UUID NOT NULL REFERENCES %I.quizzes(id) ON DELETE CASCADE, student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE,
     started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), submitted_at TIMESTAMPTZ, score100 INT, flags JSONB NOT NULL DEFAULT '[]', result JSONB)$f$, s, tid, s, s);
+  EXECUTE format('ALTER TABLE %I.directory ADD COLUMN IF NOT EXISTS notify_sms BOOLEAN NOT NULL DEFAULT TRUE, ADD COLUMN IF NOT EXISTS notify_email BOOLEAN NOT NULL DEFAULT TRUE', s);
   EXECUTE format('ALTER TABLE %I.lessons ADD COLUMN IF NOT EXISTS quiz_id UUID REFERENCES %I.quizzes(id) ON DELETE SET NULL', s, s);
   EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.ai_predictions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
     student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE, probability NUMERIC NOT NULL CHECK (probability BETWEEN 0 AND 1),
