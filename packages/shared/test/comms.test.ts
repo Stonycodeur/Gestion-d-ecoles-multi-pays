@@ -91,3 +91,18 @@ test('inspector: read-only on lessons and only until the expiry date', () => {
   assert.equal(can(insp, 'lessons:write', { tenantId: 'T1' }, before).allowed, false);
   assert.equal(can({ ...insp, inspectorUntil: undefined }, 'lessons:read', { tenantId: 'T1' }, before).allowed, false);
 });
+
+import { externalChannelsFor, smsText } from '../src/index.ts';
+test('SMS and e-mail are used only for the types that need them, when switched on and reachable', () => {
+  const on = { sms: true, email: true };
+  assert.deepEqual(externalChannelsFor('absence.recorded', on, { phone: '+241', email: 'a@b.c' }), ['sms', 'email']);
+  assert.deepEqual(externalChannelsFor('absence.recorded', { sms: false, email: true }, { phone: '+241', email: 'a@b.c' }), ['email']);
+  assert.deepEqual(externalChannelsFor('absence.recorded', on, { phone: null, email: 'a@b.c' }), ['email']);
+  assert.deepEqual(externalChannelsFor('absence.recorded', on, {}), []);
+  assert.deepEqual(externalChannelsFor('invoice.issued', on, { phone: '+241', email: 'a@b.c' }), ['email']);
+  assert.deepEqual(externalChannelsFor('message.new', on, { phone: '+241', email: 'a@b.c' }), []);
+});
+test('SMS text fits one segment', () => {
+  assert.equal(smsText('Absence', 'Ada absente le 2 nov.'), 'Absence: Ada absente le 2 nov.');
+  assert.equal(smsText('T', 'x'.repeat(400)).length, 160);
+});

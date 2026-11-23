@@ -1,5 +1,6 @@
-import { BadRequestException, Body, Controller, Get, Param, Post, Req, StreamableFile } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Post, Put, Req, StreamableFile } from '@nestjs/common';
 import { CommsService } from './comms.service';
+import { NotificationService } from './notification.service';
 import { RequirePermission } from '../core/auth.guard';
 import type { CoreRequest } from '../core/request-context';
 
@@ -12,7 +13,7 @@ const file = (d: { data: Buffer; contentType: string; filename: string }) =>
 
 @Controller()
 export class CommsController {
-  constructor(private readonly svc: CommsService) {}
+  constructor(private readonly svc: CommsService, private readonly notif: NotificationService) {}
 
   @Post('directory') @RequirePermission('directory:manage') upsertDir(@Req() r: CoreRequest, @Body() b: any) { return this.svc.upsertDirectory(need(r).slug, b); }
   @Get('directory') listDir(@Req() r: CoreRequest) { const { slug, p } = need(r); this.svc.authorize(p, slug, 'news:read'); return this.svc.listDirectory(slug); }
@@ -35,6 +36,8 @@ export class CommsController {
 
   @Get('notifications') notifications(@Req() r: CoreRequest) { const { slug, p } = need(r); return this.svc.listNotifications(slug, p); }
   @Post('notifications/:id/read') read(@Req() r: CoreRequest, @Param('id') id: string) { const { slug, p } = need(r); return this.svc.markRead(slug, p, id); }
+  @Get('me/notification-preferences') prefs(@Req() r: CoreRequest) { const { slug, p } = need(r); return this.notif.getPrefs(slug, p.id); }
+  @Put('me/notification-preferences') setPrefs(@Req() r: CoreRequest, @Body() b: any) { const { slug, p } = need(r); return this.notif.setPrefs(slug, p.id, b); }
   @Post('devices') device(@Req() r: CoreRequest, @Body() b: any) { const { slug, p } = need(r); return this.svc.registerDevice(slug, p, b); }
   @Get('push-outbox') outbox(@Req() r: CoreRequest) { const { slug, p } = need(r); return this.svc.pushOutbox(slug, p); }
   @Post('notifications/send') @RequirePermission('notify:send') send(@Req() r: CoreRequest, @Body() b: any) { return this.svc.sendTest(need(r).slug, b.user_ids, b.text); }

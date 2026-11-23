@@ -57,6 +57,41 @@ class _AssistantState extends ConsumerState<AssistantScreen> {
     }
   }
 
+  /// Teacher validation step: the generated questions become a quiz (gamification) only when the teacher picks a class and a subject and confirms.
+  Future<void> _saveQcm() async {
+    final out = result!['output'] as Map<String, dynamic>;
+    try {
+      final classes = ((await _get(ref, '/classes')) as List).cast<Map<String, dynamic>>();
+      final subjects = ((await _get(ref, '/subjects')) as List).cast<Map<String, dynamic>>();
+      if (!mounted) return;
+      String? cls = classes.isEmpty ? null : classes.first['id'] as String;
+      String? subj = subjects.isEmpty ? null : subjects.first['id'] as String;
+      final title = TextEditingController(text: 'QCM');
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (c) => StatefulBuilder(
+          builder: (c, set) => AlertDialog(
+            title: const Text('Enregistrer comme QCM / Save as quiz'),
+            content: Column(mainAxisSize: MainAxisSize.min, children: [
+              TextField(controller: title, decoration: const InputDecoration(labelText: 'Titre / Title')),
+              DropdownButton<String>(isExpanded: true, value: cls, hint: const Text('Classe / Class'), items: [for (final x in classes) DropdownMenuItem(value: x['id'] as String, child: Text('${x['name']}'))], onChanged: (v) => set(() => cls = v)),
+              DropdownButton<String>(isExpanded: true, value: subj, hint: const Text('Matière / Subject'), items: [for (final x in subjects) DropdownMenuItem(value: x['id'] as String, child: Text('${x['name']}'))], onChanged: (v) => set(() => subj = v)),
+            ]),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Annuler / Cancel')),
+              FilledButton(onPressed: cls == null || subj == null ? null : () => Navigator.pop(c, true), child: const Text('Valider / Confirm')),
+            ],
+          ),
+        ),
+      );
+      if (ok != true) return;
+      await _send(ref, '/ai/qcm/save', {'class_id': cls, 'subject_id': subj, 'title': title.text, 'questions': out['questions']});
+      if (mounted) setState(() => message = 'QCM enregistré, disponible dans les jeux / Quiz saved');
+    } catch (e) {
+      if (mounted) setState(() => message = '$e');
+    }
+  }
+
   String _render(Map<String, dynamic> r) {
     final o = r['output'] as Map<String, dynamic>;
     if (o['summary'] != null) return '${o['summary']}';
@@ -96,6 +131,8 @@ class _AssistantState extends ConsumerState<AssistantScreen> {
         TextField(controller: input, minLines: 3, maxLines: 8, decoration: InputDecoration(labelText: widget.tutor ? 'Ta question' : 'Texte')),
         FilledButton(onPressed: busy ? null : _run, child: Text(busy ? '…' : 'Envoyer')),
         if (!widget.tutor && result != null) Padding(padding: const EdgeInsets.only(top: 12), child: SelectableText(_render(result!))),
+        if (!widget.tutor && result != null && kind == 'qcm' && (result!['output'] as Map)['questions'] != null)
+          Align(alignment: Alignment.centerLeft, child: OutlinedButton.icon(icon: const Icon(Icons.save), label: const Text('Enregistrer comme QCM'), onPressed: _saveQcm)),
       ]),
     );
   }

@@ -35,7 +35,77 @@ class NewsScreen extends StatelessWidget {
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
   @override
-  Widget build(BuildContext context) => JsonListScreen('Notifications', '/notifications', (m) => '${m['title']} — ${m['body']}');
+  Widget build(BuildContext context) => JsonListScreen('Notifications', '/notifications', (m) => '${m['title']} — ${m['body']}', actions: [
+        IconButton(
+          tooltip: 'Canaux SMS / e-mail',
+          icon: const Icon(Icons.tune),
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationPrefsScreen())),
+        ),
+      ]);
+}
+
+/// Optional channels: absences and payment reminders also go by SMS and e-mail unless switched off here (push and in-app stay on).
+class NotificationPrefsScreen extends ConsumerStatefulWidget {
+  const NotificationPrefsScreen({super.key});
+  @override
+  ConsumerState<NotificationPrefsScreen> createState() => _PrefsState();
+}
+
+class _PrefsState extends ConsumerState<NotificationPrefsScreen> {
+  Map<String, dynamic>? prefs;
+  String message = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final s = ref.read(sessionProvider);
+    try {
+      final p = await ref.read(apiProvider).getRaw(s.school!, s.token!, '/me/notification-preferences');
+      if (mounted) setState(() => prefs = p);
+    } catch (_) {
+      if (mounted) setState(() => message = 'Connexion requise / Connection needed');
+    }
+  }
+
+  Future<void> _set(String key, bool v) async {
+    final s = ref.read(sessionProvider);
+    try {
+      final p = await ref.read(apiProvider).putOnline(s.school!, s.token!, '/me/notification-preferences', {key: v}) as Map<String, dynamic>;
+      if (mounted) setState(() => prefs = p);
+    } catch (_) {
+      if (mounted) setState(() => message = 'Enregistrement impossible hors connexion / Cannot save offline');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = prefs;
+    return Scaffold(
+      appBar: AppBar(title: const Text('Canaux de notification')),
+      body: ListView(padding: const EdgeInsets.all(12), children: [
+        if (message.isNotEmpty) Semantics(liveRegion: true, child: Text(message)),
+        const Text('Les notifications dans l’application et les push restent actives. / In-app and push notifications stay on.'),
+        if (p != null) ...[
+          SwitchListTile(
+            title: const Text('SMS (absences, rappels de paiement)'),
+            subtitle: Text(p['has_phone'] == true ? 'Numéro enregistré' : 'Aucun numéro enregistré par l’établissement'),
+            value: p['sms'] == true,
+            onChanged: (v) => _set('sms', v),
+          ),
+          SwitchListTile(
+            title: const Text('E-mail (absences, factures, rappels)'),
+            subtitle: Text(p['has_email'] == true ? 'Adresse enregistrée' : 'Aucune adresse enregistrée par l’établissement'),
+            value: p['email'] == true,
+            onChanged: (v) => _set('email', v),
+          ),
+        ],
+      ]),
+    );
+  }
 }
 
 class ThreadsScreen extends ConsumerWidget {

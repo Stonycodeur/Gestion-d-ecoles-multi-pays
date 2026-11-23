@@ -14,13 +14,14 @@ final cacheProvider = Provider<JsonCache>((ref) => JsonCache(ref.read(tokenStore
 class JsonListScreen extends ConsumerWidget {
   final String title, path;
   final String Function(Map<String, dynamic>) line;
-  const JsonListScreen(this.title, this.path, this.line);
+  final List<Widget> actions;
+  const JsonListScreen(this.title, this.path, this.line, {this.actions = const []});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = ref.watch(sessionProvider);
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(title: Text(title), actions: actions),
       body: FutureBuilder(
         future: ref.read(apiProvider).getJson(s.school!, s.token!, path, ref.read(cacheProvider)),
         builder: (c, snap) {

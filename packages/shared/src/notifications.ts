@@ -63,3 +63,23 @@ const T: Record<NotificationType, Record<Lang, (p: Record<string, string>) => { 
 export function buildNotification(type: NotificationType, lang: Lang, params: Record<string, string> = {}): { title: string; body: string } {
   return (T[type]?.[lang] ?? T[type].fr)(params);
 }
+
+/** Notifications that are also sent outside the app (spec 6.8, 9.2: absences and payment reminders by SMS, e-mail and push). Everything else stays in-app and push. */
+export type ExternalChannel = 'sms' | 'email';
+export const EXTERNAL_CHANNELS: Partial<Record<NotificationType, ExternalChannel[]>> = {
+  'absence.recorded': ['sms', 'email'],
+  'payment.reminder': ['sms', 'email'],
+  'invoice.issued': ['email'],
+  'payment.confirmed': ['email'],
+};
+
+/** Channels actually used for one recipient: the type's channels, minus those the person switched off, minus those without a contact. */
+export function externalChannelsFor(type: NotificationType, prefs: { sms: boolean; email: boolean }, contact: { phone?: string | null; email?: string | null }): ExternalChannel[] {
+  return (EXTERNAL_CHANNELS[type] ?? []).filter((c) => (c === 'sms' ? prefs.sms && !!contact.phone : prefs.email && !!contact.email));
+}
+
+/** SMS text: one segment, no markup. */
+export function smsText(title: string, body: string): string {
+  const t = `${title}: ${body}`.replace(/\s+/g, ' ').trim();
+  return t.length <= 160 ? t : `${t.slice(0, 157)}...`;
+}
