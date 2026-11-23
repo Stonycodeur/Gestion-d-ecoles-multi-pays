@@ -92,6 +92,62 @@
 - Exploitation : `/metrics` Prometheus protégé par jeton, alertes (p95 > 200 ms, 5xx, API arrêtée), tableau Grafana, Sentry sans corps ni en-têtes, Dockerfiles API/web, compose complet (API, web, seed, Keycloak avec import du realm), manifestes Kubernetes durcis (non-root, NetworkPolicy, HPA, PDB, limite au bord). Corrigés : tests SQL montés dans l'init Postgres, port du service IA.
 - Préparation des stores : icône et splash, signature release depuis `key.properties`, entitlements iOS, Fastlane (piste interne Play, TestFlight), workflows `release-android` / `release-ios`, dossier `store/`, `docs/PUBLICATION_STORES.md`.
 - Tests IA (qualité, biais/équité) déjà présents dans `apps/ai/tests`.
+**Livré depuis (branche `phase-8-docs-finish`, CI verte)**
+- Certificate pinning mobile (`pinned_client.dart`), stockage local chiffré (`encrypted_store.dart`, remplace Drift/SQLCipher : voir D-064), jeton FCM côté mobile, planificateur, métriques.
+- API : configuration de l'échelle de notation par établissement, contrats et charge horaire, remplacements de professeur (notifications), `GET /timetable` pour tous les rôles + vue mensuelle + PDF, compétences (primaire), UE/ECTS et relevé PDF (supérieur), pièces jointes du cahier de textes (jusqu'à 5 Mo) et lien vers un QCM, cahier de textes filtré par classe, gestion des établissements par le Super-Admin racine.
+- Mobile : écrans emploi du temps (remplacements), notes (consultation + saisie hors ligne prioritaire), absences (pointage/justification).
+- Web : pages Administration (échelle, personnel, remplacements, établissements), Compétences/UE/pièces jointes, emploi du temps par rôle (semaine, mois, PDF, glisser-déposer).
+- Guides utilisateur FR/EN, manuel d'administration, déploiement, script de charge `infra/loadtest/p95.mjs`.
+**Reste à faire (aucun report silencieux ; voir `RAPPORT_FINAL.md`)**
+- Tests e2e web (Playwright) : non écrits ; la CI compile et vérifie le web mais ne pilote pas de navigateur.
+- Mobile : lecture des pièces jointes et du lien QCM dans l'écran du cahier de textes ; modération des messages ; envoi automatique SMS/e-mail selon les préférences ; enregistrement d'un brouillon de QCM depuis l'assistant.
+- Désactivation du compte dans Keycloak lors de la suppression (documentée dans INTEGRATIONS, non automatisée).
+- Captures d'écran du README (nécessitent un appareil/navigateur) ; vérification visuelle RTL sur appareil.
+- Le script de charge n'a pas été exécuté dans la CI : aucune mesure p95 réelle n'est revendiquée.
+**Limites connues** : code vérifié par la CI (pas compilé localement) ; chemin xgboost/shap non testé ; création de jeux et configuration OAA web uniquement (D-023) ; écart D-020 à valider.
+
+## Phase 5 (paiement, GPS, consentements) : branche `phase-5-payment-gps`
+**Fait**
+- Logique pure testée (13 tests) : unités mineures et devises, remises, échéanciers à somme exacte, affectation aux échéances les plus anciennes, statut de facture, rappels aux jours exacts, signature de webhook (HMAC, anti-rejeu, hex strict), conciliation, statistiques de recouvrement ; fenêtre de consentement GPS (fuseau, jours, plage passant minuit), haversine, filtre de précision, géofencing par transitions, purge, intervalle 30 s.
+- Tables SQL (RLS) : plans de frais, factures, échéances, paiements, événements webhook, reçus ; consentements, zones, positions chiffrées, état, événements, journal d'accès.
+- API : plans de frais, facture automatique à l'inscription (calculée par `module-payment`, enregistrée par le cœur), factures, paiement en ligne avec `Idempotency-Key`, webhook public signé idempotent, paiements manuels (espèces avec QR signé, chèque, virement), reçus PDF FR/EN, rappels (job quotidien appelable), conciliation, statistiques, annulation ; GPS : consentement révocable avec plage et durée, politique d'envoi pour l'app élève, réception des positions, alertes aux tuteurs consentants, carte/historique/événements, journal d'accès, zones, purge. Adaptateurs : sandbox pour tous les prestataires, Stripe, Airtel Money et Moov Money (réels, non testés faute de compte).
+- Web : pages Paiements (famille et comptabilité) et GPS (consentement, carte, événements, zones, journal). Mobile : écrans paiement (hors achat intégré), consentement parent avec carte, envoi de position élève au premier plan et en arrière-plan (intervalle imposé par le serveur), script `tool/configure_native.py` (permissions Android/iOS, modes d'arrière-plan) exécuté en CI.
+- Les écritures de paiement, de quiz et de GPS ne sont jamais mises en file hors connexion (web et mobile) : seules les consultations le sont.
+**Limites connues / reste à faire**
+- Adaptateurs Airtel/Moov/Stripe réels non testés en conditions réelles (identifiants requis) ; Moov au format générique.
+- Les positions GPS ne sont pas poussées en temps réel par WebSocket (la page parent interroge toutes les 15 s) ; géofencing évalué à chaque position reçue.
+- Reçus PDF : ouverture sur le web ; sur mobile la liste des paiements est affichée mais le PDF n'est pas encore ouvert (à traiter en phase 7).
+- Les nouveaux écrans mobiles (Phase 4 et 5) utilisent des textes FR/EN en dur et pas encore les fichiers ARB ; RTL à vérifier : à traiter en phase 7.
+- Entitlements iOS (push, localisation) et projet Xcode propre : phase 7 (préparation des stores).
+- Surpaiement non crédité (D-029). Rappels : pas encore de tâche planifiée automatique (endpoint prêt).
+- Pas de test automatisé de l'envoi de position en arrière-plan sur appareil réel (nécessite émulateur/appareil).
+
+## Phase 6 (orientation, visiteur, ministères, API publique, marketplace…) : branche `phase-6-extensions`
+**Lot 6a (CI verte)** : orientation et stages, fiche BEPC/CEP, ressources et forums, espace visiteur public (site, inscription en ligne, contact, statistiques) : API, web, mobile, tests e2e.
+**Lot 6b (CI verte)** : marketplace de modules (soumission, revue automatique, décision racine, installation avec consentement, mises à jour, avis, retrait), connecteurs ministères (Gabon : MEN, MESR ; sandbox et HTTP), comptes d'inspecteurs, API publique (OAuth2 client credentials, REST, GraphQL, quotas, portail `/developers`), webhooks sortants signés avec relance, modules du registre correspondants ; web (Ministères, API, Marketplace, Développeurs) et mobile (Ministères, Marketplace). 75 tests e2e API, 80 tests shared.
+**Limites connues**
+- Quotas API en mémoire (un seul processus) ; le connecteur HTTP ministériel est générique (à aligner sur les API réelles) ; sandbox des modules tiers : pas d'isolation conteneur.
+- Préparation des transmissions et administration des clients API / soumission de modules : web uniquement (administration lourde, documenté).
+- Pas de tâche planifiée automatique pour `run-due` ni pour la relance des webhooks (endpoints prêts).
+**Lot 6c (CI verte)** : assistant pédagogique génératif (résumés, QCM → brouillon de quiz, exercices, traduction, aide à la correction validée, tuteur filtré par âge) et VR/AR (`xr_assets`, rattachés aux leçons et ressources, visite publique 360°, visionneuse WebXR et mobile) ; web (/assistant, /xr, leçons, site public) et mobile (assistant, tuteur, visionneuse). Tests : 87 shared, e2e API 6c.
+**Limites 6c**
+- Sans `LLM_MODE=live` les réponses sont simulées et signalées comme telles ; la traduction simulée ne traduit pas (marqueur seulement).
+- Les fichiers 3D/360° sont référencés par adresse : le téléversement vers MinIO n'est pas encore branché dans l'interface.
+- AR mobile : dépend d'ARCore / AR Quick Look de l'appareil ; non vérifié sur appareil réel (aucun émulateur ici).
+- L'assistant mobile n'enregistre pas les QCM en brouillon (web seulement).
+**Phase 6 terminée** côté code ; fusion dans `main` après CI verte.
+
+## Phase 7 (qualité, sécurité, exploitation, stores) : branche `phase-7-quality`
+**Livré (CI verte sauf mention)**
+- Sécurité HTTP (`applySecurity`) : en-têtes, CSP, CORS strict, limites de débit (général et /auth), taille de corps ; tests e2e.
+- Suppression de compte dans l'application, demande d'effacement d'un enfant par le parent, effacement d'un élève par l'établissement (`students:erase`) ; pages légales FR/EN (modèles à compléter).
+- Seed de démonstration Gabon (`npm run seed:demo`) : 4 établissements (primaire, collège, lycée, université), comptes pour chaque rôle, notes dans l'échelle locale, idempotent, refusé en production ; test e2e. Comptes sans mot de passe en mode sandbox ; `npm run seed:keycloak` les crée dans Keycloak avec le même identifiant.
+- **Connexion réelle OIDC code + PKCE** (web et mobile/AppAuth), `GET /auth/config`, realm Keycloak importable (`infra/keycloak`, jetons 5 min, rotation du refresh, MFA possible), renouvellement silencieux, déconnexion unique.
+- **Hors ligne corrigé** : 5xx/429/jeton expiré ne sont plus rangés à tort dans le journal des conflits (écriture conservée, ordre gardé) ; clés d'idempotence de bout en bout (table `idempotency_keys`, intercepteur global, files web et mobile) ; règles de synchronisation partagées et testées (priorité aux notes des enseignants, fusion des absences) ; données hors ligne isolées par utilisateur (poste partagé).
+- Tâches planifiées (`SchedulerService`) : purge GPS, purge du casier, rappels de paiement, transmissions ministères dues, relance des webhooks ; verrou consultatif PostgreSQL (un seul réplica par cycle) ; test e2e.
+- Exploitation : `/metrics` Prometheus protégé par jeton, alertes (p95 > 200 ms, 5xx, API arrêtée), tableau Grafana, Sentry sans corps ni en-têtes, Dockerfiles API/web, compose complet (API, web, seed, Keycloak avec import du realm), manifestes Kubernetes durcis (non-root, NetworkPolicy, HPA, PDB, limite au bord). Corrigés : tests SQL montés dans l'init Postgres, port du service IA.
+- Préparation des stores : icône et splash, signature release depuis `key.properties`, entitlements iOS, Fastlane (piste interne Play, TestFlight), workflows `release-android` / `release-ios`, dossier `store/`, `docs/PUBLICATION_STORES.md`.
+- Tests IA (qualité, biais/équité) déjà présents dans `apps/ai/tests`.
 **Reste à faire en Phase 7**
 - Certificate pinning mobile ; base locale chiffrée (Drift/SQLCipher) : aujourd'hui files et caches dans le stockage sécurisé de l'appareil.
 - Jeton FCM réel côté mobile (envoi simulé tant que Firebase n'est pas configuré) ; tests e2e web (Playwright) ; test de charge (script p95).
@@ -102,4 +158,4 @@
 - Les builds signés (AAB/IPA) ne sont pas exécutables sans vos secrets.
 
 ## Prochaine étape
-Terminer la Phase 7 (liste ci-dessus), fusionner dans `main`, puis Phase 8 (guides par rôle FR/EN, manuel d'administration, déploiement, README, rapport final).
+Fusion de `phase-8-docs-finish` dans `main` (CI verte), puis traitement de la liste « Reste à faire » ci-dessus ; question ouverte : licence du dépôt (placeholder propriétaire en place).
