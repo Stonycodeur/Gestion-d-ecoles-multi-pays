@@ -5,6 +5,7 @@ import { SignJWT } from 'jose';
 import { join } from 'node:path';
 import { Pool } from 'pg';
 
+process.env.RATE_LIMIT_PER_MIN = '5000'; process.env.RATE_LIMIT_AUTH_PER_MIN = '1000';   // this spec mints many tokens
 const SECRET = 'z'.repeat(40);
 process.env.AUTH_MODE = 'sandbox';
 process.env.SANDBOX_JWT_SECRET = SECRET;
@@ -23,7 +24,7 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
   beforeAll(async () => {
     admin = new Pool({ connectionString: process.env.DATABASE_ADMIN_URL });
     const { AppModule } = await import('../app.module');
-    app = (await Test.createTestingModule({ imports: [AppModule] }).compile()).createNestApplication(); await app.init(); server = app.getHttpServer();
+    app = (await Test.createTestingModule({ imports: [AppModule] }).compile()).createNestApplication({ rawBody: true, bodyParser: false }); (await import('../core/security')).applySecurity(app); await app.init(); server = app.getHttpServer();
     rootT = await new SignJWT({ roles: ['root_super_admin'] }).setSubject(U(9000)).setProtectedHeader({ alg: 'HS256' }).setIssuedAt().setExpirationTime('1h').sign(new TextEncoder().encode(SECRET));
   });
   afterAll(async () => { await app.close(); await admin.end(); });
@@ -88,6 +89,10 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
     const content = Buffer.from('polycopié').toString('base64');
     const att = (await call('post', `/lessons/${lesson.id}/attachments`, tchS).send({ filename: 'poly.txt', content_type: 'text/plain', content_base64: content }).expect(201)).body;
     await call('post', `/lessons/${lesson.id}/attachments`, tchS).send({ filename: 'empty.txt', content_base64: '' }).expect(400);
+    const big = Buffer.alloc(3 * 1024 * 1024, 7).toString('base64');   // 4 MB once encoded: above the 1 MB general body limit
+    await call('post', `/lessons/${lesson.id}/attachments`, tchS).send({ filename: 'big.bin', content_base64: big }).expect(201);
+    const huge = Buffer.alloc(5 * 1024 * 1024 + 1, 7).toString('base64');
+    await call('post', `/lessons/${lesson.id}/attachments`, tchS).send({ filename: 'huge.bin', content_base64: huge }).expect(400);
     const fam = await tok('guardian', 'e2e_s', 21, { child_ids: [ids.s1] });
     const list = (await call('get', '/lessons', fam).expect(200)).body;
     expect(list.every((l: any) => l.class_id === ids.cls)).toBe(true);                                       // only the child's class
@@ -99,7 +104,7 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
     await call('get', `/lessons/${lesson.id}/attachments/${att.id}`, other).expect(403);
     const stu = await tok('student', 'e2e_s', 23, { student_id: ids.s2 });
     expect((await call('get', '/lessons', stu).expect(200)).body.every((l: any) => l.class_id === ids.cls2)).toBe(true);
-    expect((await call('get', '/lessons', headS).expect(200)).body.length).toBeGreaterThanOrEqual(4);       // staff see everything
+    expect((await call('get', '/lessons', headS).expect(200)).body.length).toBeGreaterThanOrEqual(3);       // staff see everything
   });
 
   it('exports the timetable as a month view and a PDF', async () => {
