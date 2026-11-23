@@ -166,4 +166,49 @@ export class SchoolConfigService {
     await this.audit.log({ actorId: actor, tenant: slug, action: 'schedule.substitute.remove', entity: 'substitution', entityId: id });
     return { removed: true };
   }
+
+  // ---- timetable of a student / class / teacher, for every role (ABAC checked here, not by route) -----------------------
+  /** One call for web and mobile: latest published timetable (staff also see a draft), slots with names, upcoming substitutions. */
+  async timetable(slug: string, p: Principal, q0: { student_id?: string; class_id?: string; mine?: string }) {
+    const staff = p.isRoot || p.roles.some((r) => ['tenant_super_admin', 'admin', 'head', 'teacher', 'education_assistant'].includes(r));
+    return this.tx(slug, async (q, t) => {
+      let classId: string | undefined; let teacherId: string | undefined;
+      const sid = q0.student_id ? uuid(q0.student_id, 'student_id') : (!q0.class_id && !q0.mine ? (p.studentId ?? p.childIds?.[0]) : undefined);
+      if (sid) {
+        const st = (await q('SELECT class_id FROM students WHERE id = $1', [sid]))[0];
+        if (!st) throw new NotFoundException('student not found');
+        const d = can(p, 'schedule:read', { tenantId: p.tenantId ?? undefined, studentId: sid, classId: st.class_id ?? undefined });
+        if (!d.allowed) throw new ForbiddenException(d.reason);
+        classId = st.class_id ?? undefined;
+        if (!classId) return { schedule: null, slots: [], substitutions: [] };
+      } else if (q0.class_id) {
+        classId = uuid(q0.class_id, 'class_id');
+        if (!staff) throw new ForbiddenException('staff only');
+      } else if (q0.mine) {
+        teacherId = (await q('SELECT id FROM teachers WHERE user_id = $1', [p.id]))[0]?.id;
+        if (!teacherId) return { schedule: null, slots: [], substitutions: [] };
+      } else if (!staff) throw new BadRequestException('student_id required');
+      const sch = (await q(`SELECT id, status, school_year FROM schedules WHERE ${staff ? "status IN ('published','validated','draft')" : "status = 'published'"}
+        ORDER BY (status = 'published') DESC, created_at DESC LIMIT 1`))[0];
+      if (!sch) return { schedule: null, slots: [], substitutions: [] };
+      const slots = await q(`SELECT s.id, s.class_id, c.name AS class_name, s.subject_id, sub.name AS subject_name, s.teacher_id, (te.first_name || ' ' || te.last_name) AS teacher_name,
+          r.name AS room, s.weekday, s.period_index
+        FROM schedule_slots s JOIN classes c ON c.id = s.class_id JOIN subjects sub ON sub.id = s.subject_id JOIN teachers te ON te.id = s.teacher_id LEFT JOIN rooms r ON r.id = s.room_id
+        WHERE s.schedule_id = $1 AND ($2::uuid IS NULL OR s.class_id = $2) AND ($3::uuid IS NULL OR s.teacher_id = $3 OR EXISTS
+          (SELECT 1 FROM substitutions x WHERE x.slot_id = s.id AND x.substitute_teacher_id = $3 AND x.on_date >= CURRENT_DATE))
+        ORDER BY s.weekday, s.period_index`, [sch.id, classId ?? null, teacherId ?? null]);
+      const ids = slots.map((x: any) => x.id);
+      const subs = ids.length ? await q(`SELECT x.id, x.slot_id, x.on_date, (st.first_name || ' ' || st.last_name) AS substitute_name, x.substitute_teacher_id
+        FROM substitutions x JOIN teachers st ON st.id = x.substitute_teacher_id
+        WHERE x.slot_id = ANY($1::uuid[]) AND x.on_date BETWEEN CURRENT_DATE AND CURRENT_DATE + 14 ORDER BY x.on_date`, [ids]) : [];
+      return { schedule: sch, slots, substitutions: subs };
+    });
+  }
+
+  /** What the signed-in person may do, so web and mobile show only the relevant entry screens. */
+  abilities(p: Principal, tenant: string) {
+    const ctx = { tenantId: tenant, classId: p.classIds?.[0], studentId: p.studentId ?? p.childIds?.[0] };
+    const ok = (perm: string) => can(p, perm, perm === 'schedule:write' || perm === 'grades:write' || perm === 'absences:write' ? { tenantId: tenant, classId: p.classIds?.[0] } : ctx).allowed;
+    return { roles: p.roles, grades_write: ok('grades:write'), absences_write: ok('absences:write'), absences_justify: ok('absences:justify'), schedule_write: ok('schedule:write'), grading_configure: ok('grading:configure'), contracts_write: ok('contracts:write') };
+  }
 }

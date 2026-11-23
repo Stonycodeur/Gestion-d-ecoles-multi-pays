@@ -20,6 +20,13 @@ export class SchoolConfigController {
   constructor(private readonly svc: SchoolConfigService) {}
 
   /** Country reference data of the school (currency, locale, payment providers, legal framework, education system, calendars). */
+  @Get('timetable')
+  timetable(@Req() r: CoreRequest, @Query('student_id') student_id?: string, @Query('class_id') class_id?: string, @Query('mine') mine?: string) {
+    const { slug, p } = member(r); return this.svc.timetable(slug, p, { student_id, class_id, mine });
+  }
+  @Get('me/abilities')
+  abilities(@Req() r: CoreRequest) { const { slug, p } = member(r); return this.svc.abilities(p, slug); }
+
   @Get('settings/country')
   country(@Req() r: CoreRequest) { return this.svc.country(member(r).slug); }
 

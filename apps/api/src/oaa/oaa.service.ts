@@ -112,6 +112,8 @@ export class OaaService {
     if (p.studentId) ids.add(p.studentId);
     for (const c of p.childIds ?? []) ids.add(c);
     const classes = p.classIds ?? [];
+    const wide = p.isRoot || p.roles.some((r) => ['tenant_super_admin', 'admin', 'head', 'education_assistant'].includes(r));   // school-wide staff pick any student
+    if (wide) return this.tx(slug, async (q) => q('SELECT id, first_name, last_name, class_id FROM students ORDER BY last_name, first_name LIMIT 500'));
     return this.tx(slug, async (q) => q(
       `SELECT id, first_name, last_name, class_id FROM students WHERE id = ANY($1::uuid[]) OR class_id = ANY($2::uuid[]) ORDER BY last_name, first_name`,
       [[...ids], classes]));

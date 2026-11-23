@@ -117,4 +117,30 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
     await call('delete', `/substitutions/${res.id}`, adminT).expect(200);
     await call('delete', `/substitutions/${res.id}`, adminT).expect(404);
   });
+
+  it('serves the timetable to the right family only, with names and substitutions, and tells each user what they can do', async () => {
+    await admin.query("UPDATE tenant_e2e_q.schedules SET status = 'published' WHERE id = $1", [ids.sch]);
+    const monday = nextMonday();
+    const slotId = (await admin.query('SELECT id FROM tenant_e2e_q.schedule_slots WHERE schedule_id = $1 AND class_id = $2', [ids.sch, ids.cls])).rows[0].id;
+    await call('post', '/substitutions', adminT).send({ slot_id: slotId, on_date: monday, substitute_teacher_id: ids.t3 }).expect(201);
+    const fam = await tok('guardian', 'e2e_q', 21, { child_ids: [ids.s1] });
+    const t = (await call('get', `/timetable?student_id=${ids.s1}`, fam).expect(200)).body;
+    expect(t.schedule.status).toBe('published');
+    expect(t.slots[0]).toMatchObject({ subject_name: 'Mathématiques', class_name: '2nde A', teacher_name: 'Jean Mba' });
+    expect(t.substitutions).toHaveLength(1); expect(t.substitutions[0].substitute_name).toBe('Paul Ona');
+    expect((await call('get', '/timetable', fam).expect(200)).body.slots).toHaveLength(1);                       // defaults to the first child
+    await call('get', `/timetable?student_id=${ids.s1}`, guardianT).expect(403);                                  // another family's child
+    await call('get', `/timetable?class_id=${ids.cls}`, fam).expect(403);                                         // class view is staff only
+    const stu = await tok('student', 'e2e_q', 22, { student_id: ids.s1 });
+    expect((await call('get', '/timetable', stu).expect(200)).body.slots).toHaveLength(1);
+    await admin.query('UPDATE tenant_e2e_q.teachers SET user_id = $1 WHERE id = $2', [U(23), ids.t1]);
+    const teacher = await tok('teacher', 'e2e_q', 23, { class_ids: [ids.cls] });
+    expect((await call('get', '/timetable?mine=1', teacher).expect(200)).body.slots.length).toBeGreaterThanOrEqual(1);
+    await call('get', '/timetable', adminOther).expect(400);                                                       // staff must say which class
+    expect((await call('get', `/timetable?class_id=${ids.cls}`, headT).expect(200)).body.slots.length).toBeGreaterThanOrEqual(1);
+    expect((await call('get', '/me/abilities', headT).expect(200)).body).toMatchObject({ grades_write: true, absences_write: true });
+    expect((await call('get', '/me/abilities', fam).expect(200)).body).toMatchObject({ grades_write: false, absences_write: false, absences_justify: true });
+    const all = (await call('get', '/me/students', adminT).expect(200)).body;                                       // school-wide staff pick any student
+    expect(all.map((x: any) => x.id)).toContain(ids.s1);
+  });
 });
