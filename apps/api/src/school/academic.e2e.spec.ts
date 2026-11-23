@@ -94,7 +94,7 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
     expect(list.find((l: any) => l.id === lesson.id).attachments[0]).toMatchObject({ id: att.id, filename: 'poly.txt' });
     await call('get', `/lessons?class_id=${ids.cls2}`, fam).expect(403);
     const dl = await call('get', `/lessons/${lesson.id}/attachments/${att.id}`, fam).expect(200);
-    expect(Buffer.from(dl.body).toString()).toBe('polycopié');
+    expect(dl.text).toBe('polycopié');
     const other = await tok('guardian', 'e2e_s', 22, { child_ids: [ids.s2] });
     await call('get', `/lessons/${lesson.id}/attachments/${att.id}`, other).expect(403);
     const stu = await tok('student', 'e2e_s', 23, { student_id: ids.s2 });
