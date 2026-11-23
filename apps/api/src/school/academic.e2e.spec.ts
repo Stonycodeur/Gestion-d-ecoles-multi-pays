@@ -75,19 +75,19 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
   });
 
   it('keeps the lesson log inside the class of the student or the children, with attachments and a linked quiz', async () => {
-    const adminS = await tok('admin', 'e2e_s', 11); const headS = await tok('head', 'e2e_s', 12);
+    const adminS = await tok('admin', 'e2e_s', 11); const headS = await tok('head', 'e2e_s', 12); const tchS = await tok('teacher', 'e2e_s', 14, { class_ids: [ids.cls, ids.cls2] });
     await call('post', '/modules/module-gamification/enable', adminS).send({}).expect((r: any) => expect([200, 201]).toContain(r.status));
-    const lesson = (await call('post', '/lessons', headS).send({ class_id: ids.cls, subject_id: ids.math, on_date: '2026-10-05', title: 'Équations', content: 'Cours', homework: 'Ex 1' }).expect(201)).body;
-    await call('post', '/lessons', headS).send({ class_id: ids.cls, subject_id: ids.math, on_date: '2026-10-06', title: 'Bad', quiz_id: U(777) }).expect(400);
-    const quiz = (await call('post', '/quizzes', headS).send({ class_id: ids.cls, subject_id: ids.math, title: 'QCM 1', questions: [{ prompt: '1+1 ?', choices: ['1', '2'], correct: 1 }] }).expect(201)).body;
-    const linked = (await call('post', '/lessons', headS).send({ class_id: ids.cls, subject_id: ids.math, on_date: '2026-10-07', title: 'Avec QCM', quiz_id: quiz.id }).expect(201)).body;
+    const lesson = (await call('post', '/lessons', tchS).send({ class_id: ids.cls, subject_id: ids.math, on_date: '2026-10-05', title: 'Équations', content: 'Cours', homework: 'Ex 1' }).expect(201)).body;
+    await call('post', '/lessons', tchS).send({ class_id: ids.cls, subject_id: ids.math, on_date: '2026-10-06', title: 'Bad', quiz_id: U(777) }).expect(400);
+    const quiz = (await call('post', '/quizzes', tchS).send({ class_id: ids.cls, subject_id: ids.math, title: 'QCM 1', questions: [{ prompt: '1+1 ?', choices: ['1', '2'], correct: 1 }] }).expect(201)).body;
+    const linked = (await call('post', '/lessons', tchS).send({ class_id: ids.cls, subject_id: ids.math, on_date: '2026-10-07', title: 'Avec QCM', quiz_id: quiz.id }).expect(201)).body;
     expect(linked.quiz_id).toBe(quiz.id);
-    await call('post', '/lessons', headS).send({ class_id: ids.cls2, subject_id: ids.math, on_date: '2026-10-07', title: 'Autre classe', quiz_id: quiz.id }).expect(400);   // quiz of another class
-    await call('post', '/lessons', headS).send({ class_id: ids.cls2, subject_id: ids.math, on_date: '2026-10-08', title: 'Cours B' }).expect(201);
+    await call('post', '/lessons', tchS).send({ class_id: ids.cls2, subject_id: ids.math, on_date: '2026-10-07', title: 'Autre classe', quiz_id: quiz.id }).expect(400);   // quiz of another class
+    await call('post', '/lessons', tchS).send({ class_id: ids.cls2, subject_id: ids.math, on_date: '2026-10-08', title: 'Cours B' }).expect(201);
 
     const content = Buffer.from('polycopié').toString('base64');
-    const att = (await call('post', `/lessons/${lesson.id}/attachments`, headS).send({ filename: 'poly.txt', content_type: 'text/plain', content_base64: content }).expect(201)).body;
-    await call('post', `/lessons/${lesson.id}/attachments`, headS).send({ filename: 'empty.txt', content_base64: '' }).expect(400);
+    const att = (await call('post', `/lessons/${lesson.id}/attachments`, tchS).send({ filename: 'poly.txt', content_type: 'text/plain', content_base64: content }).expect(201)).body;
+    await call('post', `/lessons/${lesson.id}/attachments`, tchS).send({ filename: 'empty.txt', content_base64: '' }).expect(400);
     const fam = await tok('guardian', 'e2e_s', 21, { child_ids: [ids.s1] });
     const list = (await call('get', '/lessons', fam).expect(200)).body;
     expect(list.every((l: any) => l.class_id === ids.cls)).toBe(true);                                       // only the child's class
@@ -109,7 +109,7 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
     await call('post', `/schedules/${sch}/slots`, adminS).send({ class_id: ids.cls, subject_id: ids.math, teacher_id: t1, weekday: 2, period_index: 1 }).expect(201);
     const fam = await tok('guardian', 'e2e_s', 21, { child_ids: [ids.s1] });
     const m = (await call('get', '/timetable/month?month=2026-10', fam).expect(200)).body;
-    expect(m.days.length).toBe(5);                                                                           // five Tuesdays in October 2026
+    expect(m.days.length).toBe(4);                                                                           // four Tuesdays in October 2026
     expect(m.days.every((d: any) => new Date(`${d.date}T00:00:00Z`).getUTCDay() === 2)).toBe(true);
     expect(m.days[0].slots[0]).toMatchObject({ subject_name: 'Mathématiques', substitute_name: null });
     await call('get', '/timetable/month?month=2026-13', fam).expect(400);
