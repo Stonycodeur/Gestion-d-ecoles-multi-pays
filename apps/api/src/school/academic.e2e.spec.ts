@@ -132,7 +132,7 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
     expect(tr.lines.find((l: any) => l.code === 'INF101')).toMatchObject({ validated: true, credits: 6 });
     expect(tr.lines.find((l: any) => l.code === 'MAT101').validated).toBe(false);
     expect(tr.general.text).toMatch(/11[.,]6/);                                                              // (70*6 + 40*4) / 10 = 58 % of 20
-    await call('get', `/students/${ids.st}/transcript?school_year=2026-2027`, await tok('student', 'e2e_t', 34, { student_id: ids.s1 })).expect(403);
+    await call('get', `/students/${ids.st}/transcript?school_year=2026-2027`, await tok('student', 'e2e_t', 34, { student_id: U(888) })).expect(403);
     const pdf = await call('get', `/students/${ids.st}/transcript.pdf?school_year=2026-2027`, fam).buffer(true).parse((res: any, cb: any) => { const c: Buffer[] = []; res.on('data', (d: Buffer) => c.push(d)); res.on('end', () => cb(null, Buffer.concat(c))); }).expect(200);
     expect(Buffer.from(pdf.body).subarray(0, 4).toString()).toBe('%PDF');
   });
