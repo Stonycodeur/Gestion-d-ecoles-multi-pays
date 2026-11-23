@@ -46,6 +46,51 @@ jobs:
       - run: npm run test:shared
       - run: npm --prefix apps/api run build && npm --prefix apps/api test
       - run: npm --prefix apps/web run build
+  web-e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: ci }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: ci
+      DATABASE_ADMIN_URL: postgres://postgres:ci@localhost:5432/em_e2e
+      DATABASE_URL: postgres://app_runtime:rt@localhost:5432/em_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Database for e2e (non-superuser runtime role so RLS applies)
+        run: |
+          createdb em_e2e
+          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE app_runtime LOGIN PASSWORD 'rt'"
+          for f in 010_core.sql 020_seed_roles.sql 030_seed_countries.sql 040_tenant_template.sql 050_marketplace.sql 060_idempotency.sql 070_settings.sql 080_tenants_admin.sql; do psql -v ON_ERROR_STOP=1 -q -d em_e2e -f infra/sql/$f; done
+          psql -v ON_ERROR_STOP=1 -d em_e2e -c "GRANT USAGE ON SCHEMA public TO app_runtime; GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_runtime; GRANT INSERT ON audit_logs TO app_runtime; GRANT USAGE ON SEQUENCE audit_logs_id_seq TO app_runtime"
+      - run: npm install
+      - run: npm --prefix apps/api run build
+      - name: Demo seed (Gabon)
+        run: npm --prefix apps/api run seed:demo
+      - name: Start the API (sandbox auth, strict CORS for the web origin)
+        run: |
+          AUTH_MODE=sandbox SANDBOX_JWT_SECRET=$(printf 'e%.0s' $(seq 1 40)) MODULES_DIR=$PWD/packages/modules CORS_ORIGINS=http://localhost:3001 PORT=3000 \
+            RATE_LIMIT_PER_MIN=5000 RATE_LIMIT_AUTH_PER_MIN=1000 nohup node apps/api/dist/main.js > api.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:3000/health && break; sleep 2; done
+          curl -sf http://localhost:3000/health
+      - name: Build and start the web app
+        run: |
+          npm --prefix apps/web run build
+          nohup npm --prefix apps/web exec -- next start -p 3001 > web.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:3001/login >/dev/null && break; sleep 2; done
+      - run: npx --prefix apps/web playwright install --with-deps chromium
+      - run: npm --prefix apps/web run test:e2e
+      - if: failure()
+        run: tail -n 60 api.log web.log || true
+
   ai-service:
     runs-on: ubuntu-latest
     steps:
