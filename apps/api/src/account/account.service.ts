@@ -1,15 +1,21 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadGatewayException, BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { can, type Principal } from '@ecolemanager/shared';
 import { TenantDb, type Q } from '../pedagogy/tenant-db.service';
 import { mapDbError, uuid } from '../pedagogy/validate';
 import { AuditService } from '../core/audit.service';
 import { NotificationService } from '../comms/notification.service';
+import { Adapters } from '../adapters/adapters';
 
 /** Account deletion, required by both stores and by the data-protection framework. Personal data is erased or anonymised; educational records are kept without identity
- *  (statutory retention of results), which is stated to the user. The identity-provider user must also be disabled (see docs/INTEGRATIONS.md). */
+ *  (statutory retention of results), which is stated to the user. The identity-provider user is disabled first (IdentityAdapter, IDENTITY_MODE=live for Keycloak; see docs/INTEGRATIONS.md). */
 @Injectable()
 export class AccountService {
-  constructor(private readonly db: TenantDb, private readonly audit: AuditService, private readonly notif: NotificationService) {}
+  constructor(private readonly db: TenantDb, private readonly audit: AuditService, private readonly notif: NotificationService, private readonly adapters: Adapters) {}
+  /** The account is disabled first: if the provider is unreachable nothing is erased and the request can simply be repeated. */
+  private async disableIdentity(slug: string, actor: string, userId: string) {
+    try { await this.adapters.identity().disableUser(userId); }
+    catch (e) { await this.audit.log({ actorId: actor, tenant: slug, action: 'account.identity_disable_failed', entity: 'user', entityId: userId }); throw new BadGatewayException('could not disable the sign-in account; nothing was deleted, please retry'); }
+  }
   private tx<T>(slug: string, fn: (q: Q) => Promise<T>): Promise<T> { return this.db.run(slug, (q) => fn(q)).catch((e) => mapDbError(e)); }
 
   /** Self-service deletion of an adult account (guardian, teacher, staff). Students are erased by the administration at a guardian's request. */
@@ -17,6 +23,7 @@ export class AccountService {
     if (p.isRoot) throw new ForbiddenException('the root super-admin account is immutable');
     if (p.roles.includes('student')) throw new ForbiddenException('student accounts are erased by the administration at the request of a guardian');
     if (b?.confirm !== 'DELETE') throw new BadRequestException('confirm must be "DELETE"');
+    await this.disableIdentity(slug, p.id, p.id);
     await this.tx(slug, async (q) => {
       await q('DELETE FROM device_tokens WHERE user_id = $1', [p.id]); await q('DELETE FROM push_outbox WHERE user_id = $1', [p.id]); await q('DELETE FROM notifications WHERE user_id = $1', [p.id]);
       await q('DELETE FROM gps_consents WHERE guardian_user_id = $1', [p.id]);
@@ -41,6 +48,8 @@ export class AccountService {
   async eraseStudent(slug: string, p: Principal, studentId: string) {
     const d = can(p, 'students:erase', { tenantId: slug }); if (!d.allowed) throw new ForbiddenException(d.reason);
     const id = uuid(studentId, 'studentId');
+    const found = (await this.tx(slug, (q) => q('SELECT user_id FROM students WHERE id = $1', [id])))[0]; if (!found) throw new NotFoundException('student not found');
+    if (found.user_id) await this.disableIdentity(slug, p.id, found.user_id);
     await this.tx(slug, async (q) => {
       const s = (await q('SELECT user_id FROM students WHERE id = $1', [id]))[0]; if (!s) throw new NotFoundException('student not found');
       for (const t of ['gps_positions', 'gps_events', 'gps_state', 'gps_geofences', 'gps_consents']) await q(`DELETE FROM ${t} WHERE student_id = $1`, [id]);

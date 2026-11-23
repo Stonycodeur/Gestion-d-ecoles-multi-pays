@@ -96,6 +96,32 @@ export class SmtpEmail implements EmailAdapter {
   }
 }
 
+/** Identity provider administration: disabling an account at deletion so that it can no longer sign in or refresh a token. */
+export interface IdentityAdapter { readonly mode: 'sandbox' | 'live'; disableUser(userId: string): Promise<void> }
+export class SandboxIdentity implements IdentityAdapter { readonly mode = 'sandbox' as const; readonly disabled: string[] = []; async disableUser(userId: string) { this.disabled.push(userId); } }
+
+/** Keycloak admin REST (live). Needs KC_URL, KC_REALM and a service-account client with the realm-management `manage-users` role: KC_ADMIN_CLIENT_ID, KC_ADMIN_CLIENT_SECRET. */
+export class KeycloakIdentity implements IdentityAdapter {
+  readonly mode = 'live' as const;
+  constructor(private readonly env: NodeJS.ProcessEnv = process.env, private readonly f: typeof fetch = fetch) {}
+  private async token(base: string, realm: string): Promise<string> {
+    const r = await this.f(`${base}/realms/${realm}/protocol/openid-connect/token`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ grant_type: 'client_credentials', client_id: this.env.KC_ADMIN_CLIENT_ID ?? '', client_secret: this.env.KC_ADMIN_CLIENT_SECRET ?? '' }) });
+    if (!r.ok) throw new Error(`identity provider token failed (${r.status})`);
+    return ((await r.json()) as { access_token: string }).access_token;
+  }
+  async disableUser(userId: string) {
+    if (!/^[0-9a-fA-F-]{8,64}$/.test(userId)) throw new Error('invalid identity-provider user id');
+    const base = (this.env.KC_URL ?? '').replace(/\/$/, ''), realm = this.env.KC_REALM ?? '';
+    if (!base || !realm) throw new Error('KC_URL and KC_REALM are required');
+    const h = { 'content-type': 'application/json', authorization: `Bearer ${await this.token(base, realm)}` };
+    const u = `${base}/admin/realms/${realm}/users/${userId}`;
+    const put = await this.f(u, { method: 'PUT', headers: h, body: JSON.stringify({ enabled: false }) });
+    if (put.status !== 404 && !put.ok) throw new Error(`disabling the account failed (${put.status})`);   // 404: never provisioned in the provider, nothing to disable
+    if (put.ok) { const out = await this.f(`${u}/logout`, { method: 'POST', headers: h }); if (!out.ok) throw new Error(`closing sessions failed (${out.status})`); }
+  }
+}
+
 @Injectable()
 export class Adapters {
   private cache = new Map<string, unknown>();
@@ -107,5 +133,6 @@ export class Adapters {
   storage(): StorageAdapter { return this.pick('storage', process.env.STORAGE_MODE, (live) => (live ? new S3Storage() : new LocalStorage(process.env.STORAGE_DIR ?? join(tmpdir(), 'ecolemanager-storage')))); }
   push(): PushAdapter { return this.pick('push', process.env.PUSH_MODE, (live) => (live ? new FcmPush() : new SandboxPush())); }
   sms(): SmsAdapter { return this.pick('sms', process.env.SMS_MODE, (live) => (live ? new TwilioSms() : new SandboxSms())); }
+  identity(): IdentityAdapter { return this.pick('identity', process.env.IDENTITY_MODE, (live) => (live ? new KeycloakIdentity() : new SandboxIdentity())); }
   email(): EmailAdapter { return this.pick('email', process.env.EMAIL_MODE, (live) => (live ? new SmtpEmail() : new SandboxEmail())); }
 }

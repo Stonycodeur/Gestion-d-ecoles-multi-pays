@@ -4,6 +4,7 @@ import request from 'supertest';
 import { join } from 'node:path';
 import { Pool } from 'pg';
 import { SignJWT } from 'jose';
+import { Adapters, type IdentityAdapter, SandboxIdentity } from './adapters/adapters';
 
 const SECRET = 'p'.repeat(40);
 process.env.AUTH_MODE = 'sandbox';
@@ -48,7 +49,14 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
     await request(server).delete('/account').set('Authorization', `Bearer ${root}`).set('x-tenant', 'e2e_l').send({ confirm: 'DELETE' }).expect((r: any) => expect([400, 403]).toContain(r.status));
   });
   it('a guardian deletes the account: contact data and devices are gone, the child is untouched', async () => {
+    const adapters = app.get(Adapters); const real = adapters.identity();
+    // identity provider unreachable: nothing is erased, the call can be repeated
+    (adapters as any).identity = (): IdentityAdapter => ({ mode: 'live', disableUser: async () => { throw new Error('down'); } });   // eslint-disable-line @typescript-eslint/no-explicit-any
+    await call('delete', '/account', guardianT).send({ confirm: 'DELETE' }).expect(502);
+    expect((await admin.query("SELECT role FROM tenant_e2e_l.directory WHERE user_id = $1", [U(2)])).rows[0].role).toBe('guardian');
+    (adapters as any).identity = () => real;   // eslint-disable-line @typescript-eslint/no-explicit-any
     await call('delete', '/account', guardianT).send({ confirm: 'DELETE' }).expect(200);
+    expect((real as SandboxIdentity).disabled).toContain(U(2));
     expect(await count("SELECT COUNT(*) n FROM tenant_e2e_l.device_tokens WHERE user_id = $1", [U(2)])).toBe(0);
     const d = (await admin.query("SELECT role, display_name, email, phone, child_ids FROM tenant_e2e_l.directory WHERE user_id = $1", [U(2)])).rows[0];
     expect(d).toMatchObject({ role: 'deleted', display_name: 'Compte supprimé', email: null, phone: null, child_ids: [] });
@@ -68,6 +76,7 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
     expect(s).toMatchObject({ first_name: 'Élève', last_name: 'supprimé', birth_date: null, user_id: null }); expect(s.class_id).toBe(ids.cls);
     expect(await count("SELECT COUNT(*) n FROM tenant_e2e_l.gps_consents WHERE student_id = $1", [ids.stu])).toBe(0);
     expect(await count("SELECT COUNT(*) n FROM tenant_e2e_l.device_tokens WHERE user_id = $1", [U(3)])).toBe(0);
+    expect((app.get(Adapters).identity() as SandboxIdentity).disabled).toContain(U(3));
     expect((await admin.query("SELECT role, display_name FROM tenant_e2e_l.directory WHERE user_id = $1", [U(3)])).rows[0]).toMatchObject({ role: 'deleted', display_name: 'Compte supprimé' });
     expect(await count("SELECT COUNT(*) n FROM audit_logs WHERE action IN ('student.erased','account.delete','account.erasure_requested') AND details->>'tenant' = 'e2e_l'")).toBe(3);
   });

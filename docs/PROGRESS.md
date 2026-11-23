@@ -102,9 +102,10 @@
 - Tests e2e web Playwright (5 scénarios : connexion, échelle de notation du lycée/primaire, emploi du temps) dans le job CI `web-e2e` (API sandbox + seed Gabon + build web de production).
 - Mobile : pièces jointes (téléchargement avec jeton, aperçu des images) et lien vers le QCM dans le cahier de textes.
 - Seed de démonstration : établissement et schéma créés dans une seule transaction.
+**Livré en `phase-9b-keycloak`**
+- Suppression de compte : désactivation de l'utilisateur Keycloak (adaptateur `IdentityAdapter`, sandbox/live, test unitaire avec faux serveur, e2e du chemin d'échec). Jamais essayé contre un vrai Keycloak.
 **Reste à faire (aucun report silencieux ; voir `RAPPORT_FINAL.md`)**
 - Mobile : modération des messages ; envoi automatique SMS/e-mail selon les préférences ; enregistrement d'un brouillon de QCM depuis l'assistant.
-- Désactivation du compte dans Keycloak lors de la suppression (documentée dans INTEGRATIONS, non automatisée).
 - Captures d'écran du README (nécessitent un appareil/navigateur) ; vérification visuelle RTL sur appareil.
 - Le script de charge n'a pas été exécuté dans la CI : aucune mesure p95 réelle n'est revendiquée.
 **Limites connues** : code vérifié par la CI (pas compilé localement) ; chemin xgboost/shap non testé ; création de jeux et configuration OAA web uniquement (D-023) ; écart D-020 à valider.
