@@ -1,4 +1,4 @@
-export type NotificationType = 'grade.published' | 'absence.recorded' | 'schedule.published' | 'message.new' | 'news.published' | 'payment.confirmed' | 'payment.reminder' | 'invoice.issued' | 'gps.alert' | 'oaa.warning' | 'ai.risk' | 'internship.update' | 'application.received' | 'ministry.update' | 'account.erasure';
+export type NotificationType = 'grade.published' | 'absence.recorded' | 'schedule.published' | 'schedule.substitution' | 'message.new' | 'news.published' | 'payment.confirmed' | 'payment.reminder' | 'invoice.issued' | 'gps.alert' | 'oaa.warning' | 'ai.risk' | 'internship.update' | 'application.received' | 'ministry.update' | 'account.erasure';
 export type Lang = 'fr' | 'en' | 'ar';
 
 const T: Record<NotificationType, Record<Lang, (p: Record<string, string>) => { title: string; body: string }>> = {
@@ -16,6 +16,11 @@ const T: Record<NotificationType, Record<Lang, (p: Record<string, string>) => { 
     fr: () => ({ title: 'Emploi du temps modifié', body: 'Un nouvel emploi du temps est publié.' }),
     en: () => ({ title: 'Timetable updated', body: 'A new timetable has been published.' }),
     ar: () => ({ title: 'تغيير جدول الحصص', body: 'تم نشر جدول جديد.' }),
+  },
+  'schedule.substitution': {
+    fr: (p) => ({ title: 'Remplacement de professeur', body: p.text ?? '' }),
+    en: (p) => ({ title: 'Teacher substitution', body: p.text ?? '' }),
+    ar: (p) => ({ title: 'استبدال أستاذ', body: p.text ?? '' }),
   },
   'message.new': {
     fr: (p) => ({ title: 'Nouveau message', body: p.from ?? '' }), en: (p) => ({ title: 'New message', body: p.from ?? '' }), ar: (p) => ({ title: 'رسالة جديدة', body: p.from ?? '' }),

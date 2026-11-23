@@ -12,6 +12,8 @@ import { ModulesController } from './modules/modules.controller';
 import { ModulesService } from './modules/modules.service';
 import { PedagogyController } from './pedagogy/pedagogy.controller';
 import { PedagogyService } from './pedagogy/pedagogy.service';
+import { SchoolConfigController } from './school/school-config.controller';
+import { SchoolConfigService } from './school/school-config.service';
 import { TenantDb } from './pedagogy/tenant-db.service';
 import { Adapters } from './adapters/adapters';
 import { OaaController } from './oaa/oaa.controller';
@@ -53,8 +55,8 @@ import { AccountController } from './account/account.controller';
 import { AccountService } from './account/account.service';
 
 @Module({
-  controllers: [HealthController, AuthController, ModulesController, PedagogyController, CommsController, OaaController, GamificationController, PredictiveController, PaymentsController, GpsController, OrientationController, PublicController, VisitorAdminController, ResourcesController, MarketplaceController, MinistryController, PublicApiController, ApiAdminController, GenAiController, XrController, XrPublicController, AccountController],
-  providers: [AuthService, AuditService, ModulesService, TenantDb, PedagogyService, Adapters, RealtimeGateway, NotificationService, CommsService, OaaService, GamificationService, PredictiveService, PaymentProviders, PaymentsService, GpsService, OrientationService, VisitorService, ResourcesService, MarketplaceService, MinistryService, PublicApiService, WebhooksService, GenAiService, XrService, AccountService, SchedulerService, { provide: APP_GUARD, useClass: CoreGuard }, { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor }],
+  controllers: [HealthController, AuthController, ModulesController, PedagogyController, SchoolConfigController, CommsController, OaaController, GamificationController, PredictiveController, PaymentsController, GpsController, OrientationController, PublicController, VisitorAdminController, ResourcesController, MarketplaceController, MinistryController, PublicApiController, ApiAdminController, GenAiController, XrController, XrPublicController, AccountController],
+  providers: [AuthService, AuditService, ModulesService, TenantDb, PedagogyService, SchoolConfigService, Adapters, RealtimeGateway, NotificationService, CommsService, OaaService, GamificationService, PredictiveService, PaymentProviders, PaymentsService, GpsService, OrientationService, VisitorService, ResourcesService, MarketplaceService, MinistryService, PublicApiService, WebhooksService, GenAiService, XrService, AccountService, SchedulerService, { provide: APP_GUARD, useClass: CoreGuard }, { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor }],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) { consumer.apply(TenantMiddleware).forRoutes('*'); }
