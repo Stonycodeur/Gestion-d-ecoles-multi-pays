@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'pinned_client.dart';
@@ -72,6 +73,13 @@ class ApiClient {
     final r = await _c.get(Uri.parse('$apiBase$path'), headers: _h(school, token));
     if (r.statusCode >= 300) throw Exception('GET $path failed (${r.statusCode})');
     return jsonDecode(r.body) as Map<String, dynamic>;
+  }
+
+  /// Online download of a binary resource (lesson attachment); the bearer token cannot be sent by a plain link.
+  Future<({Uint8List bytes, String contentType})> getBytes(String school, String token, String path) async {
+    final r = await _c.get(Uri.parse('$apiBase$path'), headers: _h(school, token));
+    if (r.statusCode >= 300) throw Exception('GET $path failed (${r.statusCode})');
+    return (bytes: r.bodyBytes, contentType: r.headers['content-type'] ?? 'application/octet-stream');
   }
 
   Future<int> replay(String school, String token, QueuedOp op) async {
