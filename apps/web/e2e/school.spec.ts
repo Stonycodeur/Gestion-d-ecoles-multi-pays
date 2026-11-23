@@ -12,7 +12,7 @@ test('login refuses a malformed school code and shows the error', async ({ page 
   await page.goto('/login');
   await page.getByRole('textbox').first().fill('Bad Code!');
   await page.locator('button[type=submit]').click();
-  await expect(page.getByRole('alert')).toContainText('invalid');
+  await expect(page.locator('form [role=alert]')).toContainText('invalid');
 });
 
 test('an admin of the Gabon demo lycée signs in and sees the active modules page', async ({ page }) => {
