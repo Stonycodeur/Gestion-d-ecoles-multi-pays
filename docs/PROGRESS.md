@@ -98,9 +98,12 @@
 - Mobile : écrans emploi du temps (remplacements), notes (consultation + saisie hors ligne prioritaire), absences (pointage/justification).
 - Web : pages Administration (échelle, personnel, remplacements, établissements), Compétences/UE/pièces jointes, emploi du temps par rôle (semaine, mois, PDF, glisser-déposer).
 - Guides utilisateur FR/EN, manuel d'administration, déploiement, script de charge `infra/loadtest/p95.mjs`.
+**Livré en `phase-9-gaps` (CI verte)**
+- Tests e2e web Playwright (5 scénarios : connexion, échelle de notation du lycée/primaire, emploi du temps) dans le job CI `web-e2e` (API sandbox + seed Gabon + build web de production).
+- Mobile : pièces jointes (téléchargement avec jeton, aperçu des images) et lien vers le QCM dans le cahier de textes.
+- Seed de démonstration : établissement et schéma créés dans une seule transaction.
 **Reste à faire (aucun report silencieux ; voir `RAPPORT_FINAL.md`)**
-- Tests e2e web (Playwright) : non écrits ; la CI compile et vérifie le web mais ne pilote pas de navigateur.
-- Mobile : lecture des pièces jointes et du lien QCM dans l'écran du cahier de textes ; modération des messages ; envoi automatique SMS/e-mail selon les préférences ; enregistrement d'un brouillon de QCM depuis l'assistant.
+- Mobile : modération des messages ; envoi automatique SMS/e-mail selon les préférences ; enregistrement d'un brouillon de QCM depuis l'assistant.
 - Désactivation du compte dans Keycloak lors de la suppression (documentée dans INTEGRATIONS, non automatisée).
 - Captures d'écran du README (nécessitent un appareil/navigateur) ; vérification visuelle RTL sur appareil.
 - Le script de charge n'a pas été exécuté dans la CI : aucune mesure p95 réelle n'est revendiquée.

@@ -28,9 +28,15 @@ export async function seedDemo(admin: Pool, log: (s: string) => void = () => und
   for (const sc of SCHOOLS) {
     const exists = await admin.query('SELECT id FROM tenants WHERE slug=$1', [sc.slug]);
     if (exists.rowCount) { log(`${sc.slug}: already present, skipped`); continue; }
-    const t = (await admin.query(
-      `INSERT INTO tenants(slug, name, school_type, country_code, schema_name) VALUES ($1,$2,$3,'GA',$4) RETURNING id`, [sc.slug, sc.name, sc.type, `tenant_${sc.slug}`])).rows[0].id as string;
-    await admin.query('SELECT provision_tenant_schema($1)', [sc.slug]);
+    // One transaction: a school row without its schema would break every per-school job (scheduler, exports) that runs meanwhile.
+    const c0 = await admin.connect(); let t: string;
+    try {
+      await c0.query('BEGIN');
+      t = (await c0.query(
+        `INSERT INTO tenants(slug, name, school_type, country_code, schema_name) VALUES ($1,$2,$3,'GA',$4) RETURNING id`, [sc.slug, sc.name, sc.type, `tenant_${sc.slug}`])).rows[0].id as string;
+      await c0.query('SELECT provision_tenant_schema($1)', [sc.slug]);
+      await c0.query('COMMIT');
+    } catch (e) { await c0.query('ROLLBACK'); throw e; } finally { c0.release(); }
     const S = `tenant_${sc.slug}`;
     const tx = async <T>(f: (q: (sql: string, p?: unknown[]) => Promise<any>) => Promise<T>) => { // eslint-disable-line @typescript-eslint/no-explicit-any
       const c = await admin.connect();
