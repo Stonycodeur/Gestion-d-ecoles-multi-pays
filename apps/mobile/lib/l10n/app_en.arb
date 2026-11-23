@@ -8,5 +8,8 @@
   "login": "Sign in",
   "signOut": "Sign out",
   "noModules": "No active module for this school",
-  "roleLabel": "Role (sandbox mode)"
+  "roleLabel": "Role (sandbox mode)",
+  "timetable": "Timetable",
+  "grades": "Grades",
+  "absences": "Absences"
 }

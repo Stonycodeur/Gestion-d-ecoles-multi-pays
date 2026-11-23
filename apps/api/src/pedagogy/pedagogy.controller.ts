@@ -105,8 +105,7 @@ export class PedagogyController {
     this.svc.authorize(p, slug, 'lessons:write', { classId: b?.class_id });
     return this.svc.createLesson(slug, p.id, b);
   }
-  @Get('lessons') @RequirePermission('lessons:read')
-  lessons(@Req() r: CoreRequest, @Query('class_id') classId?: string, @Query('q') q?: string) { return this.svc.listLessons(need(r).slug, classId, q); }
+  // GET /lessons lives in AcademicController: it scopes students and guardians to their own classes.
   @Post('lessons/:id/visa') @RequirePermission('lessons:visa')
   visa(@Req() r: CoreRequest, @Param('id') id: string) { const { slug, p } = need(r); return this.svc.visaLesson(slug, id, p.id); }
 }

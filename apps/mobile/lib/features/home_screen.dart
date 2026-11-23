@@ -4,6 +4,7 @@ import '../core/models.dart';
 import '../core/session.dart';
 import '../l10n/app_localizations.dart';
 import 'pedagogy_screens.dart';
+import 'school_screens.dart';
 import 'comms_screens.dart';
 import 'oaa_games_screens.dart';
 import 'payment_gps_screens.dart';
@@ -25,9 +26,12 @@ class HomeScreen extends ConsumerWidget {
         IconButton(icon: const Icon(Icons.settings), tooltip: 'Paramètres', onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AccountScreen()))),
         IconButton(icon: const Icon(Icons.logout), tooltip: t.signOut, onPressed: () => ref.read(sessionProvider.notifier).signOut()),
       ]),
-      body: screens.isEmpty
-          ? Center(child: Text(t.noModules))
-          : ListView(children: [
+      body: ListView(children: [
+              ListTile(leading: const Icon(Icons.calendar_month), title: Text(t.timetable), onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TimetableScreen()))),
+              ListTile(leading: const Icon(Icons.grade), title: Text(t.grades), onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const GradesScreen()))),
+              ListTile(leading: const Icon(Icons.event_busy), title: Text(t.absences), onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const AbsencesScreen()))),
+              const Divider(),
+              if (screens.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Center(child: Text(t.noModules))),
               for (final sc in screens)
                 ListTile(
                   title: Text(sc),

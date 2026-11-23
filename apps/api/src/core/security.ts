@@ -30,5 +30,7 @@ export function applySecurity(app: INestApplication, env: NodeJS.ProcessEnv = pr
   const origins = (env.CORS_ORIGINS ?? '').split(',').map((s) => s.trim()).filter(Boolean);   // strict: an empty list allows no browser origin, never '*'
   app.enableCors({ origin: origins, credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], maxAge: 600 });
   const limit = env.BODY_LIMIT ?? '1mb';
+  // Lesson attachments: up to 5 MB of file, i.e. about 6.7 MB once base64-encoded. Mounted first so only this route gets the larger limit.
+  x.use(/^\/lessons\/[^/]+\/attachments$/, json({ limit: env.ATTACHMENT_BODY_LIMIT ?? '8mb', verify: (req: any, _res: unknown, buf: Buffer) => { req.rawBody = buf; } }));
   x.use(json({ limit, verify: (req: any, _res: unknown, buf: Buffer) => { req.rawBody = buf; } })); x.use(urlencoded({ extended: false, limit }));
 }
