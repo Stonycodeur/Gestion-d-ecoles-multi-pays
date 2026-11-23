@@ -14,7 +14,7 @@ Légende : ✔ fait et vérifié par la CI · ◐ partiel (limite expliquée) ·
 | Établissements (6.2) | ✔ | CRUD par le Super-Admin racine, provisionnement transactionnel du schéma, assistant d'échelles par pays (API + page web). |
 | Élèves, personnel (6.3, 6.4) | ✔ | Inscription (dont en ligne), dossier, OAA et facture initiale ; contrats et charge horaire avec alerte de surcharge. |
 | Emploi du temps (6.5) | ◐ | Génération par contraintes, conflits, glisser-déposer, remplacements notifiés, vues jour/semaine/mois, PDF, iCal, validation. Glisser-déposer : web seulement (prévu). Génération et validation : web seulement (administration lourde, documenté). |
-| Cahier de textes (6.6) | ◐ | Contenu, devoirs, visa, inspecteurs à durée limitée, recherche (PostgreSQL tsvector), pièces jointes ≤ 5 Mo, lien QCM. Mobile : consultation ; l'affichage des pièces jointes et du lien QCM n'est pas encore dans l'écran mobile. |
+| Cahier de textes (6.6) | ◐ | Contenu, devoirs, visa, inspecteurs à durée limitée, recherche (PostgreSQL tsvector), pièces jointes ≤ 5 Mo, lien QCM. Mobile : consultation, pièces jointes (téléchargement) et lien QCM. |
 | Notes, bulletins, relevés (6.7, 7.3) | ✔ | Échelles configurables (numérique, lettres, mixte, compétences), instantané d'échelle par évaluation, moyennes pondérées multi-échelles, bulletins PDF, compétences (primaire), UE/ECTS et relevé PDF (supérieur). |
 | Absences (6.8) | ◐ | Pointage, justification, validation, statistiques, alertes, impact OAA, push/e-mail/SMS via adaptateurs. L'envoi SMS/e-mail automatique selon les préférences individuelles n'est pas câblé de bout en bout. |
 | Messagerie (6.9) | ◐ | 1:1 et groupes, règles « qui écrit à qui », pièces jointes, temps réel, chiffrement au repos (pas de chiffrement de bout en bout : D-011). Écran de modération mobile absent. |
@@ -41,7 +41,7 @@ Légende : ✔ fait et vérifié par la CI · ◐ partiel (limite expliquée) ·
 Rien n'est « reporté à une version ultérieure » : les ◐ ci-dessus sont des limites actuelles, listées pour être corrigées.
 
 ## 2. Tests non écrits (écart assumé)
-- Tests e2e web avec navigateur (Playwright) : absents.
+- Tests e2e web avec navigateur : 5 scénarios Playwright seulement (connexion, échelle de notation, emploi du temps) ; les autres pages ne sont pas pilotées par navigateur.
 - Tests d'intégration Flutter sur émulateur/simulateur : absents (seuls analyse, tests unitaires et build APK debug tournent en CI).
 - Script de charge non exécuté.
 
