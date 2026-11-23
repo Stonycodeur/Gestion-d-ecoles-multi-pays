@@ -2,7 +2,7 @@ import { KeycloakIdentity } from './adapters';
 
 const ID = '3f2b8c1e-0000-4000-8000-000000000001';
 const env = { KC_URL: 'https://sso.example.org/', KC_REALM: 'ecole', KC_ADMIN_CLIENT_ID: 'admin-cli', KC_ADMIN_CLIENT_SECRET: 's' } as NodeJS.ProcessEnv;
-const res = (status: number, body: unknown = {}) => new Response(JSON.stringify(body), { status });
+const res = (status: number, body: unknown = {}) => new Response(status === 204 ? null : JSON.stringify(body), { status });
 
 describe('KeycloakIdentity', () => {
   it('disables the user then closes its sessions, with a service-account token', async () => {
