@@ -8,5 +8,8 @@
   "login": "Se connecter",
   "signOut": "Se déconnecter",
   "noModules": "Aucun module actif pour cet établissement",
-  "roleLabel": "Rôle (mode sandbox)"
+  "roleLabel": "Rôle (mode sandbox)",
+  "timetable": "Emploi du temps",
+  "grades": "Notes",
+  "absences": "Absences"
 }
