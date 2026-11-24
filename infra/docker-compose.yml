@@ -51,6 +51,8 @@ services:
       REDIS_URL: "redis://redis:6379"   # compteurs de débit partagés entre réplicas ; retirer pour compter en mémoire
       DATABASE_URL: "postgres://app_runtime:${APP_RUNTIME_PASSWORD}@postgres:5432/ecolemanager"
       DATABASE_ADMIN_URL: "postgres://${PG_USER:-ecole}:${PG_PASSWORD}@postgres:5432/ecolemanager"
+      QUEUE_MODE: "${QUEUE_MODE:-inline}"   # rabbitmq : SMS et e-mails en file durable avec reprises
+      RABBITMQ_URL: "amqp://${RABBIT_USER:-ecole}:${RABBIT_PASSWORD}@rabbitmq:5672"
       SEARCH_MODE: "${SEARCH_MODE:-sandbox}"   # elasticsearch : classement des ressources par Elasticsearch (repli PostgreSQL)
       ELASTICSEARCH_URL: "http://elasticsearch:9200"
       AUTH_MODE: "${AUTH_MODE:-sandbox}"

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { buildNotification, externalChannelsFor, smsText, type Lang, type NotificationType } from '@ecolemanager/shared';
 import { TenantDb, type Q } from '../pedagogy/tenant-db.service';
 import { Adapters } from '../adapters/adapters';
@@ -6,12 +6,21 @@ import { RealtimeGateway } from './realtime.gateway';
 
 type Params = Record<string, string> | ((lang: Lang) => Record<string, string>);
 const LANGS: Lang[] = ['fr', 'en', 'ar'];
+export const OUTBOUND = 'outbound.messages';
 
 /** In-app notification + push (FCM/APNs through the push adapter). Best effort: a push failure never fails the business action. */
 @Injectable()
-export class NotificationService {
+export class NotificationService implements OnModuleInit, OnModuleDestroy {
   private readonly log = new Logger('Notifications');
   constructor(private readonly db: TenantDb, private readonly adapters: Adapters, private readonly rt: RealtimeGateway) {}
+
+  /** SMS and e-mail go through the job queue (RabbitMQ when QUEUE_MODE=rabbitmq, otherwise in-process): a provider outage is retried, not lost. */
+  async onModuleInit() {
+    await this.adapters.queue().consume(OUTBOUND, async (j: { channel: 'sms' | 'email'; to: string; subject: string; body: string }) => {
+      if (j.channel === 'sms') await this.adapters.sms().send(j.to, smsText(j.subject, j.body)); else await this.adapters.email().send(j.to, j.subject, j.body);
+    });
+  }
+  async onModuleDestroy() { await this.adapters.queue().close(); }
 
   async familyOf(q: Q, studentId: string): Promise<string[]> {
     const r = await q('SELECT user_id FROM directory WHERE student_id = $1 OR child_ids @> ARRAY[$1]::uuid[]', [studentId]);
@@ -63,8 +72,12 @@ export class NotificationService {
       const c = contact.get(uid);
       if (c) {   // e-mail / SMS for the types that need them, best effort like push
         for (const ch of externalChannelsFor(type, { sms: c.notify_sms !== false, email: c.notify_email !== false }, { phone: c.phone, email: c.email })) {
-          try { if (ch === 'sms') await this.adapters.sms().send(c.phone, smsText(msg.title, msg.body)); else await this.adapters.email().send(c.email, msg.title, msg.body); }
-          catch (e) { this.log.warn(`${ch} failed: ${(e as Error).message}`); }
+          try { await this.adapters.queue().publish(OUTBOUND, { channel: ch, to: ch === 'sms' ? c.phone : c.email, subject: msg.title, body: msg.body }); }
+          catch (e) {   // broker unreachable: send directly once rather than lose the message
+            this.log.warn(`${ch} could not be queued (${(e as Error).message}), sending directly`);
+            try { if (ch === 'sms') await this.adapters.sms().send(c.phone, smsText(msg.title, msg.body)); else await this.adapters.email().send(c.email, msg.title, msg.body); }
+            catch (e2) { this.log.warn(`${ch} failed: ${(e2 as Error).message}`); }
+          }
         }
       }
       n++;

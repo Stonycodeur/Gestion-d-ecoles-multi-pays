@@ -174,3 +174,7 @@ Fusion de `phase-8-docs-finish` dans `main` (CI verte), puis traitement de la li
 ## Livré en phase-9f-search
 - Adaptateur de recherche Elasticsearch 8 (`SEARCH_MODE`, `ELASTICSEARCH_URL`) pour les ressources pédagogiques : index par établissement, analyseur français sans accents, indexation à la création et au report d'année, `POST /resources/reindex`, repli PostgreSQL. Tests unitaires (faux `fetch`) et test contre un vrai Elasticsearch en CI (`ES_URL_TEST`).
 - Reste hors Elasticsearch : recherche du cahier de textes et des autres modules (PostgreSQL). RabbitMQ et TimescaleDB toujours non branchés (D-064).
+
+## Livré en phase-9g-queue
+- File d'attente RabbitMQ (`QUEUE_MODE`, `RABBITMQ_URL`) pour l'envoi des SMS et e-mails : file durable, reprises avec délai, file `.dead`, reconnexion du consommateur, repli en envoi direct, mode `inline` par défaut. Tests unitaires et tests contre un vrai RabbitMQ en CI (`RABBITMQ_URL_TEST`).
+- Non couvert par la file : push, notifications internes, webhooks sortants (restent synchrones, avec leurs propres reprises). Pas d'outil de rejeu de la file `.dead` (à faire depuis la console RabbitMQ). TimescaleDB toujours non branché.
