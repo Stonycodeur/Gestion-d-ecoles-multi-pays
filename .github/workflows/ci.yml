@@ -31,6 +31,11 @@ jobs:
         ports: ["6379:6379"]
         options: >-
           --health-cmd "redis-cli ping" --health-interval 5s --health-retries 10
+      rabbitmq:
+        image: rabbitmq:3.13-alpine
+        ports: ["5672:5672"]
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping" --health-interval 10s --health-retries 12
       elasticsearch:
         image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
         env: { discovery.type: single-node, xpack.security.enabled: "false", ES_JAVA_OPTS: "-Xms512m -Xmx512m" }
@@ -56,7 +61,7 @@ jobs:
       - run: npm install
       - run: npm run test:shared
       - run: npm --prefix apps/api run build && npm --prefix apps/api test
-        env: { REDIS_URL_TEST: 'redis://localhost:6379', ES_URL_TEST: 'http://localhost:9200' }
+        env: { REDIS_URL_TEST: 'redis://localhost:6379', ES_URL_TEST: 'http://localhost:9200', RABBITMQ_URL_TEST: 'amqp://guest:guest@localhost:5672' }
       - run: npm --prefix apps/web run build
   web-e2e:
     runs-on: ubuntu-latest

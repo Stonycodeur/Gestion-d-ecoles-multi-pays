@@ -1,3 +1,4 @@
+import { InlineQueue, RabbitQueue, type JobQueue } from './queue';
 import { ElasticsearchSearch, PostgresSearch, type SearchAdapter } from './search';
 import { Injectable } from '@nestjs/common';
 import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
@@ -135,6 +136,7 @@ export class Adapters {
   push(): PushAdapter { return this.pick('push', process.env.PUSH_MODE, (live) => (live ? new FcmPush() : new SandboxPush())); }
   sms(): SmsAdapter { return this.pick('sms', process.env.SMS_MODE, (live) => (live ? new TwilioSms() : new SandboxSms())); }
   search(): SearchAdapter { return this.pick('search', process.env.SEARCH_MODE === 'elasticsearch' ? 'live' : 'sandbox', (live) => (live ? new ElasticsearchSearch() : new PostgresSearch())); }
+  queue(): JobQueue { return this.pick('queue', process.env.QUEUE_MODE === 'rabbitmq' ? 'live' : 'sandbox', (live) => (live ? new RabbitQueue() : new InlineQueue())); }
   identity(): IdentityAdapter { return this.pick('identity', process.env.IDENTITY_MODE, (live) => (live ? new KeycloakIdentity() : new SandboxIdentity())); }
   email(): EmailAdapter { return this.pick('email', process.env.EMAIL_MODE, (live) => (live ? new SmtpEmail() : new SandboxEmail())); }
 }
