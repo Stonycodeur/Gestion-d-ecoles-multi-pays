@@ -108,6 +108,8 @@
 - Notifications par SMS et e-mail (absences, rappels de paiement, factures, confirmations) en plus du push, avec interrupteurs par personne (`GET/PUT /me/notification-preferences`, web et mobile) ; adaptateurs sandbox/live existants (`SMS_MODE`, `EMAIL_MODE`).
 - Mobile : enregistrement d'un QCM généré par l'assistant (classe + matière + validation de l'enseignant).
 - Écart de lecture corrigé : la « modération des messages » citée dans les anciens restes à faire ne figure pas dans le cahier des charges ; elle n'est pas développée.
+**Livré en `phase-9d-redis`**
+- Limites de débit et quotas de l'API publique via Redis (`REDIS_URL`), repli local, test unitaire (faux client) et test contre un vrai Redis en CI. Le cache applicatif, RabbitMQ, Elasticsearch et TimescaleDB restent non branchés.
 **Reste à faire (aucun report silencieux ; voir `RAPPORT_FINAL.md`)**
 - Captures d'écran du README (nécessitent un appareil/navigateur) ; vérification visuelle RTL sur appareil.
 - Le script de charge n'a pas été exécuté dans la CI : aucune mesure p95 réelle n'est revendiquée.

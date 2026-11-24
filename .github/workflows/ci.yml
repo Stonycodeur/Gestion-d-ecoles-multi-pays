@@ -26,6 +26,11 @@ jobs:
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-retries 10
     env:
       PGHOST: localhost
       PGUSER: postgres
@@ -45,6 +50,7 @@ jobs:
       - run: npm install
       - run: npm run test:shared
       - run: npm --prefix apps/api run build && npm --prefix apps/api test
+        env: { REDIS_URL_TEST: 'redis://localhost:6379' }
       - run: npm --prefix apps/web run build
   web-e2e:
     runs-on: ubuntu-latest

@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, HttpException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { graphql, buildSchema } from 'graphql';
-import { API_SCOPES, QuotaCounter, WEBHOOK_EVENTS, can, generateClientCredentials, parseScopes, secretMatches, sha256, signAccessToken, verifyAccessToken, type Principal } from '@ecolemanager/shared';
+import { API_SCOPES, WEBHOOK_EVENTS, can, generateClientCredentials, parseScopes, secretMatches, sha256, signAccessToken, verifyAccessToken, type Principal } from '@ecolemanager/shared';
 import { TenantDb, type Q } from '../pedagogy/tenant-db.service';
 import { mapDbError, str, uuid } from '../pedagogy/validate';
 import { AuditService } from '../core/audit.service';
@@ -26,10 +26,10 @@ const schema = buildSchema(SDL);
 
 /** Public API (spec 6.19): OAuth2 client credentials per school, scoped read-only REST + GraphQL, quotas, developer docs. Data is minimised: no birth dates, guardians, payments. */
 import { ModulesService } from '../modules/modules.service';
+import { rateStore } from '../core/rate-store';
 @Injectable()
 export class PublicApiService {
-  private readonly quota = new QuotaCounter();
-  private readonly tokenLimiter = new QuotaCounter();
+  private readonly limits = rateStore();   // shared across replicas when REDIS_URL is set
   constructor(private readonly db: TenantDb, private readonly audit: AuditService, readonly webhooks: WebhooksService, private readonly modules: ModulesService) {}
   private tx<T>(slug: string, fn: (q: Q) => Promise<T>): Promise<T> { return this.db.run(slug, (q) => fn(q)).catch((e) => mapDbError(e)); }
   private requireModule(slug: string) { if (!this.modules.registry.isEnabled(slug, 'module-public-api')) throw new ForbiddenException('public API module is not enabled for this school'); }
@@ -81,7 +81,7 @@ export class PublicApiService {
 
   // ---- OAuth2 client credentials -----------------------------------------------------------------------------------------
   async token(ip: string, b: any) {
-    if (!this.tokenLimiter.hit(`tok|${ip}`, 30, 60_000).allowed) throw new HttpException('too many token requests', 429);
+    if (!(await this.limits.hit(`tok|${ip}`, 30, 60_000)).allowed) throw new HttpException('too many token requests', 429);
     if (b?.grant_type !== 'client_credentials') throw new BadRequestException({ error: 'unsupported_grant_type' });
     const slug = str(b?.school, 'school', 63);
     const bad = () => new UnauthorizedException({ error: 'invalid_client' });
@@ -100,7 +100,7 @@ export class PublicApiService {
     const c = await this.db.run(claims.tenant, async (q) => { const r = (await q('SELECT client_id, scopes, quota_per_hour, active FROM api_clients WHERE client_id = $1', [claims.cid]))[0]; if (r?.active) await q('UPDATE api_clients SET last_used_at = NOW() WHERE client_id = $1', [claims.cid]); return r; }).catch(() => undefined);
     if (!c || !c.active) throw new UnauthorizedException('client revoked');
     this.requireModule(claims.tenant);
-    const qt = this.quota.hit(`${claims.tenant}|${claims.cid}`, c.quota_per_hour);
+    const qt = await this.limits.hit(`q|${claims.tenant}|${claims.cid}`, c.quota_per_hour, 3600_000);
     res?.setHeader('X-RateLimit-Limit', String(c.quota_per_hour)); res?.setHeader('X-RateLimit-Remaining', String(qt.remaining));
     if (!qt.allowed) { res?.setHeader('Retry-After', String(Math.ceil((qt.resetAt - Date.now()) / 1000))); throw new HttpException('quota exceeded', 429); }
     return { slug: claims.tenant, clientId: claims.cid, scopes: claims.scopes.filter((s) => (c.scopes as string[]).includes(s)) };

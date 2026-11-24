@@ -45,9 +45,10 @@ services:
     ports: [ "8080:8080" ]
   api:
     build: { context: .., dockerfile: apps/api/Dockerfile }
-    depends_on: { postgres: { condition: service_healthy } }
+    depends_on: { postgres: { condition: service_healthy }, redis: { condition: service_started } }
     environment: &apienv
       NODE_ENV: development
+      REDIS_URL: "redis://redis:6379"   # compteurs de débit partagés entre réplicas ; retirer pour compter en mémoire
       DATABASE_URL: "postgres://app_runtime:${APP_RUNTIME_PASSWORD}@postgres:5432/ecolemanager"
       DATABASE_ADMIN_URL: "postgres://${PG_USER:-ecole}:${PG_PASSWORD}@postgres:5432/ecolemanager"
       AUTH_MODE: "${AUTH_MODE:-sandbox}"
