@@ -95,6 +95,8 @@ jobs:
           curl -sf http://localhost:3001/login >/dev/null || { cat web.log; exit 1; }
       - run: npx --prefix apps/web playwright install --with-deps chromium
       - run: npm --prefix apps/web run test:e2e
+      - name: "Load test on the seeded Gabon school (shared CI runners are slow: budget 300 ms here, product target 200 ms)"
+        run: API_BASE=http://localhost:3000 TENANT=ga_lycee CONCURRENCY=10 DURATION_S=20 P95_BUDGET_MS=300 PATHS=/health,/settings/country,/settings/grading,/timetable,/lessons,/classes,/me/abilities node infra/loadtest/p95.mjs | tee loadtest.txt
       - if: failure()
         run: tail -n 60 api.log web.log || true
 
