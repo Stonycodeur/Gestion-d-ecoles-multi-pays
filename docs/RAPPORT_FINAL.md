@@ -31,11 +31,11 @@ Légende : ✔ fait et vérifié par la CI · ◐ partiel (limite expliquée) ·
 | Suivi GPS (10) | ◐ | Consentement révocable avec plage horaire, géofencing, historique, purge, journal d'accès, chiffrement. Suivi natif en arrière-plan écrit, jamais essayé sur appareil ; interrogation toutes les 15 s côté parent. |
 | Hors ligne (12.4) | ◐ | File d'écritures idempotente, journal des conflits, priorité des notes enseignants, PWA. Magasin local chiffré par fichier (pas Drift/SQLCipher : D-064). Aucun test sur appareil en mode avion. |
 | RTL (arabe) | ◐ | Textes et mise en page RTL web/mobile (ARB/i18n). Pas de vérification visuelle sur appareil. |
-| Sécurité (11.1) | ◐ | TLS (ingress), JWT courts, CORS strict, en-têtes, validation, limiteur de débit, pinning mobile, audit. Limiteur en mémoire (par réplica). Pas d'audit de sécurité externe ni de test d'intrusion. |
-| Performance (12.1) | ◐ | Index, pagination, test de budget en CI ; script de charge `infra/loadtest/p95.mjs` fourni mais non exécuté : aucun p95 mesuré n'est revendiqué. Cache Redis non câblé. |
+| Sécurité (11.1) | ◐ | TLS (ingress), JWT courts, CORS strict, en-têtes, validation, limiteur de débit, pinning mobile, audit. Limiteur partagé via Redis si `REDIS_URL` est défini, sinon en mémoire par réplica. Pas d'audit de sécurité externe ni de test d'intrusion. |
+| Performance (12.1) | ◐ | Index, pagination, test de budget en CI ; script de charge `infra/loadtest/p95.mjs` fourni mais non exécuté : aucun p95 mesuré n'est revendiqué. Pas de cache applicatif. |
 | Accessibilité, i18n (12.2–12.3) | ◐ | Libellés ARIA, FR/EN/AR complets. Pas d'audit WCAG outillé ni de test avec lecteur d'écran. |
 | Mobile et stores (4.6) | ◐ | Application Flutter unique, APK debug construit en CI, signature release/Fastlane/workflows/`store/`/`PUBLICATION_STORES.md` prêts. **AAB et IPA signés non produits** (vos secrets) ; **iOS jamais compilé** (aucun Mac). |
-| Infrastructure (4.2) | ◐ | Docker, Kubernetes, Prometheus, Grafana, Sentry. **Redis, RabbitMQ, Elasticsearch et TimescaleDB sont dans docker-compose mais non utilisés par le code** (D-064). |
+| Infrastructure (4.2) | ◐ | Docker, Kubernetes, Prometheus, Grafana, Sentry. **RabbitMQ, Elasticsearch et TimescaleDB sont dans docker-compose mais non utilisés par le code** (D-064) ; Redis ne sert qu'aux limites de débit et quotas (D-065), pas au cache ni aux sessions. |
 | Documentation (13) | ✔ | README, architecture, permissions, intégrations, publication, déploiement, manuel d'administration, guides FR/EN par rôle. |
 
 Rien n'est « reporté à une version ultérieure » : les ◐ ci-dessus sont des limites actuelles, listées pour être corrigées.
@@ -51,7 +51,7 @@ Stripe, Airtel Money, Moov Money, Firebase (FCM) et APNs, SMS/e-mail, Google Map
 ## 4. Mise en production
 1. Déployer selon `docs/DEPLOIEMENT.md` ; **ne jamais appliquer `infra/k8s/40-jobs.yaml`** (seed de démonstration).
 2. Renseigner secrets et modes `*_MODE=live` ; désactiver le mode d'authentification sandbox.
-3. Si plusieurs réplicas : brancher Redis pour les limites de débit et quotas.
+3. Si plusieurs réplicas : définir `REDIS_URL` (limites de débit et quotas partagés).
 
 ## 5. Publication sur les stores
 Voir `docs/PUBLICATION_STORES.md`. Vous devez : ouvrir les comptes Google Play et Apple Developer, fournir keystore et certificats (jamais commités), identifiants d'application définitifs, captures d'écran, et soumettre les builds (workflows `release-android` / `release-ios`, Fastlane). L'iOS doit être compilé une première fois sur un Mac ou via le runner macOS : des erreurs de première compilation sont possibles.
