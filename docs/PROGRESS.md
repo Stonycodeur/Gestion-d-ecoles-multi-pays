@@ -110,9 +110,11 @@
 - Écart de lecture corrigé : la « modération des messages » citée dans les anciens restes à faire ne figure pas dans le cahier des charges ; elle n'est pas développée.
 **Livré en `phase-9d-redis`**
 - Limites de débit et quotas de l'API publique via Redis (`REDIS_URL`), repli local, test unitaire (faux client) et test contre un vrai Redis en CI. Le cache applicatif, RabbitMQ, Elasticsearch et TimescaleDB restent non branchés.
+**Livré en `phase-9e-perf`**
+- Le script de charge tourne en CI et fait échouer le job (budget 300 ms, réponses non 2xx = échec). Premier résultat : p95 de 4 à 22 ms sur 6 routes de lecture.
 **Reste à faire (aucun report silencieux ; voir `RAPPORT_FINAL.md`)**
 - Captures d'écran du README (nécessitent un appareil/navigateur) ; vérification visuelle RTL sur appareil.
-- Le script de charge n'a pas été exécuté dans la CI : aucune mesure p95 réelle n'est revendiquée.
+- Charge : seule la lecture est mesurée (10 clients, base de démonstration). À faire : écritures, PDF, IA, grosse base, montée à des milliers d'utilisateurs.
 **Limites connues** : code vérifié par la CI (pas compilé localement) ; chemin xgboost/shap non testé ; création de jeux et configuration OAA web uniquement (D-023) ; écart D-020 à valider.
 
 ## Phase 5 (paiement, GPS, consentements) : branche `phase-5-payment-gps`
