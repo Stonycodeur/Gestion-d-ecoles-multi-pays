@@ -20,8 +20,8 @@ jobs:
   api-web:
     runs-on: ubuntu-latest
     services:
-      postgres:
-        image: postgres:16
+      postgres:   # TimescaleDB image: the GPS series become a hypertable (the web-e2e job keeps plain PostgreSQL and covers the fallback)
+        image: timescale/timescaledb:latest-pg16
         env: { POSTGRES_PASSWORD: ci }
         ports: ["5432:5432"]
         options: >-
@@ -55,13 +55,14 @@ jobs:
       - name: Database for e2e (non-superuser runtime role so RLS applies)
         run: |
           createdb em_e2e
+          psql -v ON_ERROR_STOP=1 -d em_e2e -c "CREATE EXTENSION IF NOT EXISTS timescaledb"
           psql -v ON_ERROR_STOP=1 -c "CREATE ROLE app_runtime LOGIN PASSWORD 'rt'"
           for f in 010_core.sql 020_seed_roles.sql 030_seed_countries.sql 040_tenant_template.sql 050_marketplace.sql 060_idempotency.sql 070_settings.sql 080_tenants_admin.sql; do psql -v ON_ERROR_STOP=1 -q -d em_e2e -f infra/sql/$f; done
           psql -v ON_ERROR_STOP=1 -d em_e2e -c "GRANT USAGE ON SCHEMA public TO app_runtime; GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_runtime; GRANT INSERT ON audit_logs TO app_runtime; GRANT USAGE ON SEQUENCE audit_logs_id_seq TO app_runtime"
       - run: npm install
       - run: npm run test:shared
       - run: npm --prefix apps/api run build && npm --prefix apps/api test
-        env: { REDIS_URL_TEST: 'redis://localhost:6379', ES_URL_TEST: 'http://localhost:9200', RABBITMQ_URL_TEST: 'amqp://guest:guest@localhost:5672' }
+        env: { REDIS_URL_TEST: 'redis://localhost:6379', ES_URL_TEST: 'http://localhost:9200', RABBITMQ_URL_TEST: 'amqp://guest:guest@localhost:5672', TIMESCALE_EXPECTED: '1' }
       - run: npm --prefix apps/web run build
   web-e2e:
     runs-on: ubuntu-latest

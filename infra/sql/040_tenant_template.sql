@@ -219,6 +219,20 @@ BEGIN
   EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.gps_positions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,
     student_id UUID NOT NULL REFERENCES %I.students(id) ON DELETE CASCADE, enc TEXT NOT NULL, accuracy_m REAL, recorded_at TIMESTAMPTZ NOT NULL)$f$, s, tid, s);
   EXECUTE format('CREATE INDEX IF NOT EXISTS gps_positions_student ON %I.gps_positions (student_id, recorded_at DESC)', s);
+  -- GPS series as a TimescaleDB hypertable (1-day chunks) when the extension is installed in this database; a plain table otherwise.
+  -- A hypertable's unique keys must contain the time column, hence the (id, recorded_at) key. Never fails provisioning.
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'timescaledb') THEN
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_schema = s AND hypertable_name = 'gps_positions') THEN
+        IF EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = format('%I.gps_positions', s)::regclass AND conname = 'gps_positions_pkey' AND array_length(conkey, 1) = 1) THEN
+          EXECUTE format('ALTER TABLE %I.gps_positions DROP CONSTRAINT gps_positions_pkey, ADD PRIMARY KEY (id, recorded_at)', s);
+        END IF;
+        PERFORM create_hypertable(format('%I.gps_positions', s)::regclass, 'recorded_at', chunk_time_interval => INTERVAL '1 day', migrate_data => TRUE, if_not_exists => TRUE);
+      END IF;
+    EXCEPTION WHEN OTHERS THEN
+      RAISE NOTICE 'TimescaleDB not used for %.gps_positions: %', s, SQLERRM;
+    END;
+  END IF;
   EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.gps_state (student_id UUID PRIMARY KEY REFERENCES %I.students(id) ON DELETE CASCADE, %s,
     state JSONB NOT NULL DEFAULT '{"inside":[],"out_of_zone":false}', updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())$f$, s, s, tid);
   EXECUTE format($f$CREATE TABLE IF NOT EXISTS %I.gps_events (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), %s,

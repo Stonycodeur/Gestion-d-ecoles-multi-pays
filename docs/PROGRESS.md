@@ -178,3 +178,7 @@ Fusion de `phase-8-docs-finish` dans `main` (CI verte), puis traitement de la li
 ## Livré en phase-9g-queue
 - File d'attente RabbitMQ (`QUEUE_MODE`, `RABBITMQ_URL`) pour l'envoi des SMS et e-mails : file durable, reprises avec délai, file `.dead`, reconnexion du consommateur, repli en envoi direct, mode `inline` par défaut. Tests unitaires et tests contre un vrai RabbitMQ en CI (`RABBITMQ_URL_TEST`).
 - Non couvert par la file : push, notifications internes, webhooks sortants (restent synchrones, avec leurs propres reprises). Pas d'outil de rejeu de la file `.dead` (à faire depuis la console RabbitMQ). TimescaleDB toujours non branché.
+
+## Livré en phase-9h-timescale
+- `gps_positions` en hypertable TimescaleDB (chunks d'un jour) si l'extension est installée, repli table ordinaire sinon ; tests de la CI dans les deux cas (job api-web avec Timescale, job web-e2e sans).
+- Non fait : compression et rétention natives Timescale (voir D-068) ; migration des écoles existantes à lancer via `provision_tenant_schema` (documentée). Plus aucun service de l'infrastructure du cahier 4.2 n'est inutilisé, mais aucun n'a été éprouvé sous forte charge.
