@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 // Load test: measures p50/p95/p99 latency of read endpoints against the < 200 ms (p95) target (spec 12.1).
 // Usage: API_BASE=http://localhost:3000 TENANT=lycee_a CONCURRENCY=20 DURATION_S=30 node infra/loadtest/p95.mjs
+// The API's own rate limiter counts per IP: start the server under test with RATE_LIMIT_PER_MIN raised (429s make the run fail).
 // Needs the sandbox auth mode (AUTH_MODE=sandbox) and the demo seed; exits 1 when a p95 exceeds P95_BUDGET_MS (default 200).
 const base = process.env.API_BASE ?? 'http://localhost:3000';
 const tenant = process.env.TENANT ?? 'lycee_a';
 const conc = Number(process.env.CONCURRENCY ?? 20);
 const durationMs = Number(process.env.DURATION_S ?? 30) * 1000;
 const budget = Number(process.env.P95_BUDGET_MS ?? 200);
-const paths = (process.env.PATHS ?? '/health,/settings/country,/settings/grading,/timetable,/lessons,/classes,/me/abilities,/me/students').split(',');
+const paths = (process.env.PATHS ?? '/settings/country,/settings/grading,/timetable,/lessons,/classes,/me/abilities,/me/students').split(',');
 
 const loginRes = await fetch(`${base}/auth/sandbox/token`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-tenant': tenant },
   body: JSON.stringify({ sub: '00000000-0000-4000-8000-0000000000aa', role: 'admin', tenant }) });
