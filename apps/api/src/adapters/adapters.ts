@@ -1,3 +1,4 @@
+import { ElasticsearchSearch, PostgresSearch, type SearchAdapter } from './search';
 import { Injectable } from '@nestjs/common';
 import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -133,6 +134,7 @@ export class Adapters {
   storage(): StorageAdapter { return this.pick('storage', process.env.STORAGE_MODE, (live) => (live ? new S3Storage() : new LocalStorage(process.env.STORAGE_DIR ?? join(tmpdir(), 'ecolemanager-storage')))); }
   push(): PushAdapter { return this.pick('push', process.env.PUSH_MODE, (live) => (live ? new FcmPush() : new SandboxPush())); }
   sms(): SmsAdapter { return this.pick('sms', process.env.SMS_MODE, (live) => (live ? new TwilioSms() : new SandboxSms())); }
+  search(): SearchAdapter { return this.pick('search', process.env.SEARCH_MODE === 'elasticsearch' ? 'live' : 'sandbox', (live) => (live ? new ElasticsearchSearch() : new PostgresSearch())); }
   identity(): IdentityAdapter { return this.pick('identity', process.env.IDENTITY_MODE, (live) => (live ? new KeycloakIdentity() : new SandboxIdentity())); }
   email(): EmailAdapter { return this.pick('email', process.env.EMAIL_MODE, (live) => (live ? new SmtpEmail() : new SandboxEmail())); }
 }

@@ -31,6 +31,12 @@ jobs:
         ports: ["6379:6379"]
         options: >-
           --health-cmd "redis-cli ping" --health-interval 5s --health-retries 10
+      elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+        env: { discovery.type: single-node, xpack.security.enabled: "false", ES_JAVA_OPTS: "-Xms512m -Xmx512m" }
+        ports: ["9200:9200"]
+        options: >-
+          --health-cmd "curl -fs http://localhost:9200/_cluster/health" --health-interval 10s --health-retries 20
     env:
       PGHOST: localhost
       PGUSER: postgres
@@ -50,7 +56,7 @@ jobs:
       - run: npm install
       - run: npm run test:shared
       - run: npm --prefix apps/api run build && npm --prefix apps/api test
-        env: { REDIS_URL_TEST: 'redis://localhost:6379' }
+        env: { REDIS_URL_TEST: 'redis://localhost:6379', ES_URL_TEST: 'http://localhost:9200' }
       - run: npm --prefix apps/web run build
   web-e2e:
     runs-on: ubuntu-latest

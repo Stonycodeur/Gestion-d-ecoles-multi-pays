@@ -51,6 +51,8 @@ services:
       REDIS_URL: "redis://redis:6379"   # compteurs de débit partagés entre réplicas ; retirer pour compter en mémoire
       DATABASE_URL: "postgres://app_runtime:${APP_RUNTIME_PASSWORD}@postgres:5432/ecolemanager"
       DATABASE_ADMIN_URL: "postgres://${PG_USER:-ecole}:${PG_PASSWORD}@postgres:5432/ecolemanager"
+      SEARCH_MODE: "${SEARCH_MODE:-sandbox}"   # elasticsearch : classement des ressources par Elasticsearch (repli PostgreSQL)
+      ELASTICSEARCH_URL: "http://elasticsearch:9200"
       AUTH_MODE: "${AUTH_MODE:-sandbox}"
       SANDBOX_JWT_SECRET: "${SANDBOX_JWT_SECRET:?set in .env (>= 32 chars)}"
       MESSAGE_KEY: "${MESSAGE_KEY:?set in .env}"
