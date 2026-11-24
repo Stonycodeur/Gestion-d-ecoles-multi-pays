@@ -170,3 +170,7 @@
 
 ## Prochaine étape
 Fusion de `phase-8-docs-finish` dans `main` (CI verte), puis traitement de la liste « Reste à faire » ci-dessus ; question ouverte : licence du dépôt (placeholder propriétaire en place).
+
+## Livré en phase-9f-search
+- Adaptateur de recherche Elasticsearch 8 (`SEARCH_MODE`, `ELASTICSEARCH_URL`) pour les ressources pédagogiques : index par établissement, analyseur français sans accents, indexation à la création et au report d'année, `POST /resources/reindex`, repli PostgreSQL. Tests unitaires (faux `fetch`) et test contre un vrai Elasticsearch en CI (`ES_URL_TEST`).
+- Reste hors Elasticsearch : recherche du cahier de textes et des autres modules (PostgreSQL). RabbitMQ et TimescaleDB toujours non branchés (D-064).
