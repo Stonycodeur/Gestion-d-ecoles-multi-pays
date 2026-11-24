@@ -26,7 +26,7 @@ const on = !!process.env.DATABASE_ADMIN_URL && process.env.TIMESCALE_EXPECTED ==
   it('is a hypertable with a (id, recorded_at) key and forced row level security', async () => {
     const h = await admin.query("SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_schema = 'tenant_e2e_w' AND hypertable_name = 'gps_positions'");
     expect(h.rowCount).toBe(1);
-    const pk = await admin.query("SELECT array_agg(a.attname ORDER BY a.attname) AS cols FROM pg_constraint c JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY(c.conkey) WHERE c.conrelid = 'tenant_e2e_w.gps_positions'::regclass AND c.contype = 'p'");
+    const pk = await admin.query("SELECT array_agg(a.attname::text ORDER BY a.attname) AS cols FROM pg_constraint c JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY(c.conkey) WHERE c.conrelid = 'tenant_e2e_w.gps_positions'::regclass AND c.contype = 'p'");
     expect(pk.rows[0].cols).toEqual(['id', 'recorded_at']);
     const rls = await admin.query("SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE oid = 'tenant_e2e_w.gps_positions'::regclass");
     expect(rls.rows[0]).toEqual({ relrowsecurity: true, relforcerowsecurity: true });
