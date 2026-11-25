@@ -2,8 +2,8 @@ import LegalPage, { type LegalSection } from '../../../components/LegalPage';
 
 const S: LegalSection[] = [
   { h: { fr: 'Objet', en: 'Purpose' }, p: {
-    fr: ['Ces conditions encadrent l’utilisation d’ÉcoleManager Pro (web et applications mobiles) mise à disposition par l’établissement [nom] à ses élèves, parents, enseignants et personnels.'],
-    en: ['These terms govern the use of ÉcoleManager Pro (web and mobile apps) provided by the school [name] to its students, parents, teachers and staff.'] } },
+    fr: ['Ces conditions encadrent l’utilisation d’ÉcoleManager Pro (web et applications mobiles) éditée par STONY-TECHNOLOGIE et mise à disposition par l’établissement [nom] à ses élèves, parents, enseignants et personnels.'],
+    en: ['These terms govern the use of ÉcoleManager Pro (web and mobile apps) published by STONY-TECHNOLOGIE and provided by the school [name] to its students, parents, teachers and staff.'] } },
   { h: { fr: 'Comptes', en: 'Accounts' }, p: {
     fr: ['Les comptes sont créés ou validés par l’établissement. Vous êtes responsable de la confidentialité de vos identifiants. Le compte d’un élève mineur est placé sous la responsabilité de ses parents ou tuteurs.'],
     en: ['Accounts are created or validated by the school. You are responsible for keeping your credentials confidential. A minor student’s account is under the responsibility of their parents or guardians.'] } },

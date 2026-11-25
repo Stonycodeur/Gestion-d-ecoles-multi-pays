@@ -4,7 +4,7 @@ L'application Flutter (`apps/mobile`) est livrée sans dossiers `android/` et `i
 
 ## Ce que je fais moi-même (action de votre part)
 1. Ouvrir le compte **Google Play Console** (frais uniques) et le compte **Apple Developer Program** (abonnement annuel).
-2. Choisir et me communiquer l'**identifiant d'application** (applicationId Android = bundle identifier iOS) et le nom commercial. En attendant : `com.ecolemanager.pro.work`.
+2. **Identifiant d'application : `com.stonytechnologie.ecolemanager`** (applicationId Android = bundle identifier iOS), nom commercial **ÉcoleManager Pro**, société **STONY-TECHNOLOGIE**. Déclarez exactement cet identifiant dans la Play Console et dans Apple Developer (Identifiers) ; il ne peut plus changer après la première publication.
 3. **Générer le keystore Android** (jamais commité) et fournir les certificats/profils iOS.
 4. Créer le projet **Firebase** et fournir `google-services.json` / `GoogleService-Info.plist` (voir `docs/INTEGRATIONS.md`).
 5. Ajouter les **captures d'écran finales** (liste dans `store/*/listing.md`) et compléter les [crochets] des pages légales.
