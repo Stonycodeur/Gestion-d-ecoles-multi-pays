@@ -187,4 +187,8 @@ Fusion de `phase-8-docs-finish` dans `main` (CI verte), puis traitement de la li
 - Correctifs : SSRF du connecteur ministère (redirections suivies avec le jeton, adresses non vérifiées) ; image IA exécutée en root ; algorithmes OIDC non restreints ; corps compressés acceptés.
 - Ajouts : vérification de configuration au démarrage en production, garde SSRF partagée avec les webhooks, job CI `security` (secrets, fichiers de signature, audit des dépendances), `docs/SECURITY.md`.
 - Dépendances : Next 16 / React 19, nodemailer 10, firebase-admin 14 (API modulaire). Plus aucune faille critique.
-- **Reste** : migration NestJS 10 → 12 (six avis « high » acceptés avec analyse, voir D-071) ; fenêtre DNS rebinding résiduelle sur les appels sortants ; test d'intrusion externe non réalisé.
+- **Reste** : fenêtre DNS rebinding résiduelle sur les appels sortants ; test d'intrusion externe non réalisé.
+
+## Livré en phase-10b-nest12
+- Migration NestJS 10 → 12 (165 tests API, e2e Playwright et builds verts), images Docker en Node 22, audit des dépendances propre sans exception (D-071).
+- Limite : Node ≥ 22.12 obligatoire pour l'API (chargement de modules ES par `require`).
