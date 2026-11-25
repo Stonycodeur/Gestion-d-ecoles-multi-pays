@@ -59,6 +59,17 @@
     "preset": "ts-jest",
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "transform": {
+      "^.+\\.[tj]s$": [
+        "ts-jest",
+        {
+          "tsconfig": "<rootDir>/../tsconfig.jest.json"
+        }
+      ]
+    },
+    "transformIgnorePatterns": [
+      "/node_modules/(?!(@nestjs)/)"
+    ]
   }
 }
