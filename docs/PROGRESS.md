@@ -192,3 +192,7 @@ Fusion de `phase-8-docs-finish` dans `main` (CI verte), puis traitement de la li
 ## Livré en phase-10b-nest12
 - Migration NestJS 10 → 12 (165 tests API, e2e Playwright et builds verts), images Docker en Node 22, audit des dépendances propre sans exception (D-071).
 - Limite : Node ≥ 22.12 obligatoire pour l'API (chargement de modules ES par `require`).
+
+## Livré en phase-10c-loadtest
+- Test de charge des PDF, des écritures, de l'assistant IA et du calcul prédictif (`infra/loadtest/mixed.mjs`), exécuté en CI avec budgets ; résultats et limites dans `docs/PERFORMANCE.md`. Premier essai : trois scénarios en erreur (emploi du temps absent du seed, administrateurs non autorisés à saisir des absences — comportement attendu) ; le script génère maintenant l'emploi du temps et utilise des enseignants.
+- Non mesuré : forte concurrence (milliers d'utilisateurs), base volumineuse, fournisseur de modèle de langage réel, WebSocket, paiements, import massif.
