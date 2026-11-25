@@ -8,12 +8,8 @@
 - Images Docker non root, pods Kubernetes restreints, politiques réseau.
 - CI : recherche de secrets et de fichiers de signature suivis par git, audit des dépendances de production (`infra/security/audit-gate.mjs`).
 
-## Dépendances : exceptions acceptées (à lever)
-Les correctifs de `@nestjs/platform-express`, `@nestjs/swagger` (donc `body-parser`, `multer`, `js-yaml`, `lodash`) n'existent que dans NestJS 12 (changement majeur). Analyse d'accessibilité :
-- `multer` : aucun point d'entrée multipart (les pièces jointes sont du JSON base64) → code non atteignable.
-- `body-parser` : limite explicite de 1 Mo (8 Mo pour les pièces jointes) et refus de tout corps compressé.
-- `js-yaml`, `lodash` : utilisés à la génération de la documentation Swagger, jamais sur des données de requête.
-**À faire** : migrer vers NestJS 12 quand l'écosystème (swagger, socket.io, testing) est stabilisé, puis vider la liste `ACCEPTED` du script. Tant que ce n'est pas fait, le risque est résiduel et assumé.
+## Dépendances
+Audit des dépendances de production propre (aucun avis connu) depuis la migration vers NestJS 12 et Next.js 16. Le job CI `security` échoue sur tout avis « high » ou « critical » ; la liste d'exceptions de `infra/security/audit-gate.mjs` est vide. NestJS 12 est publié en modules ES : l'API compilée en CommonJS le charge par `require` (Node ≥ 22.12 requis, images Docker en Node 22) et Jest transforme ces modules via Babel (`apps/api/package.json`).
 
 ## Signaler une faille
 Écrire au responsable de la sécurité de l'établissement exploitant ; ne pas publier la faille avant correction.

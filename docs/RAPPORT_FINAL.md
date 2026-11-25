@@ -60,4 +60,4 @@ Voir `docs/PUBLICATION_STORES.md`. Vous devez : ouvrir les comptes Google Play e
 - **Licence du dépôt** : placeholder propriétaire ; à vous de choisir.
 
 ## Sécurité (mise à jour phase 10)
-Voir `docs/SECURITY.md`. Écarts : Next.js 16 au lieu de 14 (D-069) ; six avis « high » de dépendances NestJS 10 acceptés avec analyse (D-071) ; aucun test d'intrusion externe.
+Voir `docs/SECURITY.md`. Écarts : Next.js 16 au lieu de 14 (D-069) ; NestJS 12 requiert Node ≥ 22.12 (D-071) ; aucun test d'intrusion externe.
