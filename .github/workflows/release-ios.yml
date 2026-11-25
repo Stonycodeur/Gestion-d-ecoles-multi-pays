@@ -70,7 +70,7 @@ jobs:
             <key>method</key><string>app-store-connect</string>
             <key>teamID</key><string>${{ secrets.IOS_TEAM_ID }}</string>
             <key>signingStyle</key><string>manual</string>
-            <key>provisioningProfiles</key><dict><key>${APP_ID:-com.ecolemanager.pro.work}</key><string>$NAME</string></dict>
+            <key>provisioningProfiles</key><dict><key>${APP_ID:-com.stonytechnologie.ecolemanager}</key><string>$NAME</string></dict>
           </dict></plist>
           PLIST
       - name: Icons, splash, tests, IPA

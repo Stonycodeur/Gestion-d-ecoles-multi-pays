@@ -289,7 +289,7 @@ if __name__ == "__main__":
     if a:
         patch_android_xr(base)
     import os
-    app_id = os.environ.get("APP_ID", "com.ecolemanager.pro.work")   # working identifier until the publisher communicates the real one
+    app_id = os.environ.get("APP_ID", "com.stonytechnologie.ecolemanager")   # working identifier until the publisher communicates the real one
     patch_android_root_compile_sdk(base); patch_android_min_sdk(base); patch_android_firebase(base)
     patch_oidc_redirect(base, os.environ.get("OIDC_REDIRECT_SCHEME", "com.ecolemanager.pro"))
     patch_android_signing(base, app_id); patch_ios_entitlements(base, app_id); patch_app_name(base, os.environ.get("APP_NAME", "ÉcoleManager Pro"))

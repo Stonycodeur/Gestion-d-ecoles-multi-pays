@@ -46,4 +46,4 @@ La CI (GitHub Actions) exécute tout cela à chaque push et construit l'APK debu
 ## Documentation
 `docs/ARCHITECTURE.md` · `docs/DECISIONS.md` · `docs/PERMISSIONS.md` · `docs/INTEGRATIONS.md` · `docs/PUBLICATION_STORES.md` · `docs/PROGRESS.md` · `store/`
 
-Licence : propriétaire, tous droits réservés (en attente de décision du titulaire).
+Licence : propriétaire, © STONY-TECHNOLOGIE, tous droits réservés. Le logiciel est loué aux établissements ; aucune copie, modification ni hébergement sans accord écrit (voir `LICENSE`).
