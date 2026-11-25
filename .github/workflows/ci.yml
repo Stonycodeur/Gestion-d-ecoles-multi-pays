@@ -145,6 +145,28 @@ jobs:
         run: python3 -m unittest test_configure_native && python3 configure_native.py ..
       - working-directory: apps/mobile
         run: flutter pub get && dart run flutter_launcher_icons && dart run flutter_native_splash:create && flutter gen-l10n && flutter analyze --no-fatal-infos && flutter test && flutter build apk --debug
+      - name: Release App Bundle (the artifact Google Play takes; signed with your keystore only in release-android.yml)
+        working-directory: apps/mobile
+        run: flutter build appbundle --release
+      - uses: actions/upload-artifact@v4
+        with: { name: app-release-unsigned-check.aab, path: apps/mobile/build/app/outputs/bundle/release/app-release.aab, retention-days: 7 }
+  mobile-ios:
+    # Proves the iOS project compiles (no Mac needed on your side). No signing: the signed IPA is built by release-ios.yml with your secrets.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable }
+      - name: Generate native platform folders and configure
+        working-directory: apps/mobile
+        run: |
+          flutter create --platforms=android,ios --org com.ecolemanager --project-name ecolemanager_mobile .
+          cd tool && python3 -m unittest test_configure_native && python3 configure_native.py ..
+      - working-directory: apps/mobile
+        run: flutter pub get && dart run flutter_launcher_icons && dart run flutter_native_splash:create && flutter gen-l10n
+      - name: Compile iOS (release, no code signing)
+        working-directory: apps/mobile
+        run: flutter build ios --release --no-codesign
   # iOS signed build: added in phase 7, only when signing secrets exist (never read from the repo).
   security:
     runs-on: ubuntu-latest
