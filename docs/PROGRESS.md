@@ -196,3 +196,7 @@ Fusion de `phase-8-docs-finish` dans `main` (CI verte), puis traitement de la li
 ## Livré en phase-10c-loadtest
 - Test de charge des PDF, des écritures, de l'assistant IA et du calcul prédictif (`infra/loadtest/mixed.mjs`), exécuté en CI avec budgets ; résultats et limites dans `docs/PERFORMANCE.md`. Premier essai : trois scénarios en erreur (emploi du temps absent du seed, administrateurs non autorisés à saisir des absences — comportement attendu) ; le script génère maintenant l'emploi du temps et utilise des enseignants.
 - Non mesuré : forte concurrence (milliers d'utilisateurs), base volumineuse, fournisseur de modèle de langage réel, WebSocket, paiements, import massif.
+
+## Livré en phase-11-store-readiness
+- CI : **compilation iOS en release sans signature** (runner macOS), **build AAB de release** (correction : le lint Android plantait sous JDK 17, JDK 21 requis), audit **WCAG 2.1 AA axe-core** sur 20 pages, **3 tests d'intégration Flutter sur émulateur Android** contre l'API réelle.
+- Reste : IPA/AAB signés (vos secrets), essai sur appareils physiques (GPS arrière-plan, push FCM/APNs, AR), simulateur iOS, captures d'écran des stores.
