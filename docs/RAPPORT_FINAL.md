@@ -33,8 +33,8 @@ Légende : ✔ fait et vérifié par la CI · ◐ partiel (limite expliquée) ·
 | RTL (arabe) | ◐ | Textes et mise en page RTL web/mobile (ARB/i18n). Pas de vérification visuelle sur appareil. |
 | Sécurité (11.1) | ◐ | TLS (ingress), JWT courts, CORS strict, en-têtes, validation, limiteur de débit, pinning mobile, audit. Limiteur partagé via Redis si `REDIS_URL` est défini, sinon en mémoire par réplica. Pas d'audit de sécurité externe ni de test d'intrusion. |
 | Performance (12.1) | ◐ | Index, pagination ; script `infra/loadtest/p95.mjs` exécuté en CI (job `web-e2e`) : 6 routes de lecture, 10 clients simultanés, 20 s, base de démonstration Gabon, runner partagé → p95 entre 4 et 22 ms, toutes réponses 2xx (budget de 300 ms en CI, cible produit 200 ms). Ce n'est **pas** une preuve de la cible de 10 000 utilisateurs simultanés ni des routes d'écriture, des PDF et de l'IA ; pas de test sur une base volumineuse. Pas de cache applicatif. |
-| Accessibilité, i18n (12.2–12.3) | ◐ | Libellés ARIA, FR/EN/AR complets. Pas d'audit WCAG outillé ni de test avec lecteur d'écran. |
-| Mobile et stores (4.6) | ◐ | Application Flutter unique, APK debug construit en CI, signature release/Fastlane/workflows/`store/`/`PUBLICATION_STORES.md` prêts. **AAB et IPA signés non produits** (vos secrets) ; **iOS jamais compilé** (aucun Mac). |
+| Accessibilité, i18n (12.2–12.3) | ◐ | Libellés ARIA, FR/EN/AR complets. **Audit WCAG 2.1 A/AA automatisé (axe-core) en CI sur 20 pages web : aucune violation grave ou critique.** Non couvert : violations « modérées », contrôle manuel, lecteur d'écran, accessibilité du mobile. |
+| Mobile et stores (4.6) | ◐ | Application Flutter unique ; en CI : analyse, tests, APK debug, **AAB de release construit** (JDK 21), **projet iOS compilé en release sans signature sur runner macOS**, 3 tests d'intégration sur **émulateur Android** contre la vraie API. Signature release/Fastlane/workflows/`store/`/`PUBLICATION_STORES.md` prêts. **AAB et IPA signés non produits** (vos secrets) ; non essayé sur appareil physique (GPS en arrière-plan, push, AR). |
 | Infrastructure (4.2) | ◐ | Docker, Kubernetes, Prometheus, Grafana, Sentry. TimescaleDB porte la série GPS quand l'extension est présente (D-068) ; RabbitMQ ne sert qu'à l'envoi des SMS et e-mails (D-067, mode `inline` par défaut) ; Elasticsearch ne sert qu'au classement de la recherche des ressources (D-066, repli PostgreSQL ; cahier de textes et autres modules restent sur PostgreSQL) ; Redis ne sert qu'aux limites de débit et quotas (D-065), pas au cache ni aux sessions. |
 | Documentation (13) | ✔ | README, architecture, permissions, intégrations, publication, déploiement, manuel d'administration, guides FR/EN par rôle. |
 
@@ -42,8 +42,8 @@ Rien n'est « reporté à une version ultérieure » : les ◐ ci-dessus sont de
 
 ## 2. Tests non écrits (écart assumé)
 - Tests e2e web avec navigateur : 5 scénarios Playwright seulement (connexion, échelle de notation, emploi du temps) ; les autres pages ne sont pas pilotées par navigateur.
-- Tests d'intégration Flutter sur émulateur/simulateur : absents (seuls analyse, tests unitaires et build APK debug tournent en CI).
-- Script de charge non exécuté.
+- Tests d'intégration Flutter : 3 scénarios sur émulateur Android (connexion refusée, direction, élève) ; aucun sur simulateur iOS ni sur appareil physique.
+- Tests de charge : exécutés en CI (`docs/PERFORMANCE.md`), pas de forte concurrence.
 
 ## 3. Ce qui reste à brancher avec vos identifiants
 Stripe, Airtel Money, Moov Money, Firebase (FCM) et APNs, SMS/e-mail, Google Maps (si carte hébergée), Keycloak hébergé, modèle de langage, API des ministères. Variables et étapes : `docs/INTEGRATIONS.md`. Chaque service a un adaptateur sandbox activé par variable d'environnement.

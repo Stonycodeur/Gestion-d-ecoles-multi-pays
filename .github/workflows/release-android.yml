@@ -23,7 +23,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with: { channel: stable }
       - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: 17 }
+        with: { distribution: temurin, java-version: 21 }
       - name: Generate native folders
         working-directory: apps/mobile
         run: flutter create --platforms=android,ios --org com.ecolemanager --project-name ecolemanager_mobile .
