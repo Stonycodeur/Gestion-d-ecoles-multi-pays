@@ -65,9 +65,10 @@ export class SandboxPush implements PushAdapter {
 export class FcmPush implements PushAdapter {
   readonly mode = 'live' as const;
   async send(m: PushMessage) {
-    const admin = await import('firebase-admin');
-    if (!admin.apps.length) admin.initializeApp({ credential: admin.credential.cert(JSON.parse(process.env.FCM_SERVICE_ACCOUNT_JSON ?? '{}')) });
-    await admin.messaging().send({ token: m.token, notification: { title: m.title, body: m.body }, data: m.data });
+    const { initializeApp, getApps, cert } = await import('firebase-admin/app');
+    const { getMessaging } = await import('firebase-admin/messaging');
+    const app = getApps()[0] ?? initializeApp({ credential: cert(JSON.parse(process.env.FCM_SERVICE_ACCOUNT_JSON ?? '{}')) });
+    await getMessaging(app).send({ token: m.token, notification: { title: m.title, body: m.body }, data: m.data });
   }
 }
 

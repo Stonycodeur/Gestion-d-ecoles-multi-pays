@@ -158,4 +158,4 @@ jobs:
           npm install --ignore-scripts
           npm audit --omit=dev --json > audit.json || true
           node -e "const a=require('./audit.json');for(const [n,v] of Object.entries(a.vulnerabilities||{})){const f=v.fixAvailable;console.log(v.severity.padEnd(9),n.padEnd(34),'range',v.range,'| fix:',f===true?'npm audit fix':f===false?'none':f.name+'@'+f.version+(f.isSemVerMajor?' (MAJOR)':''))}"
-          npm audit --omit=dev --audit-level=high
+          node infra/security/audit-gate.mjs audit.json
