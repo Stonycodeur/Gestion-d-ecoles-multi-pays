@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { promises as dns } from 'node:dns';
-import { checkWebhookUrl, decryptText, encryptText, isPrivateIp, webhookHeaders } from '@ecolemanager/shared';
+import { checkWebhookUrl, decryptText, encryptText, webhookHeaders } from '@ecolemanager/shared';
+import { refuseTarget } from '../core/ssrf';
 import { randomBytes } from 'node:crypto';
 import { TenantDb } from '../pedagogy/tenant-db.service';
 
@@ -39,9 +39,7 @@ export class WebhooksService {
     if (!d) throw new Error('delivery not found');
     let status = 0, error: string | null = null;
     try {
-      const bad = checkWebhookUrl(d.url, this.allowPrivate); if (bad) throw new Error(`target refused: ${bad}`);
-      const host = new URL(d.url).hostname.replace(/^\[|\]$/g, '');
-      if (!this.allowPrivate) for (const a of await dns.lookup(host, { all: true })) if (isPrivateIp(a.address)) throw new Error('target resolves to a private address');
+      const bad = await refuseTarget(d.url, this.allowPrivate); if (bad) throw new Error(`target refused: ${bad}`);
       const body = JSON.stringify(d.payload);
       const r = await fetch(d.url, { method: 'POST', body, redirect: 'manual', signal: AbortSignal.timeout(5000), headers: { ...webhookHeaders(decryptText(d.secret_enc, this.key()), d.event, body), 'x-em-delivery': d.id } });
       status = r.status; if (!(r.status >= 200 && r.status < 300)) error = `HTTP ${r.status}`;
