@@ -61,3 +61,6 @@ Voir `docs/PUBLICATION_STORES.md`. Vous devez : ouvrir les comptes Google Play e
 
 ## Sécurité (mise à jour phase 10)
 Voir `docs/SECURITY.md`. Écarts : Next.js 16 au lieu de 14 (D-069) ; NestJS 12 requiert Node ≥ 22.12 (D-071) ; aucun test d'intrusion externe.
+
+## Performance (mise à jour phase 10c)
+Mesures en CI des lectures, PDF, écritures, assistant IA (modèle simulé) et calcul prédictif : p95 de 4 à 910 ms selon la route, tous sous leur budget (`docs/PERFORMANCE.md`). Non démontré : 10 000 utilisateurs simultanés, base volumineuse, latence d'un vrai fournisseur de modèle.
