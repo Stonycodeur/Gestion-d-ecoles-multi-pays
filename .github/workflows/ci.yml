@@ -184,3 +184,58 @@ jobs:
           npm audit --omit=dev --json > audit.json || true
           node -e "const a=require('./audit.json');for(const [n,v] of Object.entries(a.vulnerabilities||{})){const f=v.fixAvailable;console.log(v.severity.padEnd(9),n.padEnd(34),'range',v.range,'| fix:',f===true?'npm audit fix':f===false?'none':f.name+'@'+f.version+(f.isSemVerMajor?' (MAJOR)':''))}"
           node infra/security/audit-gate.mjs audit.json
+  mobile-e2e:
+    # The app on a real Android emulator against the real API (sandbox auth, seeded Gabon schools).
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: ci }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: ci
+      DATABASE_ADMIN_URL: postgres://postgres:ci@localhost:5432/em_e2e
+      DATABASE_URL: postgres://app_runtime:rt@localhost:5432/em_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - name: Database, seed and API
+        run: |
+          createdb em_e2e
+          psql -v ON_ERROR_STOP=1 -c "CREATE ROLE app_runtime LOGIN PASSWORD 'rt'"
+          for f in 010_core.sql 020_seed_roles.sql 030_seed_countries.sql 040_tenant_template.sql 050_marketplace.sql 060_idempotency.sql 070_settings.sql 080_tenants_admin.sql; do psql -v ON_ERROR_STOP=1 -q -d em_e2e -f infra/sql/$f; done
+          psql -v ON_ERROR_STOP=1 -d em_e2e -c "GRANT USAGE ON SCHEMA public TO app_runtime; GRANT SELECT ON ALL TABLES IN SCHEMA public TO app_runtime; GRANT INSERT ON audit_logs TO app_runtime; GRANT USAGE ON SEQUENCE audit_logs_id_seq TO app_runtime"
+          npm install && npm --prefix apps/api run build && npm --prefix apps/api run seed:demo
+          AUTH_MODE=sandbox SANDBOX_JWT_SECRET=$(printf 'e%.0s' $(seq 1 40)) MODULES_DIR=$PWD/packages/modules PORT=3000 \
+            RATE_LIMIT_PER_MIN=10000000 RATE_LIMIT_AUTH_PER_MIN=100000 nohup node apps/api/dist/main.js > api.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:3000/health && break; sleep 2; done
+          curl -sf http://localhost:3000/health
+      - name: Native folders and configuration
+        working-directory: apps/mobile
+        run: |
+          flutter create --platforms=android,ios --org com.ecolemanager --project-name ecolemanager_mobile .
+          cd tool && python3 configure_native.py ..
+          cd .. && flutter pub get && flutter gen-l10n
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          working-directory: apps/mobile
+          script: flutter test integration_test
+      - if: failure()
+        run: tail -n 60 api.log || true
