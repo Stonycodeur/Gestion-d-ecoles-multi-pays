@@ -110,6 +110,9 @@ jobs:
       - name: "Load test on the seeded Gabon school (shared CI runners are slow: budget 300 ms here, product target 200 ms)"
         shell: bash   # pipefail: a failing load test must fail the job even through tee
         run: API_BASE=http://localhost:3000 TENANT=ga_lycee CONCURRENCY=10 DURATION_S=20 P95_BUDGET_MS=300 PATHS=/settings/country,/settings/grading,/timetable,/lessons,/classes,/me/abilities node infra/loadtest/p95.mjs | tee loadtest.txt
+      - name: "Load test: PDF, writes, assistant and predictive run (budgets are CI-runner budgets, see docs/PERFORMANCE.md)"
+        shell: bash
+        run: API_BASE=http://localhost:3000 TENANT=ga_lycee DURATION_S=25 node infra/loadtest/mixed.mjs | tee loadtest-mixed.txt
       - if: failure()
         run: tail -n 60 api.log web.log || true
 
