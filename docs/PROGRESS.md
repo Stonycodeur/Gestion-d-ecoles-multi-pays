@@ -182,3 +182,9 @@ Fusion de `phase-8-docs-finish` dans `main` (CI verte), puis traitement de la li
 ## Livré en phase-9h-timescale
 - `gps_positions` en hypertable TimescaleDB (chunks d'un jour) si l'extension est installée, repli table ordinaire sinon ; tests de la CI dans les deux cas (job api-web avec Timescale, job web-e2e sans).
 - Non fait : compression et rétention natives Timescale (voir D-068) ; migration des écoles existantes à lancer via `provision_tenant_schema` (documentée). Plus aucun service de l'infrastructure du cahier 4.2 n'est inutilisé, mais aucun n'a été éprouvé sous forte charge.
+
+## Livré en phase-10-hardening
+- Correctifs : SSRF du connecteur ministère (redirections suivies avec le jeton, adresses non vérifiées) ; image IA exécutée en root ; algorithmes OIDC non restreints ; corps compressés acceptés.
+- Ajouts : vérification de configuration au démarrage en production, garde SSRF partagée avec les webhooks, job CI `security` (secrets, fichiers de signature, audit des dépendances), `docs/SECURITY.md`.
+- Dépendances : Next 16 / React 19, nodemailer 10, firebase-admin 14 (API modulaire). Plus aucune faille critique.
+- **Reste** : migration NestJS 10 → 12 (six avis « high » acceptés avec analyse, voir D-071) ; fenêtre DNS rebinding résiduelle sur les appels sortants ; test d'intrusion externe non réalisé.

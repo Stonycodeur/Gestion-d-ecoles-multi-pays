@@ -16,9 +16,18 @@ data:
   OIDC_ISSUER: https://sso.example.org/realms/ecolemanager   # adapt (Keycloak)
   OIDC_JWKS_URI: https://sso.example.org/realms/ecolemanager/protocol/openid-connect/certs
   OIDC_AUDIENCE: ecolemanager-api
-  PAYMENT_MODE: sandbox      # switch to live once credentials are in the Secret (docs/INTEGRATIONS.md)
+  # The API refuses to start in production with sandbox adapters (core/production-config.ts). This template is a DEMO/STAGING setup:
+  # ALLOW_SANDBOX_ADAPTERS lets it start. For real use, set every *_MODE below to live (credentials in the Secret, docs/INTEGRATIONS.md)
+  # and delete ALLOW_SANDBOX_ADAPTERS. Sandbox payments confirm invoices without any money moving.
+  ALLOW_SANDBOX_ADAPTERS: "1"
+  PAYMENT_MODE: sandbox
   PUSH_MODE: sandbox
+  SMS_MODE: sandbox
+  EMAIL_MODE: sandbox
+  STORAGE_MODE: sandbox
+  IDENTITY_MODE: sandbox
   LLM_MODE: sandbox
+  AI_MODE: sandbox
   MINISTRY_MODE: sandbox
 ---
 # Template only. Create the real Secret out of band (sealed-secrets / external-secrets / kubectl create secret), never commit values.
@@ -32,7 +41,7 @@ stringData:
   MESSAGE_KEY: CHANGE_BASE64_32_BYTES
   WEBHOOK_KEY: CHANGE_BASE64_32_BYTES
   GPS_KEY: CHANGE_BASE64_32_BYTES
-  PAYMENT_WEBHOOK_SECRET: CHANGE_AT_LEAST_16_CHARS
+  PAYMENT_WEBHOOK_SECRET: CHANGE_AT_LEAST_32_CHARS
   API_TOKEN_SECRET: CHANGE_AT_LEAST_32_CHARS
   METRICS_TOKEN: CHANGE_AT_LEAST_16_CHARS
   SENTRY_DSN: ""

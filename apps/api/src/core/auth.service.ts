@@ -32,7 +32,7 @@ export class AuthService {
         payload = (await jwtVerify(token, this.sandboxKey(), { algorithms: ['HS256'] })).payload;
       } else {
         const jwks = createRemoteJWKSet(new URL(process.env.OIDC_JWKS_URI ?? ''));
-        payload = (await jwtVerify(token, jwks, { issuer: process.env.OIDC_ISSUER, audience: process.env.OIDC_AUDIENCE })).payload;
+        payload = (await jwtVerify(token, jwks, { issuer: process.env.OIDC_ISSUER, audience: process.env.OIDC_AUDIENCE, algorithms: ['RS256', 'RS384', 'RS512', 'PS256', 'ES256', 'ES384'], clockTolerance: 5 })).payload;
       }
     } catch { throw new UnauthorizedException('invalid token'); }
     const roles = ((payload.roles as string[] | undefined) ?? []).filter((r): r is RoleCode => ROLES.includes(r as RoleCode));

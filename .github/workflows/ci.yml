@@ -143,3 +143,19 @@ jobs:
       - working-directory: apps/mobile
         run: flutter pub get && dart run flutter_launcher_icons && dart run flutter_native_splash:create && flutter gen-l10n && flutter analyze --no-fatal-infos && flutter test && flutter build apk --debug
   # iOS signed build: added in phase 7, only when signing secrets exist (never read from the repo).
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: No secrets in tracked files
+        run: |
+          if git grep -nIE -e '-----BEGIN (RSA |EC |OPENSSH |)PRIVATE KEY-----' -e 'AKIA[0-9A-Z]{16}' -e 'sk_live_[0-9a-zA-Z]{16,}' -e 'AIza[0-9A-Za-z_-]{35}' -e 'xox[abp]-[0-9A-Za-z-]{10,}' -- . ':!*.md' ':!**/*.spec.ts' ':!**/test/**'; then echo "::error::possible secret committed"; exit 1; fi
+          if git ls-files | grep -E '\.(jks|keystore|p12|mobileprovision)$|(^|/)google-services\.json$|(^|/)GoogleService-Info\.plist$|(^|/)\.env$'; then echo "::error::signing/secret file tracked"; exit 1; fi
+      - name: Dependency audit (production dependencies, high and critical)
+        run: |
+          npm install --ignore-scripts
+          npm audit --omit=dev --json > audit.json || true
+          node -e "const a=require('./audit.json');for(const [n,v] of Object.entries(a.vulnerabilities||{})){const f=v.fixAvailable;console.log(v.severity.padEnd(9),n.padEnd(34),'range',v.range,'| fix:',f===true?'npm audit fix':f===false?'none':f.name+'@'+f.version+(f.isSemVerMajor?' (MAJOR)':''))}"
+          node infra/security/audit-gate.mjs audit.json

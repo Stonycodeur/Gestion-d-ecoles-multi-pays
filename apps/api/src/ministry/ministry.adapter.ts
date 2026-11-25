@@ -1,4 +1,5 @@
-import { checkWebhookUrl, type ConnectorConfig } from '@ecolemanager/shared';
+import type { ConnectorConfig } from '@ecolemanager/shared';
+import { refuseTarget } from '../core/ssrf';
 
 export interface MinistryPayload { id: string; dataset: string; format: 'csv' | 'json' | 'xml'; checksum: string; payload: string }
 export interface MinistryResult { ok: boolean; reference?: string; error?: string; status?: number }
@@ -19,9 +20,9 @@ export class HttpMinistry implements MinistryAdapter {
   async send(c: ConnectorConfig, t: MinistryPayload): Promise<MinistryResult> {
     const key = c.code.toUpperCase();
     const url = c.endpoint ?? process.env[`MINISTRY_${key}_URL`]; if (!url) return { ok: false, error: `no endpoint configured (MINISTRY_${key}_URL)` };
-    const bad = checkWebhookUrl(url, false); if (bad) return { ok: false, error: `endpoint refused: ${bad}` };
+    const bad = await refuseTarget(url, process.env.WEBHOOK_ALLOW_PRIVATE === 'true'); if (bad) return { ok: false, error: `endpoint refused: ${bad}` };
     try {
-      const r = await fetch(url, { method: 'POST', signal: AbortSignal.timeout(15000), body: t.payload,
+      const r = await fetch(url, { method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(15000), body: t.payload,
         headers: { 'content-type': CT[t.format], 'idempotency-key': t.id, 'x-checksum-sha256': t.checksum, 'x-dataset': t.dataset, authorization: `Bearer ${process.env[`MINISTRY_${key}_TOKEN`] ?? ''}` } });
       const text = (await r.text()).slice(0, 500);
       if (!r.ok) return { ok: false, status: r.status, error: `HTTP ${r.status}: ${text}` };

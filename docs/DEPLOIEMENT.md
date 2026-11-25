@@ -56,3 +56,6 @@ Web `http://localhost:3001`, API and Swagger `http://localhost:3000/docs`, Grafa
 
 ### Smoke test
 `GET /health` answers; `GET /auth/config` returns the OIDC issuer; web and mobile sign-in succeed; an administrator sees `GET /modules/active`; a test notification arrives; Prometheus collects.
+
+## Démarrage en production
+L'API refuse de démarrer si la configuration est dangereuse (`docs/SECURITY.md`) : AUTH_MODE=oidc, clés de 32 octets en base64, CORS en https, tous les `*_MODE` à `live` (ou `ALLOW_SANDBOX_ADAPTERS=1` pour une démo). Les messages `[config]` des journaux listent chaque problème.
