@@ -200,3 +200,8 @@ Fusion de `phase-8-docs-finish` dans `main` (CI verte), puis traitement de la li
 ## Livré en phase-11-store-readiness
 - CI : **compilation iOS en release sans signature** (runner macOS), **build AAB de release** (correction : le lint Android plantait sous JDK 17, JDK 21 requis), audit **WCAG 2.1 AA axe-core** sur 20 pages, **3 tests d'intégration Flutter sur émulateur Android** contre l'API réelle.
 - Reste : IPA/AAB signés (vos secrets), essai sur appareils physiques (GPS arrière-plan, push FCM/APNs, AR), simulateur iOS, captures d'écran des stores.
+
+## Phase 12 — mise en ligne du premier usage (26/11/2026)
+Fait : schéma appliqué sur Supabase (83 tables par école, RLS forcée, empreinte de `provision_tenant_schema` identique au dépôt), hook de jeton Supabase Auth testé en base, connexion email + mot de passe (API, web, mobile), `render.yaml`, support `DATABASE_SSL_CA`, services Render API et web créés, CI verte.
+Reste (action utilisateur) : activer le hook dans Supabase, créer le compte root et le lier (`link_account`), coller le certificat CA dans `DATABASE_SSL_CA`, premier test de connexion web. Voir `docs/MISE_EN_LIGNE.md`.
+Limites : code de connexion web/mobile (mode `password`) non exécuté contre un vrai Supabase Auth ; flutter analyze/test exécutés par la CI uniquement ; adaptateurs externes simulés.

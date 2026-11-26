@@ -3,6 +3,10 @@
 Architecture : base **Supabase** (PostgreSQL + connexion Supabase Auth) · API **Render** (Docker, Francfort) · web **Render** (ou Vercel) · mobile : APK/AAB pointant vers l'API.
 Hostinger Business (hébergement mutualisé) n'est pas utilisé : il n'exécute pas de conteneur Docker ni de serveur Node durable.
 
+## État au 26/11/2026
+API : https://ecolemanager-api-t52f.onrender.com · Web : https://ecolemanager-web.onrender.com (Render, Francfort, offre gratuite). Hôte du pooler Supabase retenu : `aws-0-eu-west-1.pooler.supabase.com:5432`.
+Non vérifié depuis l'environnement de développement (accès réseau sortant bloqué) : seuls les journaux de déploiement Render ont été contrôlés (démarrage sans erreur, base joignable).
+
 ## 1. Base de données (fait)
 Schémas `010`→`080`, puis `090_supabase_auth.sql` et `091_supabase_hardening.sql`, appliqués sur le projet `suobawsxrorkzppmdycr`. Le rôle `app_runtime` (ni superutilisateur, ni contournement RLS) est celui de l'API. Son mot de passe n'est jamais dans le dépôt.
 Aucune donnée de démonstration : la base ne contient que le référentiel (rôles, Gabon, Côte d'Ivoire, pays à lettres).
