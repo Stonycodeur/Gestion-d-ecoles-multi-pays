@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { poolConfig } from '../core/db-config';
 import { Pool } from 'pg';
 import { AuditService } from '../core/audit.service';
 
@@ -12,7 +13,7 @@ export class TenantsService {
   private get db(): Pool {
     if (!this.pool) {
       if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
-      this.pool = new Pool({ connectionString: process.env.DATABASE_URL });
+      this.pool = new Pool(poolConfig());
     }
     return this.pool;
   }

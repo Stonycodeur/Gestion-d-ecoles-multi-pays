@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { poolConfig } from './db-config';
 import { Pool } from 'pg';
 
 export interface AuditEntry { actorId?: string; tenant?: string; action: string; entity?: string; entityId?: string; details?: Record<string, unknown>; ip?: string }
@@ -9,7 +10,7 @@ export class AuditService {
   private pool?: Pool;
   readonly memory: AuditEntry[] = [];
   constructor() {
-    if (process.env.DATABASE_URL) this.pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    if (process.env.DATABASE_URL) this.pool = new Pool(poolConfig());
   }
   async log(e: AuditEntry): Promise<void> {
     if (!this.pool) { this.memory.push(e); if (this.memory.length > 1000) this.memory.shift(); return; }

@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { poolConfig } from '../core/db-config';
 import { Pool, type PoolClient } from 'pg';
 
 export type Q = <R = any>(sql: string, params?: unknown[]) => Promise<R[]>;
@@ -11,7 +12,7 @@ export class TenantDb {
   private getPool(): Pool {
     if (!this.pool) {
       if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
-      this.pool = new Pool({ connectionString: process.env.DATABASE_URL });
+      this.pool = new Pool(poolConfig());
     }
     return this.pool;
   }
