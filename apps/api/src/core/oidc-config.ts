@@ -1,6 +1,8 @@
 /** Public OIDC client configuration for the web and mobile apps (authorization-code flow with PKCE against Keycloak). Endpoints come from the issuer's discovery document, cached. */
 export interface PublicAuthConfig {
-  mode: 'sandbox' | 'oidc';
+  mode: 'sandbox' | 'oidc' | 'password';
+  /** password mode (Supabase Auth): public publishable key sent as `apikey` header. Not a secret. */
+  api_key?: string;
   issuer?: string; authorization_endpoint?: string; token_endpoint?: string; end_session_endpoint?: string;
   clients?: { web: string; mobile: string };
   scopes?: string; mobile_redirect_uri?: string;
@@ -13,6 +15,12 @@ export class OidcConfig {
   async get(): Promise<PublicAuthConfig> {
     if ((this.env.AUTH_MODE ?? 'oidc') === 'sandbox') return { mode: 'sandbox' };
     const issuer = this.env.OIDC_ISSUER;
+    // Hosted password flow (Supabase Auth): the apps post email + password to the provider's token endpoint; the API still verifies the JWT through OIDC_JWKS_URI.
+    if (this.env.AUTH_FLOW === 'password') {
+      const base = this.env.SUPABASE_URL?.replace(/\/$/, '');
+      if (!base || !/^https:\/\//.test(base) || !this.env.SUPABASE_PUBLISHABLE_KEY) throw new Error('SUPABASE_URL (https) and SUPABASE_PUBLISHABLE_KEY are required with AUTH_FLOW=password');
+      return { mode: 'password', issuer: issuer ?? `${base}/auth/v1`, token_endpoint: `${base}/auth/v1/token`, api_key: this.env.SUPABASE_PUBLISHABLE_KEY };
+    }
     if (!issuer || !/^https:\/\//.test(issuer) && !/^http:\/\/(localhost|127\.0\.0\.1|keycloak)/.test(issuer)) throw new Error('OIDC_ISSUER is not configured (https required outside local development)');
     if (!this.cache || Date.now() - this.cache.at > this.ttlMs) {
       const r = await this.fetchFn(`${issuer.replace(/\/$/, '')}/.well-known/openid-configuration`, { signal: AbortSignal.timeout(5000) });

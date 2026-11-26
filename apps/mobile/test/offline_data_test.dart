@@ -58,6 +58,14 @@ void main() {
     expect(c.scopes, ['openid', 'email']);
   });
 
+  test('auth config: password flow (hosted sign-in) exposes the token endpoint and the public key only', () {
+    final c = AuthConfig.fromJson({'mode': 'password', 'token_endpoint': 'https://p.supabase.co/auth/v1/token', 'api_key': 'sb_publishable_x'});
+    expect(c.isPassword, isTrue);
+    expect(c.isOidc, isTrue); // tokens are renewed with the refresh token
+    expect(c.apiKey, 'sb_publishable_x');
+    expect(c.authorizationEndpoint, isNull);
+  });
+
   test('the school comes from the token claim; refresh is scheduled 60 s before expiry', () {
     expect(tenantFromToken(jwt({'tenant': 'ga_college', 'sub': 'u'})), 'ga_college');
     expect(tenantFromToken('garbage'), isNull);

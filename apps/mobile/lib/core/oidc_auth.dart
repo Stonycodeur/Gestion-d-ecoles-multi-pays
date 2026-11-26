@@ -5,13 +5,17 @@ import 'pinned_client.dart';
 
 /// Public sign-in configuration served by the API (`GET /auth/config`). Contains no secret: the mobile client is a public PKCE client.
 class AuthConfig {
-  final String mode; // 'sandbox' | 'oidc'
-  final String? authorizationEndpoint, tokenEndpoint, endSessionEndpoint, clientId, redirectUri;
+  final String mode; // 'sandbox' | 'oidc' | 'password'
+  final String? authorizationEndpoint, tokenEndpoint, endSessionEndpoint, clientId, redirectUri, apiKey;
   final List<String> scopes;
-  const AuthConfig(this.mode, {this.authorizationEndpoint, this.tokenEndpoint, this.endSessionEndpoint, this.clientId, this.redirectUri, this.scopes = const ['openid', 'profile', 'email', 'offline_access']});
-  bool get isOidc => mode == 'oidc';
+  const AuthConfig(this.mode, {this.authorizationEndpoint, this.tokenEndpoint, this.endSessionEndpoint, this.clientId, this.redirectUri, this.apiKey, this.scopes = const ['openid', 'profile', 'email', 'offline_access']});
+  /// Hosted password flow (Supabase Auth): email + password posted to the token endpoint, public key in the `apikey` header.
+  bool get isPassword => mode == 'password';
+  /// True when the session carries a refresh token that must be renewed (both OIDC and password flows).
+  bool get isOidc => mode == 'oidc' || mode == 'password';
 
   factory AuthConfig.fromJson(Map<String, dynamic> j) {
+    if (j['mode'] == 'password') return AuthConfig('password', tokenEndpoint: j['token_endpoint'] as String?, apiKey: j['api_key'] as String?);
     if (j['mode'] != 'oidc') return const AuthConfig('sandbox');
     final clients = (j['clients'] as Map?)?.cast<String, dynamic>() ?? const {};
     return AuthConfig('oidc',
@@ -73,8 +77,30 @@ class OidcAuth {
     return OidcTokens(r.accessToken!, refreshToken: r.refreshToken, idToken: r.idToken, expiresAt: r.accessTokenExpirationDateTime);
   }
 
+  Future<OidcTokens?> _passwordCall(AuthConfig c, String grant, Map<String, String> body) async {
+    final r = await _c.post(Uri.parse('${c.tokenEndpoint}?grant_type=$grant'),
+        headers: {'content-type': 'application/json', 'apikey': c.apiKey ?? ''}, body: jsonEncode(body));
+    if (r.statusCode == 400 || r.statusCode == 401) return null;
+    if (r.statusCode >= 300) throw Exception('sign-in unavailable (${r.statusCode})');
+    final j = jsonDecode(r.body) as Map<String, dynamic>;
+    final expiresIn = (j['expires_in'] as num?)?.toInt();
+    return OidcTokens(j['access_token'] as String,
+        refreshToken: j['refresh_token'] as String?, expiresAt: expiresIn == null ? null : DateTime.now().add(Duration(seconds: expiresIn)));
+  }
+
+  /// Email + password sign-in (password flow). Null when the credentials are refused.
+  Future<OidcTokens?> passwordSignIn(AuthConfig c, String email, String password) =>
+      _passwordCall(c, 'password', {'email': email.trim(), 'password': password});
+
   /// Silent renewal. Returns null when the refresh token is no longer accepted (the user must sign in again).
   Future<OidcTokens?> refresh(AuthConfig c, String refreshToken) async {
+    if (c.isPassword) {
+      try {
+        return await _passwordCall(c, 'refresh_token', {'refresh_token': refreshToken});
+      } catch (_) {
+        return null;
+      }
+    }
     try {
       final r = await _a.token(TokenRequest(c.clientId!, c.redirectUri!, serviceConfiguration: _svc(c), refreshToken: refreshToken, scopes: c.scopes));
       if (r.accessToken == null) return null;

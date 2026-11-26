@@ -1,6 +1,6 @@
 import { buildAuthorizeUrl, challengeFor, decodeClaims, parseCallback, randomToken } from './pkce';
 
-export interface AuthConfig { mode: 'sandbox' | 'oidc'; authorization_endpoint?: string; token_endpoint?: string; end_session_endpoint?: string; clients?: { web: string }; scopes?: string }
+export interface AuthConfig { mode: 'sandbox' | 'oidc' | 'password'; api_key?: string; authorization_endpoint?: string; token_endpoint?: string; end_session_endpoint?: string; clients?: { web: string }; scopes?: string }
 export interface OidcSession { school: string; token: string; refresh?: string; expiresAt?: number }
 
 const API = () => process.env.NEXT_PUBLIC_API_BASE ?? 'http://localhost:3000';
@@ -17,6 +17,21 @@ export async function startLogin(cfg: AuthConfig, school: string, locale: string
   const verifier = randomToken(48); const state = randomToken(16);
   sessionStorage.setItem(PK, JSON.stringify({ verifier, state, school, cfg }));
   window.location.assign(buildAuthorizeUrl({ authorizationEndpoint: cfg.authorization_endpoint!, clientId: cfg.clients!.web, redirectUri: redirectUri(), scope: cfg.scopes ?? 'openid profile email', state, challenge: await challengeFor(verifier), locale }));
+}
+
+/** Hosted password flow (Supabase Auth): JSON body, the public key goes in the `apikey` header. */
+async function passwordCall(cfg: AuthConfig, grant: 'password' | 'refresh_token', body: Record<string, string>): Promise<{ access_token: string; refresh_token?: string; expires_in?: number }> {
+  const r = await fetch(`${cfg.token_endpoint}?grant_type=${grant}`, { method: 'POST', headers: { 'content-type': 'application/json', apikey: cfg.api_key ?? '' }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(r.status === 400 || r.status === 401 ? 'Email ou mot de passe incorrect / wrong email or password' : `sign-in unavailable (${r.status})`);
+  return r.json();
+}
+
+/** Password sign-in. The school comes from the token's tenant claim (set by the access-token hook), not from what was typed. */
+export async function passwordLogin(cfg: AuthConfig, email: string, password: string): Promise<OidcSession> {
+  const t = await passwordCall(cfg, 'password', { email: email.trim(), password });
+  const s = toSession('', t);
+  if (!s.school) throw new Error('Compte non rattaché à un établissement / account not linked to a school');
+  return s;
 }
 
 async function tokenCall(endpoint: string, params: Record<string, string>): Promise<{ access_token: string; refresh_token?: string; expires_in?: number }> {
@@ -42,7 +57,7 @@ let inflight: Promise<OidcSession | null> | null = null;
 /** Silent renewal with the refresh token (single flight, so parallel 401s trigger one refresh). Returns null when the session cannot be renewed. */
 export function refreshSession(cur: OidcSession, cfg: AuthConfig): Promise<OidcSession | null> {
   if (!cur.refresh || !cfg.token_endpoint) return Promise.resolve(null);
-  inflight ??= tokenCall(cfg.token_endpoint, { grant_type: 'refresh_token', client_id: cfg.clients!.web, refresh_token: cur.refresh })
+  inflight ??= (cfg.mode === 'password' ? passwordCall(cfg, 'refresh_token', { refresh_token: cur.refresh }) : tokenCall(cfg.token_endpoint, { grant_type: 'refresh_token', client_id: cfg.clients!.web, refresh_token: cur.refresh }))
     .then((t) => toSession(cur.school, t)).catch(() => null).finally(() => { inflight = null; });
   return inflight;
 }

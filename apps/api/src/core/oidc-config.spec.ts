@@ -18,4 +18,9 @@ describe('OIDC public configuration', () => {
     let n = 0; const f = (async () => { n++; return { ok: true, status: 200, json: async () => doc }; }) as unknown as typeof fetch;
     const c = new OidcConfig({ OIDC_ISSUER: doc.issuer } as NodeJS.ProcessEnv, f); await c.get(); await c.get(); expect(n).toBe(1);
   });
+  it('password flow (hosted Supabase Auth) exposes the token endpoint and the public key only', async () => {
+    const env = { AUTH_FLOW: 'password', SUPABASE_URL: 'https://abc.supabase.co/', SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_x' } as NodeJS.ProcessEnv;
+    expect(await new OidcConfig(env).get()).toEqual({ mode: 'password', issuer: 'https://abc.supabase.co/auth/v1', token_endpoint: 'https://abc.supabase.co/auth/v1/token', api_key: 'sb_publishable_x' });
+    await expect(new OidcConfig({ AUTH_FLOW: 'password', SUPABASE_URL: 'http://abc.supabase.co' } as NodeJS.ProcessEnv).get()).rejects.toThrow(/AUTH_FLOW=password/);
+  });
 });
