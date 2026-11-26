@@ -1,1 +1,11 @@
-{ "name": "ÉcoleManager Pro", "short_name": "ÉcoleManager", "start_url": "/", "display": "standalone", "background_color": "#ffffff", "theme_color": "#0b5cab", "icons": [] }
+{
+  "name": "ÉcoleManager Pro",
+  "short_name": "ÉcoleManager",
+  "description": "Gestion d’écoles multi-pays",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f6fb",
+  "theme_color": "#1d4ed8",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

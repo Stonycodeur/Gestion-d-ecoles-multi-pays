@@ -1,0 +1,31 @@
+/** Small inline icon set (24×24, stroke). Decorative: hidden from assistive technology, the text label carries the meaning. */
+const P: Record<string, string> = {
+  home: 'M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z',
+  calendar: 'M3 5h18v16H3z M3 10h18 M8 3v4 M16 3v4',
+  grades: 'M6 3h12v18H6z M9 8h6 M9 12h6 M9 16h4',
+  absence: 'M15 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M8.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M17 8l5 5 M22 8l-5 5',
+  book: 'M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z M4 21V5 M9 8h6',
+  cap: 'M2 9l10-5 10 5-10 5z M6 11v5c3 2 9 2 12 0v-5',
+  folder: 'M3 5h6l2 2h10v12H3z',
+  chat: 'M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
+  news: 'M4 4h13v16H6a2 2 0 0 1-2-2z M17 8h3v10a2 2 0 0 1-2 2 M8 8h5 M8 12h5 M8 16h3',
+  bell: 'M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9 M13.7 21a2 2 0 0 1-3.4 0',
+  target: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20 M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12 M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4',
+  game: 'M6 8h12a4 4 0 0 1 4 4v2a3 3 0 0 1-5 2l-1-1H8l-1 1a3 3 0 0 1-5-2v-2a4 4 0 0 1 4-4z M8 10.5v3 M6.5 12h3 M16 11.5h.01 M18 13h.01',
+  alert: 'M12 3l10 18H2z M12 10v5 M12 18h.01',
+  compass: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20 M16 8l-2 6-6 2 2-6z',
+  pin: 'M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12 M12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5',
+  card: 'M2 6h20v12H2z M2 10h20 M6 15h4',
+  bank: 'M3 21h18 M5 21V10 M9 21V10 M15 21V10 M19 21V10 M2 10l10-7 10 7z',
+  code: 'M8 7l-5 5 5 5 M16 7l5 5-5 5 M14 4l-4 16',
+  store: 'M3 9l2-5h14l2 5 M3 9h18v11H3z M9 20v-6h6v6',
+  spark: 'M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z',
+  cube: 'M12 2l9 5v10l-9 5-9-5V7z M12 12l9-5 M12 12v10 M12 12L3 7',
+  settings: 'M4 6h10 M18 6h2 M4 12h2 M10 12h10 M4 18h12 M20 18h0 M16 4v4 M8 10v4 M18 16v4',
+  globe: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20 M2 12h20 M12 2a15 15 0 0 1 0 20 M12 2a15 15 0 0 0 0 20',
+  menu: 'M4 6h16 M4 12h16 M4 18h16',
+  logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9',
+};
+export default function Icon({ name }: { name: string }) {
+  return <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d={P[name] ?? P.home} /></svg>;
+}
