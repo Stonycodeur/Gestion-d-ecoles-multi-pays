@@ -47,7 +47,7 @@ export default function Shell({ children }: { children: ReactNode }) {
     <div className={`app${open ? ' nav-open' : ''}`}>
       <a href="#contenu" className="skip-link">{fr ? 'Aller au contenu' : 'Skip to content'}</a>
       <aside className="sidebar" id="menu-principal">
-        <Link href="/" className="brand" aria-label={t('app', locale)}>
+        <Link href="/" className="brand">
           <span className="brand-mark" aria-hidden="true">É</span>
           <span className="brand-name">ÉcoleManager<small>Pro · STONY-TECHNOLOGIE</small></span>
         </Link>
