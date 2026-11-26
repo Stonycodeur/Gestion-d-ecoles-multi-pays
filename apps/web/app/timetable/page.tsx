@@ -56,7 +56,7 @@ export default function TimetablePage() {
           <thead><tr><th />{DAYS.map((d) => <th key={d} scope="col">J{d}</th>)}</tr></thead>
           <tbody>{PERIODS.map((p) => (
             <tr key={p}><th scope="row">P{p + 1}</th>{DAYS.map((d) => (
-              <td key={d} onDragOver={(e) => e.preventDefault()} onDrop={() => drop(d, p)} style={{ border: '1px solid #ccc', height: 48, verticalAlign: 'top' }}>
+              <td key={d} onDragOver={(e) => e.preventDefault()} onDrop={() => drop(d, p)} style={{ border: '1px solid var(--border)', height: 48, verticalAlign: 'top' }}>
                 {slots.filter((s) => s.weekday === d && s.period_index === p).map((s) => {
                   const sb = subOf(s.id);
                   return (

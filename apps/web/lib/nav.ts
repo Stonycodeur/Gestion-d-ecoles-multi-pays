@@ -45,3 +45,11 @@ export const NAV: NavGroup[] = [
 export const HOME = { href: '/', icon: 'home', label: { fr: 'Accueil', en: 'Home' } };
 export const pick = (v: L3, l: Locale): string => (l === 'fr' ? v.fr : v.en);
 export const findItem = (path: string): NavItem | undefined => NAV.flatMap((g) => g.items).find((i) => path === i.href || path.startsWith(`${i.href}/`));
+
+/** Platform group, shown to the root super-admin only (screens that need no school). */
+export const PLATFORM: NavGroup = { title: { fr: 'Plateforme', en: 'Platform' }, items: [
+  { href: '/root', icon: 'shield', label: { fr: 'Console racine', en: 'Root console' }, desc: { fr: 'Établissements, pays, audit', en: 'Schools, countries, audit' } },
+  { href: '/root/accounts', icon: 'users', label: { fr: 'Comptes', en: 'Accounts' }, desc: { fr: 'Créer et gérer les accès', en: 'Create and manage access' } },
+  { href: '/root/geography', icon: 'globe', label: { fr: 'Pays et villes', en: 'Countries and cities' }, desc: { fr: 'Continents, pays, provinces, villes', en: 'Continents, countries, provinces, cities' } },
+] };
+export const findAny = (path: string): NavItem | undefined => [...PLATFORM.items, ...NAV.flatMap((g) => g.items)].filter((i) => path === i.href || path.startsWith(`${i.href}/`)).sort((a, b) => b.href.length - a.href.length)[0];

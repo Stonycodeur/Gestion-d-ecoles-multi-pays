@@ -1,0 +1,80 @@
+import { BadRequestException, ConflictException, Injectable, NotFoundException, NotImplementedException } from '@nestjs/common';
+import { Pool } from 'pg';
+import { poolConfig } from '../core/db-config';
+import { AuditService } from '../core/audit.service';
+import { generatePassword, strongEnough } from './password';
+
+/** Roles the root super-admin can create in a school. The root itself is unique and immutable; the visitor role needs no account. */
+export const CREATABLE_ROLES = ['tenant_super_admin', 'admin', 'head', 'teacher', 'education_assistant', 'accountant', 'student', 'guardian', 'inspector'];
+const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Account administration for the root super-admin. Runs through SECURITY DEFINER functions (101_supabase_accounts.sql): the API never holds a service-role key. */
+@Injectable()
+export class AccountsAdminService {
+  private pool?: Pool;
+  constructor(private readonly audit: AuditService) {}
+  private get db(): Pool {
+    if (!this.pool) { if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set'); this.pool = new Pool(poolConfig()); }
+    return this.pool;
+  }
+  private async root<T>(fn: (q: (sql: string, params?: unknown[]) => Promise<any[]>) => Promise<T>): Promise<T> {
+    const c = await this.db.connect();
+    try {
+      await c.query('BEGIN');
+      await c.query("SELECT set_config('app.root_bypass', 'on', true)");
+      const out = await fn(async (sql, params) => (await c.query(sql, params as unknown[])).rows);
+      await c.query('COMMIT'); return out;
+    } catch (e) { await c.query('ROLLBACK').catch(() => undefined); throw e; } finally { c.release(); }
+  }
+  /** Maps database refusals to HTTP errors; a missing function means the identity provider is not Supabase (accounts are then managed there). */
+  private fail(e: unknown): never {
+    const err = e as { code?: string; message?: string };
+    if (err.code === '42883') throw new NotImplementedException('account administration needs the Supabase account functions (infra/sql/101_supabase_accounts.sql); with another identity provider, create the user there');
+    const m = String(err.message ?? '');
+    if (/unknown (school|account|role)|invalid email|password too short|only school roles|unique and immutable|root super-admin/.test(m)) throw new BadRequestException(m);
+    throw e;
+  }
+
+  async list(school?: string) {
+    if (school !== undefined && !/^[a-z0-9_]{2,40}$/.test(school)) throw new BadRequestException('invalid school');
+    try { return await this.root((q) => q('SELECT * FROM admin_list_accounts($1)', [school ?? null])); } catch (e) { return this.fail(e); }
+  }
+
+  async create(actor: string, b: any) {
+    const email = typeof b?.email === 'string' ? b.email.trim().toLowerCase() : '';
+    if (!EMAIL.test(email)) throw new BadRequestException('a valid email is required');
+    if (!CREATABLE_ROLES.includes(b?.role)) throw new BadRequestException(`role must be one of ${CREATABLE_ROLES.join(', ')}`);
+    if (typeof b?.school_slug !== 'string' || !/^[a-z0-9_]{2,40}$/.test(b.school_slug)) throw new BadRequestException('school_slug is required');
+    if (b.password !== undefined && b.password !== '' && !strongEnough(b.password)) throw new BadRequestException('password: 10+ characters with lower case, upper case and a digit');
+    const generated = !b.password;
+    const password = generated ? generatePassword() : (b.password as string);
+    let id: string;
+    try {
+      id = await this.root(async (q) => {
+        const exists = (await q('SELECT 1 FROM public.users WHERE lower(email) = $1', [email])).length > 0;
+        if (exists) throw new ConflictException('an account with this email already exists');
+        return (await q('SELECT admin_create_account($1,$2,$3,$4) AS id', [email, password, b.role, b.school_slug]))[0].id as string;
+      });
+    } catch (e) { return this.fail(e); }
+    await this.audit.log({ actorId: actor, action: 'account.create', entity: 'user', entityId: id, details: { email, role: b.role, school: b.school_slug } });
+    return { id, email, role: b.role, school_slug: b.school_slug, ...(generated ? { temporary_password: password } : {}), must_change_password: generated };
+  }
+
+  async resetPassword(actor: string, id: string, b: any) {
+    if (!UUID.test(id)) throw new NotFoundException('unknown account');
+    if (b?.password !== undefined && b.password !== '' && !strongEnough(b.password)) throw new BadRequestException('password: 10+ characters with lower case, upper case and a digit');
+    const generated = !b?.password; const password = generated ? generatePassword() : (b.password as string);
+    try { await this.root((q) => q('SELECT admin_reset_password($1,$2)', [id, password])); } catch (e) { return this.fail(e); }
+    await this.audit.log({ actorId: actor, action: 'account.reset_password', entity: 'user', entityId: id });
+    return { id, ...(generated ? { temporary_password: password } : {}) };
+  }
+
+  async setActive(actor: string, id: string, active: unknown) {
+    if (!UUID.test(id)) throw new NotFoundException('unknown account');
+    if (typeof active !== 'boolean') throw new BadRequestException('active must be boolean');
+    try { await this.root((q) => q('SELECT admin_set_account_active($1,$2)', [id, active])); } catch (e) { return this.fail(e); }
+    await this.audit.log({ actorId: actor, action: active ? 'account.enable' : 'account.disable', entity: 'user', entityId: id });
+    return { id, active };
+  }
+}

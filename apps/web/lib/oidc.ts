@@ -36,6 +36,14 @@ export async function passwordLogin(cfg: AuthConfig, email: string, password: st
   return s;
 }
 
+/** Changes the password of the signed-in user (Supabase Auth). The current password is re-checked by signing in again first. */
+export async function changePassword(cfg: AuthConfig, email: string, current: string, next: string): Promise<void> {
+  if (cfg.mode !== 'password' || !cfg.token_endpoint) throw new Error('Le changement de mot de passe se fait chez votre fournisseur d’identité / change your password at your identity provider');
+  const t = await passwordCall(cfg, 'password', { email: email.trim(), password: current });
+  const r = await fetch(cfg.token_endpoint.replace(/\/token$/, '/user'), { method: 'PUT', headers: { 'content-type': 'application/json', apikey: cfg.api_key ?? '', authorization: `Bearer ${t.access_token}` }, body: JSON.stringify({ password: next }) });
+  if (!r.ok) { const j = await r.json().catch(() => ({})) as { msg?: string; message?: string }; throw new Error(j.msg ?? j.message ?? `password change refused (${r.status})`); }
+}
+
 async function tokenCall(endpoint: string, params: Record<string, string>): Promise<{ access_token: string; refresh_token?: string; expires_in?: number }> {
   const r = await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(params) });
   if (!r.ok) throw new Error(`token endpoint refused (${r.status})`);
