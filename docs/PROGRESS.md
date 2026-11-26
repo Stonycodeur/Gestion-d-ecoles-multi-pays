@@ -205,3 +205,9 @@ Fusion de `phase-8-docs-finish` dans `main` (CI verte), puis traitement de la li
 Fait : schéma appliqué sur Supabase (83 tables par école, RLS forcée, empreinte de `provision_tenant_schema` identique au dépôt), hook de jeton Supabase Auth testé en base, connexion email + mot de passe (API, web, mobile), `render.yaml`, support `DATABASE_SSL_CA`, services Render API et web créés, CI verte.
 Reste (action utilisateur) : activer le hook dans Supabase, créer le compte root et le lier (`link_account`), coller le certificat CA dans `DATABASE_SSL_CA`, premier test de connexion web. Voir `docs/MISE_EN_LIGNE.md`.
 Limites : code de connexion web/mobile (mode `password`) non exécuté contre un vrai Supabase Auth ; flutter analyze/test exécutés par la CI uniquement ; adaptateurs externes simulés.
+
+
+## Phase 14 — Console racine, géographie mondiale, comptes (2026-11-26)
+**Fait** : données géographiques mondiales (250 pays, 172 k villes) ; activation d'un pays par configuration ; localisation des écoles (continent, province, ville) ; console racine web (`/root`, `/root/accounts`, `/root/geography`) ; le Super-Admin racine agit dans toute école via `X-Tenant` (audité) ; création des comptes d'école et réinitialisation de mot de passe sans clé service ; page « Mon compte » (changement de mot de passe) ; certificat SSL Supabase vérifié (`DATABASE_SSL_CA`) ; design system web.
+**Tests** : `geo.service.spec`, `password.spec`, `root-console.e2e.spec` (35 suites / 180 tests verts en CI).
+**Reste / limites** : intitulés de niveaux et examens des pays activés à adapter ; pas encore d'écran d'édition du référentiel d'un pays ; les comptes créés par l'API ne sont testés que sur la base Supabase (fonctions SQL appliquées et éprouvées par transaction annulée) ; la connexion d'un compte d'école n'a pas été essayée de bout en bout depuis cet environnement.
