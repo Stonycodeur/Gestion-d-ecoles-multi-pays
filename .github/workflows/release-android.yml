@@ -11,6 +11,8 @@ on:
         default: false
   push:
     tags: ['mobile-v*']
+permissions:
+  contents: write   # publishes the test APK as a GitHub release asset
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -70,6 +72,13 @@ jobs:
           path: |
             apps/mobile/build/app/outputs/bundle/release/app-release.aab
             apps/mobile/build/app/outputs/flutter-apk/app-release.apk
+      - name: Publish the APK as a GitHub pre-release (private repository: only collaborators can download it)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp apps/mobile/build/app/outputs/flutter-apk/app-release.apk "EcoleManagerPro-${{ github.run_number }}.apk"
+          note="Android test build. API: $API_BASE. Signed with $([ "$HAS_KEYSTORE" = true ] && echo 'the release keystore' || echo 'the DEBUG key (test only, not for Google Play)')."
+          gh release create "android-test-${{ github.run_number }}" "EcoleManagerPro-${{ github.run_number }}.apk" --prerelease --title "Android test build ${{ github.run_number }}" --notes "$note" --target "${{ github.sha }}"
       - name: Upload to Google Play internal testing (Fastlane)
         if: inputs.upload_internal == true && env.HAS_KEYSTORE == 'true'
         working-directory: apps/mobile
