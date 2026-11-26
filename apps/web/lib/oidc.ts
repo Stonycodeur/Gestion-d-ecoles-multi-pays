@@ -29,7 +29,9 @@ async function passwordCall(cfg: AuthConfig, grant: 'password' | 'refresh_token'
 /** Password sign-in. The school comes from the token's tenant claim (set by the access-token hook), not from what was typed. */
 export async function passwordLogin(cfg: AuthConfig, email: string, password: string): Promise<OidcSession> {
   const t = await passwordCall(cfg, 'password', { email: email.trim(), password });
-  const s = toSession('', t);
+  const claims = decodeClaims(t.access_token);
+  const isRoot = Array.isArray(claims.roles) && claims.roles.includes('root_super_admin');
+  const s = toSession(isRoot ? 'root' : '', t);   // the platform owner belongs to no school: administration screens only
   if (!s.school) throw new Error('Compte non rattaché à un établissement / account not linked to a school');
   return s;
 }

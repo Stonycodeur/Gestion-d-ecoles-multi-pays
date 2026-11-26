@@ -18,6 +18,8 @@ jobs:
       APP_ID: ${{ secrets.APP_ID }}
       APP_NAME: ${{ secrets.APP_NAME }}
       HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      # API the app talks to. Override with the repository variable API_BASE (Settings > Variables) once the production domain exists.
+      API_BASE: ${{ vars.API_BASE || 'https://ecolemanager-api-t52f.onrender.com' }}
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -60,8 +62,8 @@ jobs:
       - name: Build AAB and APK (release)
         working-directory: apps/mobile
         run: |
-          flutter build appbundle --release
-          flutter build apk --release
+          flutter build appbundle --release --dart-define=API_BASE="$API_BASE"
+          flutter build apk --release --dart-define=API_BASE="$API_BASE"
       - uses: actions/upload-artifact@v4
         with:
           name: android-release
