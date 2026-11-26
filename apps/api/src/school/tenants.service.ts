@@ -81,6 +81,7 @@ export class TenantsService {
       }
       try {
         const newId = (await q('SELECT admin_create_tenant($1,$2,$3,$4,$5) AS id', [slug, b.name.trim(), b.school_type, country, JSON.stringify(config)]))[0].id as string;
+        await q("SELECT set_config('app.root_bypass', 'on', true)");   // re-asserted: observed to be cleared once a SECURITY DEFINER function with its own SET clause has run
         await q('SELECT admin_set_tenant_location($1,$2,$3,$4)', [slug, continent, region, city]);
         if (b.grading_scale_code) {
           const es = (await q('SELECT cycle FROM public.education_systems WHERE country_code = $1 AND school_type = $2', [country, b.school_type]))[0];
