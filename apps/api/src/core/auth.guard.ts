@@ -30,6 +30,14 @@ export class CoreGuard implements CanActivate {
       if (req.tenantSlug && req.tenantSlug !== r.slug) throw new ForbiddenException('tenant mismatch');
       req.tenantSlug = r.slug;
     }
+    if (principal.isRoot) {
+      // The root super-admin has no school of its own: it works inside any school by naming it in X-Tenant. Mutations are audited.
+      const h = req.header('x-tenant');
+      if (h && /^[a-z0-9_]{2,40}$/.test(h)) {
+        req.tenantSlug = h;
+        if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS') await this.audit.log({ actorId: principal.id, tenant: h, action: 'root.tenant_context', details: { method: req.method, path: req.path } });
+      }
+    }
     if (!principal.isRoot && principal.roles.includes('inspector') && req.tenantSlug) {
       // time-limited inspector access: checked against the directory on every call, so revocation is immediate
       const until = await this.ministry.inspectorUntil(req.tenantSlug, principal.id);

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Shell from '../../components/Shell';
 import { api, openPdf } from '../../lib/api';
 
-const box = { border: '1px solid #ccc', borderRadius: 6, padding: 12, marginBottom: 16 } as const;
+const box = {} as const;   // card look comes from the global stylesheet (main section)
 const err = (r: { ok: boolean; error?: string }) => (r.ok ? '' : `Refusé / Refused: ${r.error}`);
 
 /** Competencies (primary), course units / ECTS transcripts (university), lesson attachments. */

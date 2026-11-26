@@ -1,9 +1,10 @@
 'use client';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import Shell from '../../components/Shell';
 import { api } from '../../lib/api';
 
-const box = { border: '1px solid #ccc', borderRadius: 6, padding: 12, marginBottom: 16 } as const;
+const box = {} as const;   // card look comes from the global stylesheet (main section)
 const err = (r: { ok: boolean; error?: string }) => (r.ok ? '' : `Refusé / Refused: ${r.error}`);
 
 /** School administration: grading scale (7.3), staff contracts and workload (6.4), teacher substitution (6.5), schools (6.2, root only). */
@@ -98,26 +99,14 @@ function Substitutions() {
 }
 
 function Schools() {
-  const [rows, setRows] = useState<any[] | null>(null); const [msg, setMsg] = useState('');
-  const [f, setF] = useState({ slug: '', name: '', school_type: 'lycee', country_code: 'GA', grading_scale_code: '' }); const [prop, setProp] = useState<any>(null);
-  const load = async () => { const r = await api('/tenants'); setRows(r.ok ? r.data : null); };
-  useEffect(() => { void load(); }, []);
-  useEffect(() => { void (async () => { const r = await api(`/tenants/proposals?country_code=${f.country_code}&school_type=${f.school_type}`); setProp(r.ok ? r.data : null); })(); }, [f.country_code, f.school_type, rows]);
-  if (rows === null) return null;   // visible to the root super-admin only
-  const create = async () => { const r = await api('/tenants', { method: 'POST', online: true, body: { ...f, grading_scale_code: f.grading_scale_code || undefined } }); setMsg(err(r) || 'Établissement créé / School created'); if (r.ok) await load(); };
-  const toggle = async (s: any) => { const r = await api(`/tenants/${s.slug}`, { method: 'PATCH', online: true, body: { active: !s.active } }); setMsg(err(r)); await load(); };
+  const [isRoot, setIsRoot] = useState(false);
+  useEffect(() => { void api('/tenants').then((r) => setIsRoot(r.ok)); }, []);
+  if (!isRoot) return null;   // visible to the root super-admin only
   return (
     <section style={box} aria-labelledby="h-schools">
       <h2 id="h-schools">Établissements / Schools</h2>
-      <ul>{rows.map((s) => <li key={s.id}>{s.name} ({s.slug}, {s.school_type}, {s.country_code}) {s.active ? '' : '— désactivé / inactive'} <button onClick={() => toggle(s)}>{s.active ? 'Désactiver / Deactivate' : 'Activer / Activate'}</button></li>)}</ul>
-      <h3>Créer / Create</h3>
-      <input aria-label="identifiant" placeholder="slug" value={f.slug} onChange={(e) => setF({ ...f, slug: e.target.value })} />{' '}
-      <input aria-label="nom" placeholder="nom / name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />{' '}
-      <select aria-label="type" value={f.school_type} onChange={(e) => setF({ ...f, school_type: e.target.value })}>{['primary', 'college', 'lycee', 'university'].map((t) => <option key={t}>{t}</option>)}</select>{' '}
-      <input aria-label="pays" size={3} value={f.country_code} onChange={(e) => setF({ ...f, country_code: e.target.value.toUpperCase() })} />{' '}
-      {prop && <select aria-label="échelle" value={f.grading_scale_code} onChange={(e) => setF({ ...f, grading_scale_code: e.target.value })}><option value="">Défaut du pays / country default ({prop.default_scale})</option>{prop.scales.map((s: any) => <option key={s.code} value={s.code}>{s.code}</option>)}</select>}{' '}
-      <button onClick={create} disabled={!f.slug || !f.name}>Créer / Create</button>
-      {msg && <p role="status">{msg}</p>}
+      <p>La création des écoles (continent, pays, province, ville), des comptes et l’audit se font dans la console racine. / Schools, accounts and audit live in the root console.</p>
+      <p><Link href="/root">Ouvrir la console racine / Open the root console →</Link></p>
     </section>
   );
 }

@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { poolConfig } from '../core/db-config';
 import { Pool } from 'pg';
 import { AuditService } from '../core/audit.service';
+import { GeoService } from '../geo/geo.service';
 
 const TYPES = ['primary', 'college', 'lycee', 'university'];
 
@@ -9,7 +10,7 @@ const TYPES = ['primary', 'college', 'lycee', 'university'];
 @Injectable()
 export class TenantsService {
   private pool?: Pool;
-  constructor(private readonly audit: AuditService) {}
+  constructor(private readonly audit: AuditService, private readonly geo: GeoService) {}
   private get db(): Pool {
     if (!this.pool) {
       if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
@@ -28,9 +29,22 @@ export class TenantsService {
     } catch (e) { await c.query('ROLLBACK').catch(() => undefined); throw e; } finally { c.release(); }
   }
 
-  list() { return this.root((q) => q('SELECT id, slug, name, school_type, country_code, active, created_at FROM public.tenants ORDER BY name')); }
+  list() { return this.root((q) => q('SELECT id, slug, name, school_type, country_code, continent_code, region, city, active, created_at FROM public.tenants ORDER BY name')); }
+  /** Countries of the referential (the ones a school can be created in), with their currency and grading scales. */
+  activated() { return this.root((q) => q('SELECT c.code, c.name_fr, c.name_en, c.currency, c.is_sample, (SELECT count(*)::int FROM public.tenants t WHERE t.country_code = c.code) AS schools FROM public.countries c ORDER BY c.name_en')); }
+
+  /** Activates any country of the world: its reference rows (education system, scales, calendar) are cloned from a grading model. Idempotent. */
+  async activateCountry(actor: string, iso: string, b: any) {
+    const c = this.geo.country(iso);
+    const model = ['numeric', 'letters', 'percent'].includes(b?.model) ? b.model : 'numeric';
+    const locale = ['fr', 'en', 'ar'].includes(b?.locale) ? b.locale : 'fr';
+    const languages = locale === 'fr' ? ['fr', 'en'] : locale === 'en' ? ['en', 'fr'] : ['ar', 'fr', 'en'];
+    const created = await this.root(async (q) => (await q('SELECT admin_ensure_country($1,$2,$3,$4,$5,$6,$7,$8) AS created', [c.c, c.fr, c.n, c.cur, c.tz, languages, locale, model]))[0].created as boolean);
+    if (created) await this.audit.log({ actorId: actor, action: 'country.activate', entity: 'country', entityId: c.c, details: { model, locale } });
+    return { code: c.c, created, model };
+  }
   async get(slug: string) {
-    const r = await this.root((q) => q('SELECT id, slug, name, school_type, country_code, config, active, created_at FROM public.tenants WHERE slug = $1', [slug]));
+    const r = await this.root((q) => q('SELECT id, slug, name, school_type, country_code, continent_code, region, city, config, active, created_at FROM public.tenants WHERE slug = $1', [slug]));
     if (!r.length) throw new NotFoundException('unknown tenant');
     return r[0];
   }
@@ -54,8 +68,12 @@ export class TenantsService {
     const country = typeof b?.country_code === 'string' ? b.country_code.toUpperCase() : '';
     const config = b?.config && typeof b.config === 'object' && !Array.isArray(b.config) ? b.config : {};
     if (JSON.stringify(config).length > 20000) throw new BadRequestException('config too large');
+    const text = (v: unknown, what: string) => { if (v === undefined || v === null || v === '') return ''; if (typeof v !== 'string' || v.length > 120) throw new BadRequestException(`${what} is invalid`); return v.trim(); };
+    const region = text(b?.region, 'region'); const city = text(b?.city, 'city');
+    let continent = '';
+    try { continent = this.geo.country(country).k; } catch { /* a country outside the dataset (e.g. the sample country XL) has no continent */ }
     const id = await this.root(async (q) => {
-      if (!(await q('SELECT 1 FROM public.countries WHERE code = $1', [country])).length) throw new BadRequestException('unknown country_code');
+      if (!(await q('SELECT 1 FROM public.countries WHERE code = $1', [country])).length) throw new BadRequestException('unknown country_code: activate the country first (POST /geo/countries/:iso/activate)');
       if (b.grading_scale_code) {
         const es = (await q('SELECT cycle FROM public.education_systems WHERE country_code = $1 AND school_type = $2', [country, b.school_type]))[0];
         if (!es) throw new BadRequestException('this country has no education system for this school type');
@@ -63,6 +81,8 @@ export class TenantsService {
       }
       try {
         const newId = (await q('SELECT admin_create_tenant($1,$2,$3,$4,$5) AS id', [slug, b.name.trim(), b.school_type, country, JSON.stringify(config)]))[0].id as string;
+        await q("SELECT set_config('app.root_bypass', 'on', true)");   // re-asserted: observed to be cleared once a SECURITY DEFINER function with its own SET clause has run
+        await q('SELECT admin_set_tenant_location($1,$2,$3,$4)', [slug, continent, region, city]);
         if (b.grading_scale_code) {
           const es = (await q('SELECT cycle FROM public.education_systems WHERE country_code = $1 AND school_type = $2', [country, b.school_type]))[0];
           await q('INSERT INTO public.tenant_settings(tenant_id, cycle, grading_scale_code, effective_from) VALUES ($1,$2,$3,CURRENT_DATE)', [newId, es.cycle, b.grading_scale_code]);
@@ -70,8 +90,18 @@ export class TenantsService {
         return newId;
       } catch (e) { if ((e as { code?: string }).code === '23505') throw new ConflictException('a school with this slug already exists'); throw e; }
     });
-    await this.audit.log({ actorId: actor, action: 'tenant.create', entity: 'tenant', entityId: id, details: { slug, country, school_type: b.school_type } });
+    await this.audit.log({ actorId: actor, action: 'tenant.create', entity: 'tenant', entityId: id, details: { slug, country, region, city, school_type: b.school_type } });
     return this.get(slug);
+  }
+
+  /** Overview for the root console: counters and the latest audited actions. */
+  async overview() {
+    return this.root(async (q) => {
+      const c = (await q(`SELECT (SELECT count(*)::int FROM public.tenants) AS schools, (SELECT count(*)::int FROM public.tenants WHERE active) AS active_schools,
+        (SELECT count(*)::int FROM public.countries) AS countries, (SELECT count(*)::int FROM public.users) AS accounts`))[0];
+      const audit = await q('SELECT * FROM admin_recent_audit(25)');
+      return { ...c, world: this.geo.stats(), audit };
+    });
   }
 
   async update(actor: string, slug: string, b: any) {

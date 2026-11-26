@@ -35,7 +35,7 @@ export default function PublicSchool() {
         <XrViewer asset={{ ...panos[pano], kind: 'panorama_360' }} />
         <p>{panos.map((a: any, i: number) => <button key={a.id} onClick={() => setPano(i)} aria-pressed={i === pano}>{a.title}</button>)}</p></section>}
       {!panos.length && cur && <section aria-label="Visite virtuelle"><h2>Visite virtuelle à 360°</h2>
-        <div style={{ overflowX: 'auto', border: '1px solid #ccc' }}><img src={cur.image_url} alt={cur.title} style={{ height: 320, maxWidth: 'none' }} /></div>
+        <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 12 }}><img src={cur.image_url} alt={cur.title} style={{ height: 320, maxWidth: 'none' }} /></div>
         <p>{cur.title} {tour.map((s: any, i: number) => <button key={s.id} onClick={() => setScene(i)} aria-pressed={i === scene}>{s.title}</button>)}</p></section>}
       <section><h2>Actualités</h2>{news.length ? <ul>{news.map((n) => <li key={n.id}><strong>{n.title}</strong> — {new Date(n.published_at).toLocaleDateString('fr')}<br />{n.body}</li>)}</ul> : <p>Aucune actualité.</p>}</section>
       {stats && <section><h2>Chiffres clés</h2><p>Effectifs : {stats.enrolled}</p>

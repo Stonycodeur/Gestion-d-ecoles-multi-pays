@@ -59,7 +59,7 @@ export default function XrViewer({ asset, height = 360 }: { asset: XrAsset; heig
     <figure>
       <div ref={host} style={{ maxWidth: '100%' }} />
       {mode === 'image_only' && (asset.kind === 'panorama_360'
-        ? <div style={{ overflowX: 'auto', border: '1px solid #ccc' }}><img src={asset.url} alt={asset.alt_text} style={{ height, maxWidth: 'none' }} /></div>
+        ? <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 12 }}><img src={asset.url} alt={asset.alt_text} style={{ height, maxWidth: 'none' }} /></div>
         : <p>{asset.alt_text}</p>)}
       <figcaption>{asset.title} — <span role="status">{err || labels[mode] || (mode === 'image_only' ? 'Affichage simplifié (appareil sans 3D)' : mode)}</span></figcaption>
     </figure>

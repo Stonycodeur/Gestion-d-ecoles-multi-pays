@@ -18,6 +18,14 @@ const purge = (what: { cache?: boolean; queue?: boolean }) => {
   } catch { /* storage unavailable */ }
 };
 const ownerOf = (s: Session): string => `${s.school}|${String(decodeClaims(s.token).sub ?? '')}`;
+const CTX = 'em_ctx';
+/** The root super-admin belongs to no school: it works inside one by naming it (sent as X-Tenant, audited by the API). */
+export const getContext = (): string => { try { return sessionStorage.getItem(CTX) ?? ''; } catch { return ''; } };
+export const isRootSession = (s: Session | null = getSession()): boolean => s?.school === 'root';
+export const setContext = (slug: string) => {
+  try { if (slug) sessionStorage.setItem(CTX, slug); else sessionStorage.removeItem(CTX); } catch { /* ignore */ }
+  purge({ cache: true });   // cached answers belong to the previous school
+};
 export const setSession = (s: Session | null, opts: { purgeCache?: boolean } = { purgeCache: true }) => {
   if (s) {
     try {
@@ -26,12 +34,13 @@ export const setSession = (s: Session | null, opts: { purgeCache?: boolean } = {
       localStorage.setItem('em_owner', o);
     } catch { /* ignore */ }
     sessionStorage.setItem('em_session', JSON.stringify(s));
-  } else { sessionStorage.removeItem('em_session'); if (opts.purgeCache !== false) purge({ cache: true }); }
+  } else { sessionStorage.removeItem('em_session'); sessionStorage.removeItem(CTX); if (opts.purgeCache !== false) purge({ cache: true }); }
 };
 
-const headers = (s: Session | null): Record<string, string> => ({
-  'content-type': 'application/json', ...(s ? { 'x-tenant': s.school, authorization: `Bearer ${s.token}` } : {}),
-});
+const headers = (s: Session | null): Record<string, string> => {
+  const tenant = s ? (s.school === 'root' ? getContext() : s.school) : '';
+  return { 'content-type': 'application/json', ...(s ? { ...(tenant ? { 'x-tenant': tenant } : {}), authorization: `Bearer ${s.token}` } : {}) };
+};
 const cacheKey = (p: string) => `em_cache:${p}`;
 
 let authCfg: AuthConfig | undefined;
