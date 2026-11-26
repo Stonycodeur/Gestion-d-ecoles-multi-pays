@@ -1,20 +1,26 @@
 'use client';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { getSession, setSession, replayQueue } from '../lib/api';
 import { fetchAuthConfig, logoutUrl } from '../lib/oidc';
 import { getLocale, setLocale, t, type Locale } from '../lib/i18n';
 import { pendingOps } from '../lib/offline-queue';
+import { HOME, NAV, findItem, pick } from '../lib/nav';
+import Icon from './Icon';
 
 export default function Shell({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const path = usePathname() ?? '/';
   const [locale, setL] = useState<Locale>('fr');
   const [online, setOnline] = useState(true);
   const [pending, setPending] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [who, setWho] = useState('');
   useEffect(() => {
     setL(getLocale()); setLocale(getLocale());
-    if (!getSession()) router.replace('/login');
+    const s = getSession();
+    if (!s) router.replace('/login'); else setWho(s.school || 'root');
     const up = async () => { setOnline(true); await replayQueue(); setPending(pendingOps().length); };
     const down = () => setOnline(false);
     setOnline(navigator.onLine); setPending(pendingOps().length);
@@ -22,24 +28,58 @@ export default function Shell({ children }: { children: ReactNode }) {
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => undefined);
     return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down); };
   }, [router]);
-  const pick = (l: Locale) => { setLocale(l); setL(l); };
+  useEffect(() => { setOpen(false); }, [path]);
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('keydown', esc); return () => window.removeEventListener('keydown', esc);
+  }, []);
+  const pickLocale = (l: Locale) => { setLocale(l); setL(l); };
+  const fr = locale === 'fr';
+  const title = path === '/' ? pick(HOME.label, locale) : findItem(path) ? pick(findItem(path)!.label, locale) : t('app', locale);
+  const isRoot = who === 'root';
+  const initials = (isRoot ? 'SA' : who.replace(/[^a-z0-9]/gi, '').slice(0, 2) || '··').toUpperCase();
+  const link = (href: string, icon: string, label: string) => (
+    <Link key={href} href={href} className="nav-link" aria-current={(href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`)) ? 'page' : undefined}>
+      <Icon name={icon} /><span>{label}</span>
+    </Link>
+  );
   return (
-    <div style={{ maxWidth: 1000, margin: '0 auto', padding: 16 }}>
-      <header style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        <strong>{t('app', locale)}</strong>
-        <nav aria-label="principal" style={{ display: 'flex', gap: 12 }}>
-          <Link href="/">{t('modules', locale)}</Link><Link href="/timetable">{t('timetable', locale)}</Link><Link href="/grades">{t('grades', locale)}</Link>
-          <Link href="/absences">{t('absences', locale)}</Link><Link href="/lessons">{t('lessons', locale)}</Link><Link href="/messages">{locale === 'fr' ? 'Messages' : 'Messages'}</Link><Link href="/news">{locale === 'fr' ? 'Actualités' : 'News'}</Link><Link href="/notifications">Notifications</Link><Link href="/oaa">OAA</Link><Link href="/payments">{locale === 'fr' ? 'Paiements' : 'Payments'}</Link><Link href="/gps">GPS</Link><Link href="/play">{locale === 'fr' ? 'Jeux' : 'Games'}</Link><Link href="/risk">{locale === 'fr' ? 'Risque' : 'Risk'}</Link><Link href="/orientation">{locale === 'fr' ? 'Orientation' : 'Orientation'}</Link><Link href="/ministry">{locale === 'fr' ? 'Ministères' : 'Ministries'}</Link><Link href="/integrations">API</Link><Link href="/marketplace">Marketplace</Link><Link href="/assistant">{locale === 'fr' ? 'Assistant' : 'Assistant'}</Link><Link href="/xr">VR/AR</Link><Link href="/resources">{locale === 'fr' ? 'Ressources' : 'Resources'}</Link><Link href="/academic">{locale === 'fr' ? 'Compétences/UE' : 'Competencies/Units'}</Link><Link href="/administration">Administration</Link><Link href="/visitor">{locale === 'fr' ? 'Site public' : 'Public site'}</Link>
+    <div className={`app${open ? ' nav-open' : ''}`}>
+      <a href="#contenu" className="skip-link">{fr ? 'Aller au contenu' : 'Skip to content'}</a>
+      <aside className="sidebar" id="menu-principal">
+        <Link href="/" className="brand" aria-label={t('app', locale)}>
+          <span className="brand-mark" aria-hidden="true">É</span>
+          <span className="brand-name">ÉcoleManager<small>Pro · STONY-TECHNOLOGIE</small></span>
+        </Link>
+        <nav aria-label={fr ? 'Navigation principale' : 'Main navigation'}>
+          {link(HOME.href, HOME.icon, pick(HOME.label, locale))}
+          {NAV.map((g) => (
+            <div className="nav-group" key={g.title.fr} role="group" aria-label={pick(g.title, locale)}>
+              <div className="nav-title" aria-hidden="true">{pick(g.title, locale)}</div>
+              {g.items.map((i) => link(i.href, i.icon, pick(i.label, locale)))}
+            </div>
+          ))}
         </nav>
-        <select aria-label="langue" value={locale} onChange={(e) => pick(e.target.value as Locale)}><option value="fr">FR</option><option value="en">EN</option><option value="ar">AR</option></select>
-        <button onClick={async () => {
-          const oidc = !!getSession()?.refresh; setSession(null);
-          if (oidc) { try { const u = logoutUrl(await fetchAuthConfig()); if (u) { window.location.assign(u); return; } } catch { /* offline: local sign-out only */ } }
-          router.replace('/login');
-        }}>{t('signout', locale)}</button>
-      </header>
-      <p role="status" style={{ color: online ? 'green' : '#b45309' }}>{online ? (pending ? `${pending} en attente` : t('synced', locale)) : t('offline', locale)}</p>
-      <main>{children}</main>
+        <div className="side-foot">© STONY-TECHNOLOGIE</div>
+      </aside>
+      <div className="scrim" onClick={() => setOpen(false)} aria-hidden="true" />
+      <div className="main-col">
+        <header className="topbar">
+          <button className="menu-btn" aria-label={fr ? 'Ouvrir le menu' : 'Open menu'} aria-expanded={open} aria-controls="menu-principal" onClick={() => setOpen(!open)}><Icon name="menu" /></button>
+          <div className="topbar-title">{title}</div>
+          <div role="status" className={`pill ${online ? 'ok' : 'warn'}`}>{online ? (pending ? `${pending} ${fr ? 'en attente' : 'pending'}` : t('synced', locale)) : t('offline', locale)}</div>
+          <select aria-label={fr ? 'Langue' : 'Language'} value={locale} onChange={(e) => pickLocale(e.target.value as Locale)}>
+            <option value="fr">FR</option><option value="en">EN</option><option value="ar">AR</option>
+          </select>
+          <div className="who" title={isRoot ? 'Super-Admin racine' : who}><span className="avatar" aria-hidden="true">{initials}</span><span className="who-name">{isRoot ? 'Super-Admin' : who}</span></div>
+          <button className="btn-ghost btn-out" aria-label={t('signout', locale)} onClick={async () => {
+            const oidc = !!getSession()?.refresh; setSession(null);
+            if (oidc) { try { const u = logoutUrl(await fetchAuthConfig()); if (u) { window.location.assign(u); return; } } catch { /* offline: local sign-out only */ } }
+            router.replace('/login');
+          }}><Icon name="logout" /><span className="btn-label">{t('signout', locale)}</span></button>
+        </header>
+        <main id="contenu" className="content" tabIndex={-1}>{children}</main>
+      </div>
     </div>
   );
 }
