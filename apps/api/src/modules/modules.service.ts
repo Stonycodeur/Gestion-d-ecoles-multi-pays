@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { poolConfig } from '../core/db-config';
 import { Pool } from 'pg';
 import { runSandboxed } from './sandbox';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -32,7 +33,7 @@ class PersistentStore implements EnablementStore {
 @Injectable()
 export class ModulesService implements OnModuleInit {
   private readonly log = new Logger('ModulesService');
-  readonly pool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL }) : undefined;
+  readonly pool = process.env.DATABASE_URL ? new Pool(poolConfig()) : undefined;
   private readonly store = new PersistentStore(this.pool, this.log);
   readonly registry = new ModuleRegistry(CORE_VERSION, this.store);
   readonly loadErrors: string[] = [];

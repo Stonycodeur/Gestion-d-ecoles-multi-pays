@@ -19,6 +19,7 @@ Aucune donnée de démonstration : la base ne contient que le référentiel (rô
 ## 3. API (Render)
 Service `ecolemanager-api`, branche `main`, Dockerfile `apps/api/Dockerfile`, contexte racine. Variables : voir `render.yaml`.
 - `DATABASE_URL` : chaîne « Session pooler » de Supabase (Connect → Session pooler) avec l'utilisateur `app_runtime.suobawsxrorkzppmdycr` et le mot de passe `app_runtime`, suffixée de `?sslmode=require`.
+- Certificat TLS : le pooler Supabase utilise sa propre autorité de certification. Téléchargez-la (Supabase → Database → Settings → SSL Configuration → Download certificate) et collez son contenu dans la variable `DATABASE_SSL_CA` de Render, puis remplacez `?sslmode=require` par rien (la vérification complète est alors active). Tant que ce n'est pas fait, la chaîne utilise `sslmode=no-verify` : connexion chiffrée mais serveur non vérifié.
 - Adaptateurs simulés pour ce premier usage (`ALLOW_SANDBOX_ADAPTERS=1`) : paiements, SMS, email, push, stockage de fichiers, ministères, IA générative **ne sont pas réels**. Voir `docs/INTEGRATIONS.md` pour passer chacun en réel.
 - Offre gratuite Render : le service s'endort après ~15 min sans trafic (premier appel : 30 à 60 s). Les tâches planifiées internes ne tournent que réveillé. Pour un usage scolaire réel : offre Starter.
 
