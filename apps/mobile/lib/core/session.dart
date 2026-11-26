@@ -64,6 +64,24 @@ class SessionNotifier extends StateNotifier<Session> {
     _schedule(exp);
   }
 
+  /// Hosted password flow: the school and the role come from the token (access-token hook), never from the form.
+  Future<void> signInWithPassword(String email, String password) async {
+    final api = _ref.read(apiProvider);
+    final store = _ref.read(tokenStoreProvider);
+    final cfg = await _config();
+    final t = await _ref.read(oidcProvider).passwordSignIn(cfg, email, password);
+    if (t == null) throw Exception('Email ou mot de passe incorrect / wrong email or password');
+    final s = tenantFromToken(t.accessToken);
+    if (s == null) throw Exception('Compte non rattaché à un établissement / account not linked to a school');
+    await OfflineData.onSignIn(store, '$s|${jwtClaims(t.accessToken)['sub']}');
+    await _persist(s, t);
+    _schedule(t.expiresAt);
+    final mods = await api.activeModules(s, t.accessToken);
+    state = Session(school: s, token: t.accessToken, modules: mods);
+  }
+
+  Future<AuthConfig> authConfig() => _config();
+
   Future<void> signIn(String school, String role) async {
     final api = _ref.read(apiProvider);
     final store = _ref.read(tokenStoreProvider);

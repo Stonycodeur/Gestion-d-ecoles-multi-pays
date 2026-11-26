@@ -1,0 +1,36 @@
+# Render blueprint (reference). Secrets are never in this file: `sync: false` values are entered in the Render dashboard.
+services:
+  - type: web
+    name: ecolemanager-api
+    runtime: docker
+    region: frankfurt
+    plan: free
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - { key: AUTH_MODE, value: oidc }
+      - { key: AUTH_FLOW, value: password }
+      - { key: ALLOW_SANDBOX_ADAPTERS, value: "1" }   # first use: payments, SMS, e-mail, push, storage, ministries and LLM stay simulated
+      - { key: QUEUE_MODE, value: inline }
+      - { key: OIDC_AUDIENCE, value: authenticated }
+      - { key: SUPABASE_URL, value: https://suobawsxrorkzppmdycr.supabase.co }
+      - { key: OIDC_ISSUER, value: https://suobawsxrorkzppmdycr.supabase.co/auth/v1 }
+      - { key: OIDC_JWKS_URI, value: https://suobawsxrorkzppmdycr.supabase.co/auth/v1/.well-known/jwks.json }
+      - { key: SUPABASE_PUBLISHABLE_KEY, sync: false }   # public key, Dashboard > Connect
+      - { key: DATABASE_URL, sync: false }               # session pooler, role app_runtime
+      - { key: CORS_ORIGINS, sync: false }               # https URL of the web app
+      - { key: MESSAGE_KEY, sync: false }
+      - { key: GPS_KEY, sync: false }
+      - { key: WEBHOOK_KEY, sync: false }
+      - { key: PAYMENT_WEBHOOK_SECRET, sync: false }
+      - { key: API_TOKEN_SECRET, sync: false }
+  - type: web
+    name: ecolemanager-web
+    runtime: docker
+    region: frankfurt
+    plan: free
+    dockerfilePath: ./apps/web/Dockerfile
+    dockerContext: .
+    envVars:
+      - { key: NEXT_PUBLIC_API_BASE, sync: false }       # https URL of ecolemanager-api (needed at build time)
