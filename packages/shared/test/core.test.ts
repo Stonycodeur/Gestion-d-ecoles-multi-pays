@@ -105,3 +105,18 @@ test('only the head (direction) validates the timetable, not admins or school su
   assert.equal(can({ id: 's', roles: ['tenant_super_admin'], tenantId: 'T1' }, 'schedule:validate', { tenantId: 'T1' }).allowed, false);
   assert.equal(can({ id: 'a', roles: ['admin'], tenantId: 'T1' }, 'schedule:write', { tenantId: 'T1' }).allowed, true);
 });
+
+import { effectivePermissions, setRoleOverrides, allPermissions } from '../src/index.ts';
+test('role permission overrides: grant and revoke on top of the defaults, never touching root', () => {
+  const teacher: Principal = { id: 't', roles: ['teacher'], tenantId: 's' };
+  try {
+    assert.equal(can(teacher, 'billing:read', { tenantId: 's' }).allowed, false);
+    setRoleOverrides({ teacher: { grant: ['billing:read'], revoke: ['news:read'] } });
+    assert.equal(can(teacher, 'billing:read', { tenantId: 's' }).allowed, true);
+    assert.equal(can(teacher, 'news:read', { tenantId: 's' }).allowed, false);
+    setRoleOverrides({ root_super_admin: { grant: [], revoke: ['x'] } });
+    assert.deepEqual(effectivePermissions('root_super_admin'), ['*']);
+  } finally { setRoleOverrides({}); }
+  assert.ok(allPermissions().includes('grades:write'));
+  assert.ok(!allPermissions().includes('tenants:manage'));
+});

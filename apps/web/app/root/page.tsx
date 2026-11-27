@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import Shell from '../../components/Shell';
 import GeoPicker, { EMPTY_GEO, type GeoCountryInfo, type GeoValue } from '../../components/GeoPicker';
+import Confirm from '../../components/Confirm';
 import { api, setContext } from '../../lib/api';
 import { useLang } from '../../lib/useLang';
 
@@ -16,7 +17,7 @@ export default function RootConsole() {
   const [denied, setDenied] = useState(false);
   const [f, setF] = useState({ name: '', slug: '', school_type: 'lycee', scale: '', model: 'numeric', locale: 'fr' }); const [slugTouched, setSlugTouched] = useState(false);
   const [geo, setGeo] = useState<GeoValue>(EMPTY_GEO); const [country, setCountry] = useState<GeoCountryInfo | null>(null); const [prop, setProp] = useState<any>(null);
-  const [created, setCreated] = useState('');
+  const [created, setCreated] = useState(''); const [del, setDel] = useState<any>(null);
 
   const load = useCallback(async () => {
     const o = await api('/admin/overview'); if (!o.ok) { setDenied(true); return; }
@@ -70,6 +71,7 @@ export default function RootConsole() {
                 <button onClick={() => open(s.slug)}>{t('Ouvrir', 'Open')}</button>
                 <Link className="btn-link" href={`/root/accounts?school=${s.slug}`}>{t('Comptes', 'Accounts')}</Link>
                 <button onClick={() => toggle(s)}>{s.active ? t('Désactiver', 'Deactivate') : t('Activer', 'Activate')}</button>
+                <button className="btn-danger" onClick={() => setDel(s)}>{t('Corbeille', 'Trash')}</button>
               </div></td>
             </tr>))}</tbody>
         </table>
@@ -115,6 +117,8 @@ export default function RootConsole() {
           <tbody>{ov.audit.map((a: any) => <tr key={a.id}><td>{new Date(a.at).toLocaleString(l)}</td><td>{a.actor_email ?? '—'}</td><td><code>{a.action}</code></td><td><small>{a.details ? JSON.stringify(a.details).slice(0, 110) : ''}</small></td></tr>)}</tbody>
         </table>
       ) : <p className="empty">{t('Aucune action enregistrée.', 'No recorded action.')}</p>}
+      {del && <Confirm title={t('Mettre l’école à la corbeille ?', 'Move the school to the trash?')} body={t(`« ${del.name} » sera désactivée et masquée ; ses données restent intactes jusqu’à la suppression définitive. Vous pouvez la restaurer depuis la corbeille.`, `“${del.name}” will be deactivated and hidden; its data stays intact until permanent deletion. You can restore it from the trash.`)} label={t('Mettre à la corbeille', 'Move to trash')}
+        onClose={() => setDel(null)} onConfirm={async () => { const r = await api(`/tenants/${del.slug}`, { method: 'DELETE', online: true }); setErr(r.ok ? '' : msgOf(r)); setDel(null); await load(); }} />}
     </Shell>
   );
 }

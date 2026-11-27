@@ -26,22 +26,54 @@ async function passwordCall(cfg: AuthConfig, grant: 'password' | 'refresh_token'
   return r.json();
 }
 
-/** Password sign-in. The school comes from the token's tenant claim (set by the access-token hook), not from what was typed. */
-export async function passwordLogin(cfg: AuthConfig, email: string, password: string): Promise<OidcSession> {
+/** Password sign-in. The school comes from the token's tenant claim (set by the access-token hook), not from what was typed.
+ *  When the account has two-step verification, `mfaFactor` is set: the session is NOT yet usable, the person must enter the code (verifyMfa). */
+export async function passwordLogin(cfg: AuthConfig, email: string, password: string): Promise<OidcSession & { mfaFactor?: string }> {
   const t = await passwordCall(cfg, 'password', { email: email.trim(), password });
   const claims = decodeClaims(t.access_token);
   const isRoot = Array.isArray(claims.roles) && claims.roles.includes('root_super_admin');
   const s = toSession(isRoot ? 'root' : '', t);   // the platform owner belongs to no school: administration screens only
   if (!s.school) throw new Error('Compte non rattaché à un établissement / account not linked to a school');
-  return s;
+  const f = (await mfaFactors(cfg, s.token)).find((x) => x.status === 'verified');
+  return f ? { ...s, mfaFactor: f.id } : s;
 }
 
-/** Changes the password of the signed-in user (Supabase Auth). The current password is re-checked by signing in again first. */
-export async function changePassword(cfg: AuthConfig, email: string, current: string, next: string): Promise<void> {
+const authBase = (cfg: AuthConfig): string => {
+  if (cfg.mode !== 'password' || !cfg.token_endpoint) throw new Error('La double authentification se gère chez votre fournisseur d’identité / manage two-step verification at your identity provider');
+  return cfg.token_endpoint.replace(/\/token$/, '');
+};
+const authCall = async (cfg: AuthConfig, token: string, method: string, path: string, body?: unknown) => {
+  const r = await fetch(`${authBase(cfg)}${path}`, { method, headers: { 'content-type': 'application/json', apikey: cfg.api_key ?? '', authorization: `Bearer ${token}` }, body: body === undefined ? undefined : JSON.stringify(body) });
+  const j = await r.json().catch(() => ({})) as Record<string, any>;
+  if (!r.ok) throw new Error(String(j.msg ?? j.message ?? j.error_description ?? `request refused (${r.status})`));
+  return j;
+};
+export interface MfaFactor { id: string; status: 'verified' | 'unverified'; friendly_name?: string }
+/** Two-step verification (TOTP, authenticator app) through Supabase Auth. */
+export async function mfaFactors(cfg: AuthConfig, token: string): Promise<MfaFactor[]> {
+  if (cfg.mode !== 'password') return [];
+  try { return (((await authCall(cfg, token, 'GET', '/user')).factors ?? []) as (MfaFactor & { factor_type: string })[]).filter((f) => f.factor_type === 'totp'); } catch { return []; }
+}
+/** Starts enrolment: returns the QR code (data URI) and the manual key. Leftover unverified factors are removed first. */
+export async function mfaEnroll(cfg: AuthConfig, token: string): Promise<{ id: string; qr: string; secret: string }> {
+  for (const f of (await mfaFactors(cfg, token)).filter((x) => x.status === 'unverified')) await authCall(cfg, token, 'DELETE', `/factors/${f.id}`).catch(() => undefined);
+  const j = await authCall(cfg, token, 'POST', '/factors', { factor_type: 'totp', friendly_name: `ÉcoleManager ${new Date().toISOString().slice(0, 10)}`, issuer: 'ÉcoleManager Pro' });
+  const qr = String(j.totp?.qr_code ?? ''); 
+  return { id: String(j.id), qr: qr.startsWith('<svg') ? `data:image/svg+xml;utf8,${encodeURIComponent(qr)}` : qr, secret: String(j.totp?.secret ?? '') };
+}
+/** Checks a 6-digit code against a factor; returns the upgraded (aal2) session. */
+export async function verifyMfa(cfg: AuthConfig, cur: OidcSession, factorId: string, code: string): Promise<OidcSession> {
+  const ch = await authCall(cfg, cur.token, 'POST', `/factors/${factorId}/challenge`);
+  const t = await authCall(cfg, cur.token, 'POST', `/factors/${factorId}/verify`, { challenge_id: ch.id, code: code.replace(/\s/g, '') });
+  return toSession(cur.school, t as { access_token: string; refresh_token?: string; expires_in?: number });
+}
+export const mfaRemove = (cfg: AuthConfig, token: string, factorId: string) => authCall(cfg, token, 'DELETE', `/factors/${factorId}`);
+
+/** Changes the password of the signed-in user (Supabase Auth). The current password is re-checked first; the change uses the live session (already two-step verified when the account has it). */
+export async function changePassword(cfg: AuthConfig, email: string, current: string, next: string, token: string): Promise<void> {
   if (cfg.mode !== 'password' || !cfg.token_endpoint) throw new Error('Le changement de mot de passe se fait chez votre fournisseur d’identité / change your password at your identity provider');
-  const t = await passwordCall(cfg, 'password', { email: email.trim(), password: current });
-  const r = await fetch(cfg.token_endpoint.replace(/\/token$/, '/user'), { method: 'PUT', headers: { 'content-type': 'application/json', apikey: cfg.api_key ?? '', authorization: `Bearer ${t.access_token}` }, body: JSON.stringify({ password: next }) });
-  if (!r.ok) { const j = await r.json().catch(() => ({})) as { msg?: string; message?: string }; throw new Error(j.msg ?? j.message ?? `password change refused (${r.status})`); }
+  await passwordCall(cfg, 'password', { email: email.trim(), password: current });
+  await authCall(cfg, token, 'PUT', '/user', { password: next });
 }
 
 async function tokenCall(endpoint: string, params: Record<string, string>): Promise<{ access_token: string; refresh_token?: string; expires_in?: number }> {

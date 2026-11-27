@@ -5,6 +5,7 @@ import { AuthService } from './auth.service';
 import { AuditService } from './audit.service';
 import { can } from '@ecolemanager/shared';
 import { MinistryService } from '../ministry/ministry.service';
+import { PermissionsService } from './permissions.service';
 import type { CoreRequest } from './request-context';
 
 export const PUBLIC = 'isPublic';
@@ -15,7 +16,7 @@ export const RequirePermission = (p: string) => SetMetadata(PERMISSION, p);
 /** Global guard: authenticates, binds the tenant (token vs subdomain must agree), then enforces @RequirePermission via RBAC+ABAC. */
 @Injectable()
 export class CoreGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector, private readonly auth: AuthService, private readonly audit: AuditService, private readonly ministry: MinistryService) {}
+  constructor(private readonly reflector: Reflector, private readonly auth: AuthService, private readonly audit: AuditService, private readonly ministry: MinistryService, private readonly perms: PermissionsService) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     if (this.reflector.getAllAndOverride<boolean>(PUBLIC, [ctx.getHandler(), ctx.getClass()])) return true;
@@ -48,6 +49,7 @@ export class CoreGuard implements CanActivate {
 
     const perm = this.reflector.getAllAndOverride<string | undefined>(PERMISSION, [ctx.getHandler(), ctx.getClass()]);
     if (!perm) return true;
+    await this.perms.refresh();   // role permissions edited by the root apply within seconds
     const d = can(principal, perm, { tenantId: req.tenantSlug });
     if (d.auditRootBypass) await this.audit.log({ actorId: principal.id, tenant: req.tenantSlug, action: 'root.bypass', details: { permission: perm, path: req.path } });
     if (!d.allowed) {

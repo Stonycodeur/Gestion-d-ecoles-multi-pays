@@ -1,6 +1,8 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import Shell from '../../../components/Shell';
+import Confirm from '../../../components/Confirm';
+import PasswordField from '../../../components/PasswordField';
 import { api } from '../../../lib/api';
 import { useLang } from '../../../lib/useLang';
 
@@ -15,6 +17,7 @@ export default function AccountsPage() {
   const { fr, t, l } = useLang();
   const [schools, setSchools] = useState<any[]>([]); const [roles, setRoles] = useState<string[]>([]); const [rows, setRows] = useState<any[]>([]);
   const [filter, setFilter] = useState(''); const [err, setErr] = useState(''); const [secret, setSecret] = useState<{ who: string; pw: string } | null>(null); const [copied, setCopied] = useState(false);
+  const [del, setDel] = useState<any>(null);
   const [f, setF] = useState({ email: '', role: 'tenant_super_admin', school_slug: '', password: '' });
 
   const load = useCallback(async (school: string) => {
@@ -57,7 +60,7 @@ export default function AccountsPage() {
           <label>Email<input type="email" value={f.email} autoComplete="off" onChange={(e) => setF({ ...f, email: e.target.value })} /></label>
           <label>{t('Rôle', 'Role')}<select value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })}>{roles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]?.[fr ? 0 : 1] ?? r}</option>)}</select></label>
           <label>{t('École', 'School')}<select value={f.school_slug} onChange={(e) => setF({ ...f, school_slug: e.target.value })}><option value="">{t('Choisir…', 'Choose…')}</option>{schools.map((s) => <option key={s.slug} value={s.slug}>{s.name}</option>)}</select></label>
-          <label>{t('Mot de passe (facultatif)', 'Password (optional)')}<input type="text" value={f.password} autoComplete="off" placeholder={t('Laisser vide pour en générer un', 'Leave empty to generate one')} onChange={(e) => setF({ ...f, password: e.target.value })} /></label>
+          <PasswordField label={t('Mot de passe (facultatif)', 'Password (optional)')} value={f.password} onChange={(v) => setF({ ...f, password: v })} autoComplete="new-password" required={false} placeholder={t('Laisser vide pour en générer un', 'Leave empty to generate one')} />
         </div>
         <button onClick={create} disabled={!f.email || !f.school_slug}>{t('Créer le compte', 'Create account')}</button>
       </section>
@@ -72,10 +75,12 @@ export default function AccountsPage() {
               <td>{a.email}</td><td>{ROLE_LABEL[a.role]?.[fr ? 0 : 1] ?? a.role ?? '—'}</td><td>{a.school_name ?? t('Plateforme', 'Platform')}</td>
               <td><span className={`badge ${a.active ? 'ok' : 'off'}`}>{a.active ? t('Actif', 'Active') : t('Suspendu', 'Suspended')}</span></td>
               <td>{a.last_sign_in_at ? new Date(a.last_sign_in_at).toLocaleString(l) : '—'}</td>
-              <td>{a.is_root ? <span className="badge">{t('Immuable', 'Immutable')}</span> : <div className="actions"><button onClick={() => reset(a)}>{t('Nouveau mot de passe', 'New password')}</button><button onClick={() => toggle(a)}>{a.active ? t('Suspendre', 'Suspend') : t('Réactiver', 'Reactivate')}</button></div>}</td>
+              <td>{a.is_root ? <span className="badge">{t('Immuable', 'Immutable')}</span> : <div className="actions"><button onClick={() => reset(a)}>{t('Nouveau mot de passe', 'New password')}</button><button onClick={() => toggle(a)}>{a.active ? t('Suspendre', 'Suspend') : t('Réactiver', 'Reactivate')}</button><button className="btn-danger" onClick={() => setDel(a)}>{t('Corbeille', 'Trash')}</button></div>}</td>
             </tr>))}</tbody>
         </table>
       )}
+      {del && <Confirm title={t('Mettre le compte à la corbeille ?', 'Move the account to the trash?')} body={t(`${del.email} sera désactivé et masqué. Vous pourrez le restaurer depuis la corbeille.`, `${del.email} will be disabled and hidden. You can restore it from the trash.`)} label={t('Mettre à la corbeille', 'Move to trash')}
+        onClose={() => setDel(null)} onConfirm={async () => { const r = await api(`/admin/accounts/${del.id}`, { method: 'DELETE', online: true }); setErr(r.ok ? '' : msgOf(r)); setDel(null); await load(filter); }} />}
     </Shell>
   );
 }

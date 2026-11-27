@@ -51,5 +51,7 @@ export const PLATFORM: NavGroup = { title: { fr: 'Plateforme', en: 'Platform' },
   { href: '/root', icon: 'shield', label: { fr: 'Console racine', en: 'Root console' }, desc: { fr: 'Établissements, pays, audit', en: 'Schools, countries, audit' } },
   { href: '/root/accounts', icon: 'users', label: { fr: 'Comptes', en: 'Accounts' }, desc: { fr: 'Créer et gérer les accès', en: 'Create and manage access' } },
   { href: '/root/geography', icon: 'globe', label: { fr: 'Pays et villes', en: 'Countries and cities' }, desc: { fr: 'Continents, pays, provinces, villes', en: 'Continents, countries, provinces, cities' } },
+  { href: '/root/roles', icon: 'key', label: { fr: 'Rôles et permissions', en: 'Roles and permissions' }, desc: { fr: 'Ce que chaque rôle peut faire', en: 'What each role may do' } },
+  { href: '/root/trash', icon: 'trash', label: { fr: 'Corbeille', en: 'Trash' }, desc: { fr: 'Restaurer ou supprimer définitivement', en: 'Restore or delete for good' } },
 ] };
 export const findAny = (path: string): NavItem | undefined => [...PLATFORM.items, ...NAV.flatMap((g) => g.items)].filter((i) => path === i.href || path.startsWith(`${i.href}/`)).sort((a, b) => b.href.length - a.href.length)[0];

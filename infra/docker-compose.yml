@@ -15,6 +15,7 @@ services:
       - ./sql/070_settings.sql:/docker-entrypoint-initdb.d/070_settings.sql:ro
       - ./sql/080_tenants_admin.sql:/docker-entrypoint-initdb.d/080_tenants_admin.sql:ro
       - ./sql/100_geo.sql:/docker-entrypoint-initdb.d/100_geo.sql:ro
+      - ./sql/110_account_space.sql:/docker-entrypoint-initdb.d/110_account_space.sql:ro
     ports: [ "5432:5432" ]
     healthcheck: { test: ["CMD-SHELL","pg_isready -U ${PG_USER:-ecole}"], interval: 5s, retries: 10 }
   ai:   # service IA prédictive (FastAPI) ; l'API l'utilise avec AI_MODE=live, sinon modèle local en processus (sandbox)

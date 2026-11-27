@@ -49,8 +49,25 @@ const TEACHER_SCOPED = new Set(['students:read', 'lessons:write', 'grades:read',
 const OWN_ONLY_STUDENT = new Set(['absences:read', 'grades:read', 'oaa:read', 'absences:justify', 'locker:read', 'gps:consent', 'gps:report', 'billing:pay', 'schedule:read', 'lessons:read', 'games:read', 'internships:request', 'internships:read', 'exam:read']);
 const CHILD_ONLY_GUARDIAN = new Set(['absences:read', 'grades:read', 'oaa:read', 'absences:justify', 'locker:read', 'gps:read', 'gps:consent', 'billing:pay', 'schedule:read', 'lessons:read', 'games:read', 'internships:read', 'exam:read']);
 
+/** Changes made by the root super-admin on top of the defaults above (loaded from the database by the API). Empty by default, so the pure rules stay testable. */
+export type RoleOverrides = Partial<Record<RoleCode, { grant: string[]; revoke: string[] }>>;
+let overrides: RoleOverrides = {};
+export const setRoleOverrides = (o: RoleOverrides): void => { overrides = o; };
+/** Permissions a role holds right now: the defaults, minus what was revoked, plus what was granted. The root keeps '*'. */
+export function effectivePermissions(role: RoleCode): string[] {
+  const base = ROLE_PERMISSIONS[role] ?? [];
+  if (base.includes('*')) return base;
+  const o = overrides[role];
+  if (!o) return base;
+  return [...new Set([...base.filter((p) => !o.revoke.includes(p)), ...o.grant])];
+}
+/** Every permission code the platform knows (used by the role editor). 'tenants:manage' is root-only and never grantable. */
+export function allPermissions(): string[] {
+  return [...new Set(Object.values(ROLE_PERMISSIONS).flat())].filter((p) => p !== '*').sort();
+}
+
 function roleHas(role: RoleCode, perm: string): boolean {
-  const list = ROLE_PERMISSIONS[role] ?? [];
+  const list = effectivePermissions(role);
   return list.includes('*') || list.includes(perm);
 }
 
