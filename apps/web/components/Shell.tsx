@@ -1,13 +1,18 @@
 'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, getContext, getSession, isRootSession, replayQueue, setContext, setSession } from '../lib/api';
 import { fetchAuthConfig, logoutUrl } from '../lib/oidc';
 import { getLocale, setLocale, t, type Locale } from '../lib/i18n';
 import { pendingOps } from '../lib/offline-queue';
 import { HOME, NAV, PLATFORM, findAny, pick } from '../lib/nav';
 import Icon from './Icon';
+import PersonalizeDialog from './PersonalizeDialog';
+import SyncDialog from './SyncDialog';
+import { decodeClaims } from '../lib/pkce';
+import { initialsOf, useProfile } from '../lib/profile';
+import { loadPrefs, mergeRemote, playRing, savePrefs } from '../lib/prefs';
 
 export default function Shell({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -19,10 +24,18 @@ export default function Shell({ children }: { children: ReactNode }) {
   const [who, setWho] = useState('');
   const [ctx, setCtx] = useState('');
   const [schools, setSchools] = useState<{ slug: string; name: string; active: boolean }[]>([]);
+  const [menu, setMenu] = useState(false); const [dlg, setDlg] = useState<'' | 'perso' | 'sync'>(''); const [unread, setUnread] = useState(0);
+  const [email, setEmail] = useState(''); const [roles, setRoles] = useState<string[]>([]); const [install, setInstall] = useState<any>(null); const [hint, setHint] = useState('');
+  const { profile } = useProfile(); const menuRef = useRef<HTMLDivElement>(null); const lastUnread = useRef<number | null>(null);
   useEffect(() => {
     setL(getLocale()); setLocale(getLocale());
     const s = getSession();
-    if (!s) router.replace('/login'); else setWho(s.school || 'root');
+    if (!s) router.replace('/login'); else {
+      setWho(s.school || 'root');
+      const c = decodeClaims(s.token); setEmail(typeof c.email === 'string' ? c.email : ''); setRoles(Array.isArray(c.roles) ? (c.roles as string[]) : []);
+    }
+    const bip = (e: Event) => { e.preventDefault(); setInstall(e); };
+    window.addEventListener('beforeinstallprompt', bip);
     if (isRootSession(s)) {
       setCtx(getContext());
       api('/tenants').then((r) => setSchools(r.data ?? []));
@@ -33,24 +46,52 @@ export default function Shell({ children }: { children: ReactNode }) {
     setOnline(navigator.onLine); setPending(pendingOps().length);
     window.addEventListener('online', up); window.addEventListener('offline', down);
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => undefined);
-    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down); };
+    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down); window.removeEventListener('beforeinstallprompt', bip); };
   }, [router]);
-  useEffect(() => { setOpen(false); }, [path]);
+  // Preferences saved on the account follow the person to this device.
+  useEffect(() => { if (profile) { if (Object.keys(profile.preferences).length) mergeRemote(profile.preferences); if (profile.language && !localStorage.getItem('em_locale')) { setLocale(profile.language as Locale); setL(profile.language as Locale); } } }, [profile]);
+  // Unread notifications: a badge on the bell, and the person's ringtone when a new one arrives.
   useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    if (!who || (who === 'root' && !ctx)) { setUnread(0); return; }
+    let stop = false;
+    const poll = async () => {
+      if (!navigator.onLine) return;
+      const r = await api<{ read_at: string | null }[]>('/notifications'); if (stop || !r.ok || !Array.isArray(r.data)) return;
+      const n = r.data.filter((x) => !x.read_at).length; setUnread(n);
+      if (lastUnread.current !== null && n > lastUnread.current) void playRing(loadPrefs().ringVolume);
+      lastUnread.current = n;
+    };
+    void poll(); const h = setInterval(poll, 60_000); return () => { stop = true; clearInterval(h); };
+  }, [who, ctx]);
+  useEffect(() => {
+    if (!menu) return;
+    const out = (e: MouseEvent) => { if (!menuRef.current?.contains(e.target as Node)) setMenu(false); };
+    document.addEventListener('mousedown', out); return () => document.removeEventListener('mousedown', out);
+  }, [menu]);
+  useEffect(() => { setOpen(false); setMenu(false); }, [path]);
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') { setOpen(false); setMenu(false); } };
     window.addEventListener('keydown', esc); return () => window.removeEventListener('keydown', esc);
   }, []);
-  const pickLocale = (l: Locale) => { setLocale(l); setL(l); window.location.reload(); };   // pages read the language once: reload keeps every screen consistent
   const enter = (slug: string) => { setContext(slug); window.location.assign(slug ? '/' : '/root'); };
   const fr = locale === 'fr';
   const found = findAny(path);
-  const title = path === '/' ? pick(HOME.label, locale) : found ? pick(found.label, locale) : path.startsWith('/account') ? (fr ? 'Mon compte' : 'My account') : t('app', locale);
+  const title = path === '/' ? pick(HOME.label, locale) : found ? pick(found.label, locale) : path.startsWith('/account') ? (fr ? 'Mon espace' : 'My space') : t('app', locale);
   const isRoot = who === 'root';
   const groups = isRoot ? [PLATFORM, ...(ctx ? NAV : [])] : NAV;
   const needsSchool = isRoot && !ctx && path !== '/' && !path.startsWith('/root') && !path.startsWith('/account');
-  const initials = (isRoot ? 'SA' : who.replace(/[^a-z0-9]/gi, '').slice(0, 2) || '··').toUpperCase();
+  const initials = initialsOf(profile?.full_name, isRoot ? 'SA' : who.replace(/[^a-z0-9]/gi, '').slice(0, 2) || '··');
+  const display = profile?.full_name || email || (isRoot ? 'Super-Admin' : who);
+  const t2 = (a: string, b: string) => (fr ? a : b);
+  const cycleTheme = () => { const p = loadPrefs(); const next = p.mode === 'auto' ? 'light' : p.mode === 'light' ? 'dark' : 'auto'; savePrefs({ ...p, mode: next }); setHint(next === 'auto' ? t2('Thème : automatique', 'Theme: automatic') : next === 'light' ? t2('Thème clair', 'Light theme') : t2('Thème sombre', 'Dark theme')); };
+  const logout = async () => {
+    const oidc = !!getSession()?.refresh; setSession(null);
+    if (oidc) { try { const u = logoutUrl(await fetchAuthConfig()); if (u) { window.location.assign(u); return; } } catch { /* offline: local sign-out only */ } }
+    router.replace('/login');
+  };
+  const item = (icon: string, label: string, onClick: () => void) => (<button type="button" className="menu-item" onClick={() => { setMenu(false); onClick(); }}><Icon name={icon} />{label}</button>);
   const link = (href: string, icon: string, label: string) => (
-    <Link key={href} href={href} className="nav-link" aria-current={(href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`)) ? 'page' : undefined}>
+    <Link key={href} href={href} className="nav-link" title={label} aria-current={(href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`)) ? 'page' : undefined}>
       <Icon name={icon} /><span>{label}</span>
     </Link>
   );
@@ -84,17 +125,27 @@ export default function Shell({ children }: { children: ReactNode }) {
               {schools.map((x) => <option key={x.slug} value={x.slug}>{x.name}{x.active ? '' : ' (inactive)'}</option>)}
             </select>
           )}
-          <div role="status" className={`pill ${online ? 'ok' : 'warn'}`}>{online ? (pending ? `${pending} ${fr ? 'en attente' : 'pending'}` : t('synced', locale)) : t('offline', locale)}</div>
-          <select aria-label={fr ? 'Langue' : 'Language'} value={locale} onChange={(e) => pickLocale(e.target.value as Locale)}>
-            <option value="fr">FR</option><option value="en">EN</option><option value="ar">AR</option>
-          </select>
-          <Link href="/account/password" className="who" title={fr ? 'Mon compte et mot de passe' : 'My account and password'}><span className="avatar" aria-hidden="true">{initials}</span><span className="who-name">{isRoot ? 'Super-Admin' : who}</span></Link>
-          <button className="btn-ghost btn-out" aria-label={t('signout', locale)} onClick={async () => {
-            const oidc = !!getSession()?.refresh; setSession(null);
-            if (oidc) { try { const u = logoutUrl(await fetchAuthConfig()); if (u) { window.location.assign(u); return; } } catch { /* offline: local sign-out only */ } }
-            router.replace('/login');
-          }}><Icon name="logout" /><span className="btn-label">{t('signout', locale)}</span></button>
+          <button type="button" className={`pill ${online ? 'ok' : 'warn'}`} style={{ minHeight: 0, border: 0 }} onClick={() => setDlg('sync')} aria-label={`${online ? (pending ? `${pending} ${fr ? 'en attente' : 'pending'}` : t('synced', locale)) : t('offline', locale)} — ${fr ? 'ouvrir la synchronisation' : 'open synchronisation'}`}>{online ? (pending ? `${pending} ${fr ? 'en attente' : 'pending'}` : t('synced', locale)) : t('offline', locale)}</button>
+          <Link href="/notifications" className="iconbtn" aria-label={`Notifications${unread ? ` (${unread})` : ''}`}><Icon name="bell" />{unread > 0 && <span className="badge-count" aria-hidden="true">{unread > 99 ? '99+' : unread}</span>}</Link>
+          <div className="usermenu" ref={menuRef}>
+            <button type="button" className="avatar-btn" aria-expanded={menu} aria-controls="menu-user" aria-label={`${fr ? 'Mon espace' : 'My space'} : ${display}`} onClick={() => setMenu(!menu)}>
+              {profile?.avatar ? <img src={profile.avatar} alt="" /> : <span aria-hidden="true">{initials}</span>}
+            </button>
+            {menu && (
+              <div className="menu-pop" id="menu-user">
+                <div className="who-card"><strong>{display}</strong><small>{email && profile?.full_name ? email : ''}{roles.length ? `${email && profile?.full_name ? ' · ' : ''}${roles.join(', ')}` : ''}{!isRoot && who ? ` · ${who}` : ''}</small></div>
+                {item('user', t2('Mon profil', 'My profile'), () => router.push('/account/profile'))}
+                {item('palette', t2('Personnaliser', 'Personalize'), () => setDlg('perso'))}
+                {item('sync', t2('Synchronisation', 'Synchronisation'), () => setDlg('sync'))}
+                {item('lock', t2('Sécurité', 'Security'), () => router.push('/account/security'))}
+                {item('download', t2('Installer l’application', 'Install the app'), async () => { if (install) { install.prompt(); setInstall(null); } else setHint(t2('Utilisez « Ajouter à l’écran d’accueil » ou « Installer » dans le menu de votre navigateur.', 'Use “Add to home screen” or “Install” in your browser menu.')); })}
+                {item('sun', t2('Thème', 'Theme'), cycleTheme)}
+                <button type="button" className="menu-item danger" onClick={logout}><Icon name="logout" />{t('signout', locale)}</button>
+              </div>
+            )}
+          </div>
         </header>
+        {hint && <p role="status" className="note" style={{ margin: '8px clamp(14px,3vw,32px) 0' }}>{hint} <button type="button" className="btn-sec" onClick={() => setHint('')}>OK</button></p>}
         <main id="contenu" className="content" tabIndex={-1}>
           {needsSchool ? (
             <section className="need-ctx" aria-labelledby="need-h">
@@ -109,6 +160,8 @@ export default function Shell({ children }: { children: ReactNode }) {
           ) : children}
         </main>
       </div>
+      {dlg === 'perso' && <PersonalizeDialog onClose={() => setDlg('')} />}
+      {dlg === 'sync' && <SyncDialog onClose={() => setDlg('')} onChange={() => setPending(pendingOps().length)} />}
     </div>
   );
 }

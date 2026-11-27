@@ -29,7 +29,7 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
 
   it('serves the world geography and keeps platform actions to the root', async () => {
     const adm = await tok('admin', 'lycee_a', 1);
-    expect((await call('get', '/geo/continents', adm).expect(200)).body).toHaveLength(7);
+    expect((await call('get', '/geo/continents', adm).expect(200)).body.filter((k: any) => !k.custom)).toHaveLength(7);
     expect((await call('get', '/geo/countries/GA/regions', adm).expect(200)).body.map((r: any) => r.name)).toContain('Estuaire');
     await call('get', '/geo/countries?continent=AF', adm).expect(403);
     await call('post', '/geo/countries/BR/activate', adm).send({ model: 'letters' }).expect(403);

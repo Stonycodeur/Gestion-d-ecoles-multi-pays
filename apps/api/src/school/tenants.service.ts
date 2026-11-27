@@ -29,9 +29,9 @@ export class TenantsService {
     } catch (e) { await c.query('ROLLBACK').catch(() => undefined); throw e; } finally { c.release(); }
   }
 
-  list() { return this.root((q) => q('SELECT id, slug, name, school_type, country_code, continent_code, region, city, active, created_at FROM public.tenants ORDER BY name')); }
+  list() { return this.root((q) => q('SELECT id, slug, name, school_type, country_code, continent_code, region, city, active, created_at FROM public.tenants WHERE deleted_at IS NULL ORDER BY name')); }
   /** Countries of the referential (the ones a school can be created in), with their currency and grading scales. */
-  activated() { return this.root((q) => q('SELECT c.code, c.name_fr, c.name_en, c.currency, c.is_sample, (SELECT count(*)::int FROM public.tenants t WHERE t.country_code = c.code) AS schools FROM public.countries c ORDER BY c.name_en')); }
+  activated() { return this.root((q) => q('SELECT c.code, c.name_fr, c.name_en, c.currency, c.is_sample, (SELECT count(*)::int FROM public.tenants t WHERE t.country_code = c.code AND t.deleted_at IS NULL) AS schools FROM public.countries c ORDER BY c.name_en')); }
 
   /** Activates any country of the world: its reference rows (education system, scales, calendar) are cloned from a grading model. Idempotent. */
   async activateCountry(actor: string, iso: string, b: any) {
@@ -94,10 +94,34 @@ export class TenantsService {
     return this.get(slug);
   }
 
+  // ----- trash: a deleted school is deactivated and hidden, kept until restored or purged (the isolated schema is dropped only on purge)
+  trashed() { return this.root((q) => q('SELECT slug, name, country_code, city, deleted_at, deleted_by FROM public.tenants WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC')); }
+  private async trashOp(sql: string, params: unknown[]) {
+    try { await this.root((q) => q(sql, params)); }
+    catch (e) { const m = String((e as Error).message); if (/unknown tenant|not in the trash/.test(m)) throw new NotFoundException(m); throw e; }
+  }
+  async trash(actor: string, slug: string) {
+    await this.trashOp('SELECT admin_trash_tenant($1,$2)', [slug, actor]);
+    await this.audit.log({ actorId: actor, action: 'tenant.trash', entity: 'tenant', details: { slug } });
+    return { trashed: true };
+  }
+  async restore(actor: string, slug: string) {
+    await this.trashOp('SELECT admin_restore_tenant($1)', [slug]);
+    await this.audit.log({ actorId: actor, action: 'tenant.restore', entity: 'tenant', details: { slug } });
+    return { restored: true };
+  }
+  /** Definitive removal of a school already in the trash: the person must type its code. */
+  async purge(actor: string, slug: string, confirm: unknown) {
+    if (confirm !== slug) throw new BadRequestException('confirm must repeat the school code');
+    await this.trashOp('SELECT admin_purge_tenant($1)', [slug]);
+    await this.audit.log({ actorId: actor, action: 'tenant.purge', entity: 'tenant', details: { slug } });
+    return { purged: true };
+  }
+
   /** Overview for the root console: counters and the latest audited actions. */
   async overview() {
     return this.root(async (q) => {
-      const c = (await q(`SELECT (SELECT count(*)::int FROM public.tenants) AS schools, (SELECT count(*)::int FROM public.tenants WHERE active) AS active_schools,
+      const c = (await q(`SELECT (SELECT count(*)::int FROM public.tenants WHERE deleted_at IS NULL) AS schools, (SELECT count(*)::int FROM public.tenants WHERE active AND deleted_at IS NULL) AS active_schools,
         (SELECT count(*)::int FROM public.countries) AS countries, (SELECT count(*)::int FROM public.users) AS accounts`))[0];
       const audit = await q('SELECT * FROM admin_recent_audit(25)');
       return { ...c, world: this.geo.stats(), audit };

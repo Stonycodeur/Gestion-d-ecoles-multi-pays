@@ -32,7 +32,8 @@ export class AccountsAdminService {
     const err = e as { code?: string; message?: string };
     if (err.code === '42883') throw new NotImplementedException('account administration needs the Supabase account functions (infra/sql/101_supabase_accounts.sql); with another identity provider, create the user there');
     const m = String(err.message ?? '');
-    if (/unknown (school|account|role)|invalid email|password too short|only school roles|unique and immutable|root super-admin/.test(m)) throw new BadRequestException(m);
+    if (/unknown (school|account|role)|invalid email|password too short|only school roles|unique and immutable|root super-admin|cannot be deleted/.test(m)) throw new BadRequestException(m);
+    if (/not in the trash/.test(m)) throw new NotFoundException(m);
     throw e;
   }
 
@@ -76,5 +77,26 @@ export class AccountsAdminService {
     try { await this.root((q) => q('SELECT admin_set_account_active($1,$2)', [id, active])); } catch (e) { return this.fail(e); }
     await this.audit.log({ actorId: actor, action: active ? 'account.enable' : 'account.disable', entity: 'user', entityId: id });
     return { id, active };
+  }
+
+  // ----- trash (needs 111_supabase_trash.sql): a trashed account is disabled and hidden until restored or purged
+  async listTrashed() { try { return await this.root((q) => q('SELECT * FROM admin_list_trashed_accounts()')); } catch (e) { if ((e as { code?: string }).code === '42883') return []; return this.fail(e); } }
+  async trash(actor: string, id: string) {
+    if (!UUID.test(id)) throw new NotFoundException('unknown account');
+    try { await this.root((q) => q('SELECT admin_trash_account($1,$2)', [id, actor])); } catch (e) { return this.fail(e); }
+    await this.audit.log({ actorId: actor, action: 'account.trash', entity: 'user', entityId: id });
+    return { trashed: true };
+  }
+  async restore(actor: string, id: string) {
+    if (!UUID.test(id)) throw new NotFoundException('unknown account');
+    try { await this.root((q) => q('SELECT admin_restore_account($1)', [id])); } catch (e) { return this.fail(e); }
+    await this.audit.log({ actorId: actor, action: 'account.restore', entity: 'user', entityId: id });
+    return { restored: true };
+  }
+  async purge(actor: string, id: string) {
+    if (!UUID.test(id)) throw new NotFoundException('unknown account');
+    try { await this.root((q) => q('SELECT admin_purge_account($1)', [id])); } catch (e) { return this.fail(e); }
+    await this.audit.log({ actorId: actor, action: 'account.purge', entity: 'user', entityId: id });
+    return { purged: true };
   }
 }
