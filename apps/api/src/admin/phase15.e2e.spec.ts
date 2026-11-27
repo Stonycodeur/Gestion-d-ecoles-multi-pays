@@ -113,16 +113,16 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
     await call('get', '/roles/matrix', adm).expect(403);
     const m = (await call('get', '/roles/matrix', rootT).expect(200)).body;
     const t0 = m.roles.find((r: any) => r.code === 'teacher');
-    expect(t0.permissions).not.toContain('billing:read'); expect(m.roles.find((r: any) => r.code === 'root_super_admin').editable).toBe(false);
+    expect(t0.permissions).not.toContain('staff:read'); expect(m.roles.find((r: any) => r.code === 'root_super_admin').editable).toBe(false);
     expect(m.permissions.map((p: any) => p.code)).not.toContain('tenants:manage');
-    await call('get', '/billing/stats', teacher).expect(403);
-    await call('put', '/roles/teacher/permissions', rootT).send({ permissions: [...t0.permissions, 'billing:read'] }).expect(200);
+    await call('get', '/staff/contracts', teacher).expect(403);
+    await call('put', '/roles/teacher/permissions', rootT).send({ permissions: [...t0.permissions, 'staff:read'] }).expect(200);
     expect(((await call('get', '/roles/matrix', rootT)).body.roles.find((r: any) => r.code === 'teacher')).changed).toBe(true);
-    expect([403, 404]).not.toContain((await call('get', '/billing/stats', teacher)).status);   // allowed now (whatever the list returns)
+    expect([403, 404]).not.toContain((await call('get', '/staff/contracts', teacher)).status);   // allowed now (whatever the list returns)
     await call('put', '/roles/teacher/permissions', rootT).send({ permissions: ['tenants:manage'] }).expect(400);
     await call('put', '/roles/root_super_admin/permissions', rootT).send({ permissions: [] }).expect(400);
     await call('post', '/roles/teacher/reset', rootT).expect(201);
-    await call('get', '/billing/stats', teacher).expect(403);
+    await call('get', '/staff/contracts', teacher).expect(403);
   });
 
   it('puts a school in the trash, restores it, and purges it only with its code', async () => {
