@@ -456,7 +456,7 @@ input[type='color'] { width: 44px; min-height: 34px; padding: 2px; cursor: point
 .country-grid.small { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
 .country-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: calc(var(--radius) + 2px); color: var(--text); text-decoration: none; transition: transform .2s, box-shadow .2s, border-color .2s; }
 .country-card:hover, .country-card:focus-visible { transform: translateY(-3px); border-color: var(--primary); box-shadow: 0 12px 28px rgba(0, 0, 0, .16); }
-.country-card.soon { opacity: .72; } .country-card .flag { width: 38px; height: auto; border-radius: 4px; box-shadow: 0 0 0 1px var(--border); }
+.country-card.soon { border-style: dashed; } .country-card .flag { width: 38px; height: auto; border-radius: 4px; box-shadow: 0 0 0 1px var(--border); }
 .tilt-grid { list-style: none; padding: 0; margin: 1.2rem 0 0; display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); perspective: 900px; }
 .tilt-card { display: grid; gap: 10px; align-content: start; padding: 22px; background: var(--surface); border: 1px solid var(--border); border-radius: calc(var(--radius) + 6px); transition: transform .35s cubic-bezier(.2, .8, .2, 1), box-shadow .35s; transform-style: preserve-3d; }
 .tilt-card:hover { transform: rotateX(6deg) rotateY(-8deg) translateZ(14px); box-shadow: 0 24px 48px rgba(0, 0, 0, .2); }

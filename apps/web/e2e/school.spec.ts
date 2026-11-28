@@ -17,7 +17,7 @@ test('login refuses a malformed school code and shows the error', async ({ page 
 
 test('an admin of the Gabon demo lycée signs in and sees the active modules page', async ({ page }) => {
   await loginAs(page, 'ga_lycee', 'admin');
-  await expect(page.getByRole('heading', { name: 'ÉcoleManager Pro' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: /Bonjour/ })).toBeVisible();
 });
 
 test('administration shows the grading scale of the school (configuration, not code)', async ({ page }) => {
