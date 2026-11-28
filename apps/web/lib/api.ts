@@ -37,11 +37,15 @@ export const setSession = (s: Session | null, opts: { purgeCache?: boolean } = {
   } else { sessionStorage.removeItem('em_session'); sessionStorage.removeItem(CTX); if (opts.purgeCache !== false) purge({ cache: true }); }
 };
 
+const VIEW_AS = 'em_view_as';
+/** Read-only "view as": an administrator looks at the school through the eyes of a lower-ranked person. Sent as X-View-As, audited and refused for any write by the API. */
+export const getViewAs = (): { id: string; label: string } | null => { try { return JSON.parse(sessionStorage.getItem(VIEW_AS) ?? 'null'); } catch { return null; } };
+export const setViewAs = (v: { id: string; label: string } | null) => { try { if (v) sessionStorage.setItem(VIEW_AS, JSON.stringify(v)); else sessionStorage.removeItem(VIEW_AS); Object.keys(localStorage).filter((k) => k.startsWith('em_nav:')).forEach((k) => localStorage.removeItem(k)); } catch { /* storage unavailable */ } };
 const headers = (s: Session | null): Record<string, string> => {
   const tenant = s ? (s.school === 'root' ? getContext() : s.school) : '';
-  return { 'content-type': 'application/json', ...(s ? { ...(tenant ? { 'x-tenant': tenant } : {}), authorization: `Bearer ${s.token}` } : {}) };
+  return { 'content-type': 'application/json', ...(s ? { ...(tenant ? { 'x-tenant': tenant } : {}), ...(getViewAs() ? { 'x-view-as': getViewAs()!.id } : {}), authorization: `Bearer ${s.token}` } : {}) };
 };
-const cacheKey = (p: string) => `em_cache:${p}`;
+const cacheKey = (p: string) => `em_cache:${getViewAs() ? `as-${getViewAs()!.id}:` : ''}${p}`;
 
 let authCfg: AuthConfig | undefined;
 /** Renews an expired access token (OIDC mode). On failure the session is dropped so the user signs in again; queued writes stay in the queue. */
@@ -65,6 +69,7 @@ export async function api<T = any>(path: string, init: { method?: string; body?:
     let r = await send();
     if (r.status === 401 && s?.refresh && (await renew())) r = await send();   // same Idempotency-Key: a retried write cannot be applied twice
     const text = await r.text(); let data: any; try { data = text ? JSON.parse(text) : undefined; } catch { data = text; }
+    if (r.status === 403 && text.includes('password_change_required') && !location.pathname.startsWith('/account')) location.assign('/account/security?force=1');   // the account must change its password first
     if (r.ok && method === 'GET') { try { localStorage.setItem(cacheKey(path), text); } catch { /* ignore */ } }
     return r.ok ? { ok: true, status: r.status, data } : { ok: false, status: r.status, error: data?.message ? JSON.stringify(data.message) : r.statusText };
   } catch {

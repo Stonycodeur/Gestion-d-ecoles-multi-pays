@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'core/session.dart';
 import 'features/home_screen.dart';
 import 'features/login_screen.dart';
+import 'features/welcome_screens.dart';
 import 'l10n/app_localizations.dart';
 
 void main() => runApp(const ProviderScope(child: EcoleApp()));
@@ -27,13 +28,15 @@ class _EcoleAppState extends ConsumerState<EcoleApp> {
       refreshListenable: auth,
       redirect: (c, st) {
         final signedIn = ref.read(sessionProvider).signedIn;
-        if (!signedIn && st.matchedLocation != '/login') return '/login';
-        if (signedIn && st.matchedLocation == '/login') return '/';
+        final open = st.matchedLocation == '/login' || st.matchedLocation == '/welcome';
+        if (!signedIn && !open) return '/welcome';
+        if (signedIn && open) return '/';
         return null;
       },
       routes: [
         GoRoute(path: '/', builder: (c, s) => const HomeScreen()),
-        GoRoute(path: '/login', builder: (c, s) => const LoginScreen()),
+        GoRoute(path: '/welcome', builder: (c, s) => const WelcomeScreen()),
+        GoRoute(path: '/login', builder: (c, s) => LoginScreen(school: s.uri.queryParameters['school'])),
       ],
     );
   }

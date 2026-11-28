@@ -147,3 +147,20 @@ test('a school can hide a page or bring back one hidden by its level', () => {
   assert.ok(hrefs(visibleNav({ roles: ['admin'], schoolType: 'university', modules: m, shown: ['/gps'] })).includes('/gps'));
   assert.ok(TOGGLEABLE_PAGES.includes('/news') && !TOGGLEABLE_PAGES.includes('/notifications'));
 });
+
+import { principalHas } from '../src/index.ts';
+test('personal rights: a grant opens one right, a withdrawal closes one, tenants:manage can never be given', () => {
+  const stu: Principal = { id: 's', roles: ['student'], tenantId: 'a' };
+  assert.equal(can(stu, 'staff:read', { tenantId: 'a' }).allowed, false);
+  assert.equal(can({ ...stu, extraGrant: ['staff:read'] }, 'staff:read', { tenantId: 'a' }).allowed, true);
+  assert.equal(can({ ...stu, extraGrant: ['staff:read'] }, 'staff:read', { tenantId: 'b' }).allowed, false);   // never across schools
+  assert.equal(can({ ...stu, extraGrant: ['tenants:manage'] }, 'tenants:manage', { tenantId: 'a' }).allowed, false);
+  const tea: Principal = { id: 't', roles: ['teacher'], tenantId: 'a' };
+  assert.equal(principalHas(tea, 'students:read'), true);
+  assert.equal(principalHas({ ...tea, extraRevoke: ['students:read'] }, 'students:read'), false);
+  assert.equal(can({ ...tea, extraRevoke: ['students:read'] }, 'students:read', { tenantId: 'a' }).allowed, false);
+  assert.equal(principalHas({ ...stu, extraGrant: ['staff:read'] }, 'staff:read'), true);
+  assert.equal(principalHas({ ...stu, extraGrant: ['tenants:manage'] }, 'tenants:manage'), false);
+  const nav = visibleNav({ roles: ['student'], schoolType: 'lycee', modules: [], has: (p) => p === 'staff:read' || p === 'schedule:read' });
+  assert.ok(nav.flatMap((g) => g.items).some((i) => i.href === '/school/staff'));
+});

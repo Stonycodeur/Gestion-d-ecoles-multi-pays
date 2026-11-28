@@ -18,6 +18,17 @@ class ApiClient {
         if (token != null) 'authorization': 'Bearer $token',
       };
 
+  /// Public, unauthenticated GET (the home directory: countries, schools, a school's public site). Never cached with credentials; null when offline or refused.
+  Future<dynamic> publicGet(String path) async {
+    try {
+      final r = await _c.get(Uri.parse('$apiBase$path'), headers: const {'content-type': 'application/json'});
+      if (r.statusCode >= 300) return null;
+      return jsonDecode(r.body);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Sandbox sign-in (real deployments: OIDC + PKCE through Keycloak, configured in Phase 1 live mode).
   Future<String> sandboxLogin(String school, String role) async {
     final r = await _c.post(Uri.parse('$apiBase/auth/sandbox/token'),

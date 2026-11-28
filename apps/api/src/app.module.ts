@@ -19,7 +19,8 @@ import { AcademicService } from './school/academic.service';
 import { TenantsService } from './school/tenants.service';
 import { DirectoryController } from './school/directory.controller';
 import { NavigationController } from './school/navigation.controller';
-import { SchoolUsersController } from './school/school-users.controller';
+import { PlatformAdsController } from './admin/platform-ads.controller';
+import { MePasswordController, SchoolUsersController } from './school/school-users.controller';
 import { SchoolUsersService } from './school/school-users.service';
 import { TenantDb } from './pedagogy/tenant-db.service';
 import { Adapters } from './adapters/adapters';
@@ -74,7 +75,7 @@ import { AdminController } from './admin/admin.controller';
 import { AccountsAdminService } from './admin/accounts.service';
 
 @Module({
-  controllers: [HealthController, DirectoryController, NavigationController, SchoolUsersController, AuthController, ModulesController, PedagogyController, SchoolConfigController, AcademicController, CommsController, OaaController, GamificationController, PredictiveController, PaymentsController, GpsController, OrientationController, PublicController, VisitorAdminController, ResourcesController, MarketplaceController, MinistryController, PublicApiController, ApiAdminController, GenAiController, XrController, XrPublicController, AccountController, GeoController, AdminController, ProfileController, RolesController, TrashController],
+  controllers: [HealthController, DirectoryController, NavigationController, SchoolUsersController, MePasswordController, PlatformAdsController, AuthController, ModulesController, PedagogyController, SchoolConfigController, AcademicController, CommsController, OaaController, GamificationController, PredictiveController, PaymentsController, GpsController, OrientationController, PublicController, VisitorAdminController, ResourcesController, MarketplaceController, MinistryController, PublicApiController, ApiAdminController, GenAiController, XrController, XrPublicController, AccountController, GeoController, AdminController, ProfileController, RolesController, TrashController],
   providers: [AuthService, AuditService, ModulesService, TenantDb, PedagogyService, SchoolConfigService, AcademicService, TenantsService, SchoolUsersService, Adapters, RealtimeGateway, NotificationService, CommsService, OaaService, GamificationService, PredictiveService, PaymentProviders, PaymentsService, GpsService, OrientationService, VisitorService, ResourcesService, MarketplaceService, MinistryService, PublicApiService, WebhooksService, GenAiService, XrService, AccountService, GeoService, GeoAdminService, ProfileService, PermissionsService, TrashService, AccountsAdminService, SchedulerService, { provide: APP_GUARD, useClass: CoreGuard }, { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor }],
 })
 export class AppModule implements NestModule {

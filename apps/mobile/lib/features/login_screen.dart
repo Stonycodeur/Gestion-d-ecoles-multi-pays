@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../core/models.dart';
 import '../core/session.dart';
 import '../l10n/app_localizations.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  /// School code chosen on the public home (the school's page → "Go to my space").
+  final String? school;
+  const LoginScreen({super.key, this.school});
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
@@ -22,6 +25,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.school != null && isValidSchoolCode(widget.school!)) _code.text = widget.school!;
     ref.read(sessionProvider.notifier).authConfig().then((c) {
       if (mounted) setState(() => _pwd = c.isPassword);
     }).catchError((_) {});
@@ -58,7 +62,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: Text(t.appTitle)),
+      appBar: AppBar(title: Text(t.appTitle), leading: IconButton(icon: const Icon(Icons.arrow_back), tooltip: 'Accueil / Home', onPressed: () => context.go('/welcome'))),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: _pwd

@@ -6,6 +6,7 @@ import { AuditService } from './audit.service';
 import { can } from '@ecolemanager/shared';
 import { MinistryService } from '../ministry/ministry.service';
 import { PermissionsService } from './permissions.service';
+import { SchoolUsersService } from '../school/school-users.service';
 import type { CoreRequest } from './request-context';
 
 export const PUBLIC = 'isPublic';
@@ -16,7 +17,7 @@ export const RequirePermission = (p: string) => SetMetadata(PERMISSION, p);
 /** Global guard: authenticates, binds the tenant (token vs subdomain must agree), then enforces @RequirePermission via RBAC+ABAC. */
 @Injectable()
 export class CoreGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector, private readonly auth: AuthService, private readonly audit: AuditService, private readonly ministry: MinistryService, private readonly perms: PermissionsService) {}
+  constructor(private readonly reflector: Reflector, private readonly auth: AuthService, private readonly audit: AuditService, private readonly ministry: MinistryService, private readonly perms: PermissionsService, private readonly schoolUsers: SchoolUsersService) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
     if (this.reflector.getAllAndOverride<boolean>(PUBLIC, [ctx.getHandler(), ctx.getClass()])) return true;
@@ -39,6 +40,25 @@ export class CoreGuard implements CanActivate {
         if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS') await this.audit.log({ actorId: principal.id, tenant: h, action: 'root.tenant_context', details: { method: req.method, path: req.path } });
       }
     }
+    await this.perms.refresh();   // role and personal rights edited by an administrator apply within seconds
+    let principal2 = principal;
+    if (!principal.isRoot) {
+      this.perms.applyTo(principal, req.tenantSlug);
+      const fl = this.perms.flagsOf(principal.id, req.tenantSlug);
+      if (fl?.locked) throw new ForbiddenException('account locked: contact your school administrator');
+      if (fl?.must_change_password && !/^\/(me|profile|auth)(\/|$)/.test(req.path)) throw new ForbiddenException('password_change_required');
+    }
+    const as = req.header('x-view-as');
+    if (as && req.tenantSlug) {
+      // Read-only "view as": an administrator looks through the eyes of a lower-ranked person of the same school. Every such call is audited; nothing can be changed.
+      if (!/^[0-9a-f-]{36}$/i.test(as)) throw new ForbiddenException('invalid view-as target');
+      if (req.method !== 'GET' && req.method !== 'HEAD') throw new ForbiddenException('view-as is read-only');
+      if (!can(principal, 'users:manage', { tenantId: req.tenantSlug }).allowed) throw new ForbiddenException('view-as needs the right to manage users');
+      principal2 = await this.schoolUsers.viewAsPrincipal(req.tenantSlug, principal, as);
+      this.perms.applyTo(principal2, req.tenantSlug);
+      await this.audit.log({ actorId: principal.id, tenant: req.tenantSlug, action: 'user.view_as', entity: 'user', entityId: as, details: { path: req.path } });
+    }
+    if (principal2 !== principal) { principal.roles = principal2.roles; principal.classIds = principal2.classIds; principal.childIds = principal2.childIds; principal.studentId = principal2.studentId; principal.extraGrant = principal2.extraGrant; principal.extraRevoke = principal2.extraRevoke; principal.impersonatedBy = principal2.impersonatedBy; principal.id = principal2.id; principal.isRoot = false; }
     if (!principal.isRoot && principal.roles.includes('inspector') && req.tenantSlug) {
       // time-limited inspector access: checked against the directory on every call, so revocation is immediate
       const until = await this.ministry.inspectorUntil(req.tenantSlug, principal.id);
@@ -49,11 +69,10 @@ export class CoreGuard implements CanActivate {
 
     const perm = this.reflector.getAllAndOverride<string | undefined>(PERMISSION, [ctx.getHandler(), ctx.getClass()]);
     if (!perm) return true;
-    await this.perms.refresh();   // role permissions edited by the root apply within seconds
     const d = can(principal, perm, { tenantId: req.tenantSlug });
-    if (d.auditRootBypass) await this.audit.log({ actorId: principal.id, tenant: req.tenantSlug, action: 'root.bypass', details: { permission: perm, path: req.path } });
+    if (d.auditRootBypass) await this.audit.log({ actorId: principal.impersonatedBy ?? principal.id, tenant: req.tenantSlug, action: 'root.bypass', details: { permission: perm, path: req.path } });
     if (!d.allowed) {
-      await this.audit.log({ actorId: principal.id, tenant: req.tenantSlug, action: 'access.denied', details: { permission: perm, reason: d.reason } });
+      await this.audit.log({ actorId: principal.impersonatedBy ?? principal.id, tenant: req.tenantSlug, action: 'access.denied', details: { permission: perm, reason: d.reason } });
       throw new ForbiddenException(d.reason);
     }
     return true;

@@ -38,6 +38,19 @@ export interface Principal {
   childIds?: string[];     // guardian: linked students
   studentId?: string;      // student: own student id
   inspectorUntil?: string; // inspector: end of the time-limited access (ISO date)
+  extraGrant?: string[];   // rights given to this person on top of their role (set by the guard from user_permission_overrides)
+  extraRevoke?: string[];  // rights taken from this person although their role has them
+  impersonatedBy?: string; // read-only "view as": the administrator who is looking through this person's eyes
+}
+
+/** Rights that can never be given to one person: they belong to the root only. */
+export const NON_GRANTABLE = ['tenants:manage'];
+/** Does this person hold the right, role defaults and their own overrides included (no scope check)? */
+export function principalHas(p: Principal, perm: string): boolean {
+  if (p.isRoot) return true;
+  if (p.extraRevoke?.includes(perm)) return false;
+  if (p.extraGrant?.includes(perm) && !NON_GRANTABLE.includes(perm)) return true;
+  return p.roles.some((r) => r !== 'root_super_admin' && roleHas(r, perm));
 }
 export interface Resource {
   tenantId?: string; classId?: string; studentId?: string;
@@ -77,6 +90,8 @@ export function can(p: Principal, permission: string, r: Resource = {}, now: num
   if (!p.roles.length) return { allowed: false, reason: 'no role' };
   if (p.isRoot && p.roles.includes('root_super_admin')) return { allowed: true, reason: 'root', auditRootBypass: true };
   if (r.tenantId && p.tenantId !== r.tenantId) return { allowed: false, reason: 'cross-tenant access denied' };
+  if (p.extraRevoke?.includes(permission)) return { allowed: false, reason: 'right withdrawn for this person' };
+  if (p.extraGrant?.includes(permission) && !NON_GRANTABLE.includes(permission) && (permission !== 'gps:read' || r.consentGranted === true)) return { allowed: true, reason: 'granted to this person' };
   const granting = p.roles.filter((role) => role !== 'root_super_admin' && roleHas(role, permission));
   if (!granting.length) return { allowed: false, reason: 'permission not granted to role' };
 

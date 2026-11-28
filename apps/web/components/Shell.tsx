@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { api, getContext, getSession, isRootSession, replayQueue, setContext, setSession } from '../lib/api';
+import { api, getContext, getSession, getViewAs, setViewAs, isRootSession, replayQueue, setContext, setSession } from '../lib/api';
 import { fetchAuthConfig, logoutUrl } from '../lib/oidc';
 import { getLocale, setLocale, t, type Locale } from '../lib/i18n';
 import { pendingOps } from '../lib/offline-queue';
@@ -27,7 +27,8 @@ export default function Shell({ children }: { children: ReactNode }) {
   const [ctx, setCtx] = useState('');
   const [schools, setSchools] = useState<{ slug: string; name: string; active: boolean }[]>([]);
   const [menu, setMenu] = useState(false); const [dlg, setDlg] = useState<'' | 'perso' | 'sync'>('');
-  const [email, setEmail] = useState(''); const [roles, setRoles] = useState<string[]>([]); const [install, setInstall] = useState<any>(null); const [hint, setHint] = useState('');
+  const [email, setEmail] = useState(''); const [roles, setRoles] = useState<string[]>([]); const [install, setInstall] = useState<any>(null); const [hint, setHint] = useState(''); const [viewAs, setViewAsState] = useState<{ id: string; label: string } | null>(null);
+  useEffect(() => setViewAsState(getViewAs()), []);
   const { profile } = useProfile(); const menuRef = useRef<HTMLDivElement>(null); const { nav } = useNavigation();
   useEffect(() => {
     setL(getLocale()); setLocale(getLocale());
@@ -135,6 +136,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             )}
           </div>
         </header>
+        {viewAs && <p role="status" className="viewas-bar"><Icon name="eye" /> {fr ? `Vous consultez l’école comme ${viewAs.label} (lecture seule, tracé dans le journal d’audit).` : `You are viewing the school as ${viewAs.label} (read-only, recorded in the audit log).`} <button type="button" className="btn-sec" onClick={() => { setViewAs(null); location.assign('/school/users'); }}>{fr ? 'Quitter' : 'Exit'}</button></p>}
         {hint && <p role="status" className="note" style={{ margin: '8px clamp(14px,3vw,32px) 0' }}>{hint} <button type="button" className="btn-sec" onClick={() => setHint('')}>OK</button></p>}
         <main id="contenu" className="content" tabIndex={-1}>
           {needsSchool ? (

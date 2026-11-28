@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Shell from '../../../components/Shell';
 import Modal from '../../../components/Modal';
 import PasswordField, { passwordScore } from '../../../components/PasswordField';
-import { getSession, setSession } from '../../../lib/api';
+import { api, getSession, setSession } from '../../../lib/api';
 import { decodeClaims } from '../../../lib/pkce';
 import { changePassword, fetchAuthConfig, mfaEnroll, mfaFactors, mfaRemove, verifyMfa, type AuthConfig, type MfaFactor } from '../../../lib/oidc';
 import { useLang } from '../../../lib/useLang';
@@ -16,6 +16,8 @@ export default function SecurityPage() {
   const [enr, setEnr] = useState<{ id: string; qr: string; secret: string } | null>(null); const [code, setCode] = useState('');
   const [err, setErr] = useState(''); const [msg, setMsg] = useState(''); const [busy, setBusy] = useState(false);
   const hosted = cfg?.mode === 'password';
+  const [forced, setForced] = useState(false);
+  useEffect(() => { if (new URLSearchParams(window.location.search).get('force') === '1') { setForced(true); setDlg('pw'); } }, []);
 
   const refresh = useCallback(async (c: AuthConfig) => {
     const s = getSession(); if (!s || c.mode !== 'password') return;
@@ -32,7 +34,7 @@ export default function SecurityPage() {
     if (passwordScore(next) < 4) { setErr(t('Le nouveau mot de passe doit avoir 10 caractères ou plus, avec une minuscule, une majuscule et un chiffre.', 'The new password needs 10+ characters with a lower case, an upper case and a digit.')); return; }
     if (next !== again) { setErr(t('Les deux saisies ne sont pas identiques.', 'The two entries differ.')); return; }
     setBusy(true);
-    try { await changePassword(cfg!, email, cur, next, getSession()!.token); close(); setMsg(t('Mot de passe modifié. Utilisez-le à la prochaine connexion.', 'Password changed. Use it next time you sign in.')); }
+    try { await changePassword(cfg!, email, cur, next, getSession()!.token); close(); setMsg(t('Mot de passe modifié. Utilisez-le à la prochaine connexion.', 'Password changed. Use it next time you sign in.')); if (forced) { await api('/me/password-changed', { method: 'POST', body: {}, online: true }); location.assign('/'); } }
     catch (x) { setErr((x as Error).message); } finally { setBusy(false); }
   };
   const startMfa = async () => {
@@ -53,6 +55,7 @@ export default function SecurityPage() {
   return (
     <Shell>
       <div className="page-head"><div><h1>{t('Sécurité', 'Security')}</h1><small>{email}</small></div></div>
+      {forced && <p role="alert" className="note warn">{t('Votre administrateur vous demande de choisir un nouveau mot de passe avant de continuer.', 'Your administrator asks you to choose a new password before you continue.')}</p>}
       {msg && <p role="status">{msg}</p>}
       {cfg && !hosted && <p className="note warn">{t('Votre mot de passe et la double authentification se gèrent chez votre fournisseur d’identité.', 'Your password and two-step verification are managed at your identity provider.')}</p>}
       <section aria-labelledby="h-pw">
