@@ -67,8 +67,8 @@ export default function Landing() {
                 {options.map((o, i) => (
                   <li key={o.href} role="option" aria-selected={i === sel}>
                     <button type="button" tabIndex={-1} className={i === sel ? 'on' : ''} onMouseDown={(e) => { e.preventDefault(); go(o.href); }}>
-                      {'c' in o && o.c ? (<><Flag code={o.c.c} /><span><strong>{name(o.c)}</strong><small>{o.c.schools > 0 ? t(`${o.c.schools} établissement(s)`, `${o.c.schools} school(s)`) : t('Pas encore disponible', 'Not available yet')}</small></span></>)
-                        : (<><span className="school-ico" aria-hidden="true"><Icon name="school" /></span><span><strong>{o.s!.name}</strong><small>{[o.s!.city, (fr ? o.s!.type_label?.fr : o.s!.type_label?.en)].filter(Boolean).join(' · ')}</small></span></>)}
+                      {'c' in o ? (<><Flag code={o.c.c} /><span><strong>{name(o.c)}</strong><small>{o.c.schools > 0 ? t(`${o.c.schools} établissement(s)`, `${o.c.schools} school(s)`) : t('Pas encore disponible', 'Not available yet')}</small></span></>)
+                        : (<><span className="school-ico" aria-hidden="true"><Icon name="school" /></span><span><strong>{o.s.name}</strong><small>{[o.s.city, (fr ? o.s.type_label?.fr : o.s.type_label?.en)].filter(Boolean).join(' · ')}</small></span></>)}
                     </button>
                   </li>))}
                 {options.length === 0 && <li className="none" role="option" aria-selected="false">{t('Aucun pays ni établissement ne correspond à cette recherche.', 'No country or school matches this search.')}</li>}

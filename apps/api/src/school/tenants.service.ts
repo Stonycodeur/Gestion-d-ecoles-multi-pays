@@ -48,7 +48,7 @@ export class TenantsService {
   async setProfile(slug: string, actor: string, patch: { hidden?: string[]; shown?: string[]; vocabulary?: Record<string, { fr?: string; en?: string }> }) {
     const cur = (await this.get(slug)).config ?? {};
     const next = { ...cur, ...(patch.hidden ? { hidden: patch.hidden } : {}), ...(patch.shown ? { shown: patch.shown } : {}), ...(patch.vocabulary ? { vocabulary: patch.vocabulary } : {}) };
-    await this.root((q) => q('UPDATE public.tenants SET config = $2::jsonb WHERE slug = $1', [slug, JSON.stringify(next)]));
+    await this.root((q) => q('SELECT admin_update_tenant($1, NULL, $2::jsonb, NULL)', [slug, JSON.stringify(next)]));
     await this.audit.log({ actorId: actor, tenant: slug, action: 'school.profile.update', entity: 'tenant', entityId: slug });
     return next;
   }
