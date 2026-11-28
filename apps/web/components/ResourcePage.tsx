@@ -7,7 +7,7 @@ import { api } from '../lib/api';
 import { useLang } from '../lib/useLang';
 import { useNavigation } from '../lib/navigation';
 
-export interface Field { key: string; fr: string; en: string; type?: 'text' | 'number' | 'date' | 'select'; options?: { value: string; fr: string; en: string }[]; required?: boolean; step?: string; editOnly?: boolean }
+export interface Field { key: string; fr: string; en: string; type?: 'text' | 'number' | 'date' | 'select' | 'checkbox'; options?: { value: string; fr: string; en: string }[]; required?: boolean; step?: string; editOnly?: boolean }
 export interface Col { key: string; fr: string; en: string; render?: (row: any, lookups: Record<string, any[]>) => ReactNode }
 interface Props {
   titleFr: string; titleEn: string; endpoint: string; readRight: string; writeRight: string; fields: Field[]; cols: Col[];
@@ -52,11 +52,11 @@ export default function ResourcePage(p: Props) {
 
 function FormDialog(p: Props & { lk: Record<string, any[]>; row: any | null; onClose: () => void; onSaved: () => void }) {
   const { t, fr } = useLang(); const edit = !!p.row; const [err, setErr] = useState('');
-  const [v, setV] = useState<Record<string, any>>(() => { const o: Record<string, any> = { ...(p.defaults ?? {}) }; for (const f of p.fields) if (p.row) o[f.key] = p.row[f.key] ?? ''; return o; });
+  const [v, setV] = useState<Record<string, any>>(() => { const o: Record<string, any> = { ...(p.defaults ?? {}) }; for (const f of p.fields) if (p.row) o[f.key] = f.type === 'date' && p.row[f.key] ? String(p.row[f.key]).slice(0, 10) : (p.row[f.key] ?? (f.type === 'checkbox' ? false : '')); return o; });
   const fields = p.fields.filter((f) => edit || !f.editOnly);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); setErr('');
-    const body: Record<string, unknown> = {}; for (const f of fields) { const x = v[f.key]; body[f.key] = f.type === 'number' ? (x === '' || x === undefined ? undefined : Number(x)) : (x === '' ? (edit ? null : undefined) : x); }
+    const body: Record<string, unknown> = {}; for (const f of fields) { const x = v[f.key]; body[f.key] = f.type === 'checkbox' ? !!x : f.type === 'number' ? (x === '' || x === undefined ? undefined : Number(x)) : (x === '' ? (edit ? null : undefined) : x); }
     const r = await api(edit ? `${p.endpoint}/${p.row.id}` : p.endpoint, { method: edit ? 'PATCH' : 'POST', body });
     if (r.ok) p.onSaved(); else setErr(msg(r, t));
   };
@@ -66,7 +66,8 @@ function FormDialog(p: Props & { lk: Record<string, any[]>; row: any | null; onC
         {fields.map((f) => {
           const opts = f.type === 'select' ? (f.options ?? p.lookupOptions?.(f.key, p.lk) ?? []) : [];
           return <label key={f.key}>{fr ? f.fr : f.en}
-            {f.type === 'select' ? <select required={f.required} value={v[f.key] ?? ''} onChange={(e) => setV({ ...v, [f.key]: e.target.value })}><option value="">—</option>{opts.map((o) => <option key={o.value} value={o.value}>{fr ? o.fr : o.en}</option>)}</select>
+            {f.type === 'checkbox' ? <input type="checkbox" checked={!!v[f.key]} onChange={(e) => setV({ ...v, [f.key]: e.target.checked })} />
+              : f.type === 'select' ? <select required={f.required} value={v[f.key] ?? ''} onChange={(e) => setV({ ...v, [f.key]: e.target.value })}><option value="">—</option>{opts.map((o) => <option key={o.value} value={o.value}>{fr ? o.fr : o.en}</option>)}</select>
               : <input type={f.type ?? 'text'} step={f.step} required={f.required} value={v[f.key] ?? ''} onChange={(e) => setV({ ...v, [f.key]: e.target.value })} />}</label>;
         })}
         {err && <p role="alert">{err}</p>}

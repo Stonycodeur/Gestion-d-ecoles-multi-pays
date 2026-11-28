@@ -91,6 +91,8 @@ export const NAV_CATALOG: NavEntry[] = [
   e('/school/subjects', 'book', 'school', 'Matières', 'Subjects', 'Matières, coefficients, catégories', 'Subjects, coefficients, categories', ['students:write'],
     { byType: { university: { label: { fr: 'Unités d’enseignement', en: 'Course units' } } } }),
   e('/school/staff', 'user', 'school', 'Personnel', 'Staff', 'Enseignants, charges horaires, contrats', 'Teachers, workload, contracts', ['staff:read']),
+  e('/school/assignments', 'book', 'school', 'Affectations', 'Assignments', 'Matière, enseignant et volume horaire par classe', 'Subject, teacher and weekly hours per class', ['schedule:write'],
+    { byType: { university: { label: { fr: 'Enseignements (UE)', en: 'Courses (units)' }, desc: { fr: 'Unité d’enseignement, enseignant et volume horaire par groupe', en: 'Unit, lecturer and hours per group' } }, primary: { label: { fr: 'Maîtres et matières', en: 'Teachers and subjects' } } } }),
   e('/school/rooms', 'pin', 'school', 'Salles', 'Rooms', 'Salles et capacités', 'Rooms and capacity', ['staff:write'],
     { byType: { university: { label: { fr: 'Amphis et salles', en: 'Lecture halls and rooms' } } } }),
   e('/school/users', 'lock', 'school', 'Utilisateurs', 'Users', 'Comptes, rôles et accès de l’école', 'Accounts, roles and access', ['users:manage']),

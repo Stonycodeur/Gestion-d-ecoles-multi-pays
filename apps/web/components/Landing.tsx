@@ -138,13 +138,18 @@ function Scene({ schools, countries }: { schools: number; countries: number }) {
 
 /** Promotional banners of the platform, with a 3D tilt and slow rotation (pauses on hover or focus, and has buttons for keyboard users). */
 function Ads() {
-  const { t } = useLang(); const [i, setI] = useState(0); const [pause, setPause] = useState(false);
-  const ads = [
+  const { t, fr } = useLang(); const [i, setI] = useState(0); const [pause, setPause] = useState(false);
+  const [managed, setManaged] = useState<{ id: string; title_fr: string; title_en: string; text_fr: string; text_en: string; link_url: string | null; link_label_fr: string | null; link_label_en: string | null; theme: string }[]>([]);
+  useEffect(() => { void get<typeof managed>('/directory/ads').then((d) => setManaged(d ?? [])); }, []);
+  const CLS: Record<string, string> = { blue: 'a1', teal: 'a2', orange: 'a3', violet: 'a5', rose: 'a6' };
+  const builtIn = [
     { h: t('Inscrivez votre école', 'Register your school'), p: t('Créez le site et l’espace de votre établissement en quelques minutes, dans votre pays.', 'Create your school’s site and space in minutes, in your country.'), cta: t('Nous contacter', 'Contact us'), href: '/login', c: 'a1', ic: 'school' },
     { h: t('Payez la scolarité depuis votre téléphone', 'Pay school fees from your phone'), p: t('Airtel Money, Moov Money, carte bancaire : reçu immédiat, historique et rappels.', 'Airtel Money, Moov Money, card: instant receipt, history and reminders.'), cta: t('Découvrir', 'Discover'), href: '#avantages', c: 'a2', ic: 'card' },
     { h: t('L’application mobile, même hors connexion', 'The mobile app, even offline'), p: t('Emploi du temps, notes et cahier de textes disponibles partout, synchronisés au retour du réseau.', 'Timetable, grades and class log everywhere, synced when the network returns.'), cta: t('Se connecter', 'Sign in'), href: '/login', c: 'a3', ic: 'sync' },
     { h: t('Suivez vos enfants en toute confiance', 'Follow your children with confidence'), p: t('Absences, résultats, trajet vers l’école avec votre consentement : vous restez informé.', 'Absences, results, journey to school with your consent: you stay informed.'), cta: t('En savoir plus', 'Learn more'), href: '#avantages', c: 'a4', ic: 'pin' },
   ];
+  const ads = managed.length ? managed.map((m) => ({ h: fr ? m.title_fr : m.title_en, p: fr ? m.text_fr : m.text_en, cta: (fr ? m.link_label_fr : m.link_label_en) || t('En savoir plus', 'Learn more'), href: m.link_url ?? '#pays', c: CLS[m.theme] ?? 'a1', ic: 'globe' })) : builtIn;
+  useEffect(() => { setI(0); }, [managed.length]);
   useEffect(() => { if (pause) return; const h = setInterval(() => setI((x) => (x + 1) % ads.length), 5500); return () => clearInterval(h); }, [pause, ads.length]);
   const tilt = (e: React.PointerEvent<HTMLDivElement>) => { const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty('--ty', `${((e.clientX - r.left) / r.width - 0.5) * 10}deg`); e.currentTarget.style.setProperty('--tx', `${-((e.clientY - r.top) / r.height - 0.5) * 8}deg`); };
   return (
