@@ -11,6 +11,8 @@ void main() {
   Future<void> signIn(WidgetTester tester, String school, String role) async {
     await tester.pumpWidget(const ProviderScope(child: EcoleApp()));
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('go-login')));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, school);
     await tester.tap(find.byType(DropdownButtonFormField<String>));
     await tester.pumpAndSettle();
@@ -22,6 +24,8 @@ void main() {
 
   testWidgets('a malformed school code is refused with an error', (tester) async {
     await tester.pumpWidget(const ProviderScope(child: EcoleApp()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('go-login')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, 'Bad Code!');
     await tester.tap(find.byType(FilledButton));
