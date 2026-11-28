@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Header, Param, Patch, Post, Query, Req, StreamableFile } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Header, Param, Patch, Post, Query, Req, StreamableFile } from '@nestjs/common';
 import { PedagogyService } from './pedagogy.service';
 import { RequirePermission } from '../core/auth.guard';
 import type { CoreRequest } from '../core/request-context';
@@ -19,6 +19,19 @@ export class PedagogyController {
   @Get('subjects') @RequirePermission('schedule:read') subjects(@Req() r: CoreRequest) { return this.svc.listSubjects(need(r).slug); }
   @Post('teachers') @RequirePermission('staff:write') createTeacher(@Req() r: CoreRequest, @Body() b: any) { return this.svc.createTeacher(need(r).slug, b); }
   @Post('rooms') @RequirePermission('staff:write') createRoom(@Req() r: CoreRequest, @Body() b: any) { return this.svc.createRoom(need(r).slug, b); }
+  @Get('teachers') @RequirePermission('staff:read') teachers(@Req() r: CoreRequest) { return this.svc.listTeachers(need(r).slug); }
+  @Get('rooms') @RequirePermission('staff:read') rooms(@Req() r: CoreRequest) { return this.svc.listRooms(need(r).slug); }
+  @Get('class-subjects') @RequirePermission('students:read') classSubjects(@Req() r: CoreRequest, @Query('class_id') c?: string) { return this.svc.listClassSubjects(need(r).slug, c); }
+  @Patch('classes/:id') @RequirePermission('students:write') editClass(@Req() r: CoreRequest, @Param('id') id: string, @Body() b: any) { const { slug, p } = need(r); return this.svc.updateClass(slug, p.id, id, b); }
+  @Delete('classes/:id') @RequirePermission('students:write') delClass(@Req() r: CoreRequest, @Param('id') id: string) { const { slug, p } = need(r); return this.svc.deleteClass(slug, p.id, id); }
+  @Patch('subjects/:id') @RequirePermission('students:write') editSubject(@Req() r: CoreRequest, @Param('id') id: string, @Body() b: any) { const { slug, p } = need(r); return this.svc.updateSubject(slug, p.id, id, b); }
+  @Delete('subjects/:id') @RequirePermission('students:write') delSubject(@Req() r: CoreRequest, @Param('id') id: string) { const { slug, p } = need(r); return this.svc.deleteSubject(slug, p.id, id); }
+  @Patch('teachers/:id') @RequirePermission('staff:write') editTeacher(@Req() r: CoreRequest, @Param('id') id: string, @Body() b: any) { const { slug, p } = need(r); return this.svc.updateTeacher(slug, p.id, id, b); }
+  @Delete('teachers/:id') @RequirePermission('staff:write') delTeacher(@Req() r: CoreRequest, @Param('id') id: string) { const { slug, p } = need(r); return this.svc.deleteTeacher(slug, p.id, id); }
+  @Patch('rooms/:id') @RequirePermission('staff:write') editRoom(@Req() r: CoreRequest, @Param('id') id: string, @Body() b: any) { const { slug, p } = need(r); return this.svc.updateRoom(slug, p.id, id, b); }
+  @Delete('rooms/:id') @RequirePermission('staff:write') delRoom(@Req() r: CoreRequest, @Param('id') id: string) { const { slug, p } = need(r); return this.svc.deleteRoom(slug, p.id, id); }
+  @Delete('class-subjects/:id') @RequirePermission('schedule:write') delClassSubject(@Req() r: CoreRequest, @Param('id') id: string) { const { slug, p } = need(r); return this.svc.deleteClassSubject(slug, p.id, id); }
+  @Patch('students/:id') @RequirePermission('students:write') editStudent(@Req() r: CoreRequest, @Param('id') id: string, @Body() b: any) { const { slug, p } = need(r); return this.svc.updateStudent(slug, p.id, id, b); }
   @Post('class-subjects') @RequirePermission('schedule:write') assign(@Req() r: CoreRequest, @Body() b: any) { return this.svc.assignSubject(need(r).slug, b); }
 
   // students -----------------------------------------------------------------------------------------------------

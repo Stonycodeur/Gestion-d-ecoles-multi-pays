@@ -5,7 +5,7 @@ const ALL_TENANT = ['students:read', 'students:write', 'staff:read', 'staff:writ
   'lessons:read', 'grades:read', 'absences:read', 'oaa:read', 'oaa:configure', 'modules:manage', 'grading:configure', 'audit:read',
   'billing:read', 'billing:write', 'ministry:prepare', 'marketplace:install', 'ai:use', 'ai:configure', 'locker:read', 'predictive:read',
   'news:write', 'news:read', 'directory:manage', 'contracts:write', 'inspectors:manage', 'messages:all', 'locker:write', 'notify:send', 'oaa:write', 'games:create', 'games:challenge', 'games:read', 'gps:configure',
-  'orientation:read', 'orientation:write', 'internships:manage', 'exam:read', 'exam:write', 'applications:manage', 'site:write', 'resources:read', 'resources:write', 'forums:post', 'xr:write', 'xr:read', 'ai:use', 'api:manage', 'marketplace:submit', 'students:erase'];
+  'orientation:read', 'orientation:write', 'internships:manage', 'exam:read', 'exam:write', 'applications:manage', 'site:write', 'resources:read', 'resources:write', 'forums:post', 'xr:write', 'xr:read', 'ai:use', 'api:manage', 'marketplace:submit', 'students:erase', 'users:manage', 'school:configure'];
 
 /** role -> permission codes. Data, mirrored from docs/PERMISSIONS.md; refined by ABAC in can(). */
 export const ROLE_PERMISSIONS: Record<RoleCode, string[]> = {
@@ -66,7 +66,8 @@ export function allPermissions(): string[] {
   return [...new Set(Object.values(ROLE_PERMISSIONS).flat())].filter((p) => p !== '*').sort();
 }
 
-function roleHas(role: RoleCode, perm: string): boolean {
+/** True when the role holds the permission right now (defaults plus the root's changes). */
+export function roleHas(role: RoleCode, perm: string): boolean {
   const list = effectivePermissions(role);
   return list.includes('*') || list.includes(perm);
 }

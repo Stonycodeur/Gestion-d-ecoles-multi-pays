@@ -207,6 +207,7 @@ export class CommsService {
 
   // ---- notifications & devices -----------------------------------------------------------------------------------
   listNotifications(slug: string, p: Principal) { return this.tx(slug, (q) => q('SELECT * FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 100', [p.id])); }
+  markAllRead(slug: string, p: Principal) { return this.tx(slug, async (q) => { const r = await q('UPDATE notifications SET read_at = NOW() WHERE user_id = $1 AND read_at IS NULL RETURNING id', [p.id]); return { marked: r.length }; }); }
   markRead(slug: string, p: Principal, id: string) { return this.tx(slug, async (q) => { await q('UPDATE notifications SET read_at = NOW() WHERE id = $1 AND user_id = $2', [uuid(id, 'id'), p.id]); return { ok: true }; }); }
   registerDevice(slug: string, p: Principal, b: any) {
     const platform = str(b.platform, 'platform', 10);
