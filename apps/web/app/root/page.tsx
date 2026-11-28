@@ -36,7 +36,7 @@ export default function RootConsole() {
       const a = await api(`/geo/countries/${country.c}/activate`, { method: 'POST', online: true, body: { model: f.model, locale: f.locale } });
       if (!a.ok) { setErr(msgOf(a)); return; }
     }
-    const r = await api('/tenants', { method: 'POST', online: true, body: { slug: f.slug, name: f.name, school_type: f.school_type, country_code: country.c, region: geo.region, city: geo.city, grading_scale_code: f.scale || undefined } });
+    const r = await api('/tenants', { method: 'POST', online: true, body: { slug: f.slug, name: f.name, school_type: f.school_type, country_code: country.c, region: geo.region, city: geo.city, grading_scale_code: f.scale || undefined, with_default_modules: true } });
     if (!r.ok) { setErr(msgOf(r)); return; }
     setMsg(t(`École « ${f.name} » créée avec son espace de données isolé.`, `School “${f.name}” created with its own isolated data space.`)); setCreated(f.slug);
     setF({ ...f, name: '', slug: '', scale: '' }); setSlugTouched(false); setGeo(EMPTY_GEO); setCountry(null); await load();

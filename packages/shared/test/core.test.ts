@@ -120,3 +120,30 @@ test('role permission overrides: grant and revoke on top of the defaults, never 
   assert.ok(allPermissions().includes('grades:write'));
   assert.ok(!allPermissions().includes('tenants:manage'));
 });
+
+import { visibleNav, profileOf, TOGGLEABLE_PAGES } from '../src/index.ts';
+const hrefs = (g: ReturnType<typeof visibleNav>) => g.flatMap((x) => x.items.map((i) => i.href));
+test('navigation shows only what the role may open, per module and per level', () => {
+  const all = ['module-oaa', 'module-payment', 'module-gamification', 'module-orientation', 'module-ia-predictive', 'module-gps'];
+  const student = hrefs(visibleNav({ roles: ['student'], schoolType: 'lycee', modules: all }));
+  assert.ok(student.includes('/grades')); assert.ok(student.includes('/payments')); assert.ok(!student.includes('/school/users')); assert.ok(!student.includes('/school/students')); assert.ok(!student.includes('/administration'));
+  const accountant = hrefs(visibleNav({ roles: ['accountant'], schoolType: 'lycee', modules: all }));
+  assert.deepEqual(accountant.filter((h) => h.startsWith('/school')), []); assert.ok(accountant.includes('/payments')); assert.ok(!accountant.includes('/grades'));
+  const admin = hrefs(visibleNav({ roles: ['admin'], schoolType: 'lycee', modules: all }));
+  assert.ok(admin.includes('/school/users') && admin.includes('/school/settings') && admin.includes('/school/students'));
+  assert.ok(!hrefs(visibleNav({ roles: ['admin'], schoolType: 'lycee', modules: [] })).includes('/payments'), 'module off: page hidden');
+});
+test('each school level has its own pages and vocabulary', () => {
+  const all = ['module-oaa', 'module-gps', 'module-gamification', 'module-ia-predictive', 'module-orientation'];
+  const prim = hrefs(visibleNav({ roles: ['admin'], schoolType: 'primary', modules: all }));
+  const uni = hrefs(visibleNav({ roles: ['admin'], schoolType: 'university', modules: all }));
+  assert.ok(!prim.includes('/risk') && !prim.includes('/orientation')); assert.ok(uni.includes('/risk') && uni.includes('/orientation') && uni.includes('/academic')); assert.ok(!uni.includes('/gps') && !uni.includes('/play'));
+  assert.equal(profileOf('university').vocabulary.student.fr, 'Étudiant'); assert.equal(profileOf('lycee').vocabulary.head.fr, 'Proviseur'); assert.equal(profileOf('primary').vocabulary.head.fr, 'Directeur');
+  assert.equal(visibleNav({ roles: ['admin'], schoolType: 'university', modules: all }).flatMap((g) => g.items).find((i) => i.href === '/school/classes')!.label.fr, 'Promotions et groupes');
+});
+test('a school can hide a page or bring back one hidden by its level', () => {
+  const m = ['module-gps', 'module-gamification'];
+  assert.ok(!hrefs(visibleNav({ roles: ['admin'], schoolType: 'lycee', modules: m, hidden: ['/news'] })).includes('/news'));
+  assert.ok(hrefs(visibleNav({ roles: ['admin'], schoolType: 'university', modules: m, shown: ['/gps'] })).includes('/gps'));
+  assert.ok(TOGGLEABLE_PAGES.includes('/news') && !TOGGLEABLE_PAGES.includes('/notifications'));
+});

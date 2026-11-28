@@ -47,6 +47,48 @@ export class PedagogyService {
   createRoom(slug: string, b: any) {
     return this.tx(slug, async (q) => (await q('INSERT INTO rooms(name, capacity) VALUES ($1,$2) RETURNING *', [str(b.name, 'name', 60), b.capacity ?? null]))[0]);
   }
+  listTeachers(slug: string) { return this.tx(slug, (q) => q('SELECT * FROM teachers ORDER BY last_name, first_name')); }
+  listRooms(slug: string) { return this.tx(slug, (q) => q('SELECT * FROM rooms ORDER BY name')); }
+  listClassSubjects(slug: string, classId?: string) {
+    return this.tx(slug, (q) => q(`SELECT cs.id, cs.class_id, cs.subject_id, cs.teacher_id, cs.weekly_hours, s.name AS subject, t.first_name || ' ' || t.last_name AS teacher
+      FROM class_subjects cs JOIN subjects s ON s.id = cs.subject_id JOIN teachers t ON t.id = cs.teacher_id WHERE ($1::uuid IS NULL OR cs.class_id = $1) ORDER BY s.name`, [classId ? uuid(classId, 'class_id') : null]));
+  }
+  /** Partial update: only the fields sent change. `spec` lists the editable columns with their validators. */
+  private async patch(slug: string, actor: string, table: string, id: string, b: any, spec: Record<string, (v: unknown) => unknown>, entity: string) {
+    const sets: string[] = []; const vals: unknown[] = [];
+    for (const [col, check] of Object.entries(spec)) if (b && Object.prototype.hasOwnProperty.call(b, col)) { vals.push(check(b[col])); sets.push(`${col} = $${vals.length}`); }
+    if (!sets.length) throw new BadRequestException('nothing to update');
+    vals.push(uuid(id, 'id'));
+    const r = await this.tx(slug, (q) => q(`UPDATE ${table} SET ${sets.join(', ')} WHERE id = $${vals.length} RETURNING *`, vals));
+    if (!r.length) throw new NotFoundException(`${entity} not found`);
+    await this.audit.log({ actorId: actor, tenant: slug, action: `${entity}.update`, entity, entityId: id });
+    return r[0];
+  }
+  private async remove(slug: string, actor: string, table: string, id: string, entity: string) {
+    let r: any[];
+    try { r = await this.db.run(slug, (q) => q(`DELETE FROM ${table} WHERE id = $1 RETURNING id`, [uuid(id, 'id')])); }
+    catch (e) { if ((e as { code?: string }).code === '23503') throw new ConflictException('in_use'); return mapDbError(e); }
+    if (!r.length) throw new NotFoundException(`${entity} not found`);
+    await this.audit.log({ actorId: actor, tenant: slug, action: `${entity}.delete`, entity, entityId: id });
+    return { deleted: true };
+  }
+  updateClass(slug: string, actor: string, id: string, b: any) { return this.patch(slug, actor, 'classes', id, b, { name: (v) => str(v, 'name', 80), level_code: (v) => str(v, 'level_code', 20), section: (v) => optStr(v, 'section', 20), school_year: (v) => str(v, 'school_year', 20) }, 'class'); }
+  deleteClass(slug: string, actor: string, id: string) { return this.remove(slug, actor, 'classes', id, 'class'); }
+  updateSubject(slug: string, actor: string, id: string, b: any) {
+    return this.patch(slug, actor, 'subjects', id, b, { code: (v) => str(v, 'code', 20), name: (v) => str(v, 'name', 120), coefficient: (v) => num(v, 'coefficient', 0.1, 20),
+      category: (v) => { if (!['academic', 'physical', 'creativity', 'research', 'professional', 'orientation'].includes(v as string)) throw new BadRequestException('invalid subject category'); return v; } }, 'subject');
+  }
+  deleteSubject(slug: string, actor: string, id: string) { return this.remove(slug, actor, 'subjects', id, 'subject'); }
+  updateTeacher(slug: string, actor: string, id: string, b: any) { return this.patch(slug, actor, 'teachers', id, b, { first_name: (v) => str(v, 'first_name', 80), last_name: (v) => str(v, 'last_name', 80), max_weekly_hours: (v) => num(v, 'max_weekly_hours', 1, 60) }, 'teacher'); }
+  deleteTeacher(slug: string, actor: string, id: string) { return this.remove(slug, actor, 'teachers', id, 'teacher'); }
+  updateRoom(slug: string, actor: string, id: string, b: any) { return this.patch(slug, actor, 'rooms', id, b, { name: (v) => str(v, 'name', 60), capacity: (v) => (v === null || v === '' ? null : num(v, 'capacity', 1, 5000)) }, 'room'); }
+  deleteRoom(slug: string, actor: string, id: string) { return this.remove(slug, actor, 'rooms', id, 'room'); }
+  deleteClassSubject(slug: string, actor: string, id: string) { return this.remove(slug, actor, 'class_subjects', id, 'class_subject'); }
+  updateStudent(slug: string, actor: string, id: string, b: any) {
+    return this.patch(slug, actor, 'students', id, b, { first_name: (v) => str(v, 'first_name', 80), last_name: (v) => str(v, 'last_name', 80), birth_date: (v) => (v ? date(v, 'birth_date') : null),
+      class_id: (v) => (v ? uuid(v, 'class_id') : null), gender: (v) => (['F', 'M', 'X'].includes(v as string) ? v : null),
+      status: (v) => { if (!['enrolled', 'active', 'transferred', 'graduated'].includes(v as string)) throw new BadRequestException('invalid status'); return v; } }, 'student');
+  }
   assignSubject(slug: string, b: any) {
     return this.tx(slug, async (q) => (await q('INSERT INTO class_subjects(class_id, subject_id, teacher_id, weekly_hours) VALUES ($1,$2,$3,$4) RETURNING *',
       [uuid(b.class_id, 'class_id'), uuid(b.subject_id, 'subject_id'), uuid(b.teacher_id, 'teacher_id'), num(b.weekly_hours, 'weekly_hours', 1, 40)]))[0]);

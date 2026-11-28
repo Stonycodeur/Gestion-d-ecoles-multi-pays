@@ -5,6 +5,8 @@ import { login, setSession } from '../../lib/api';
 import { getLocale, t } from '../../lib/i18n';
 import { fetchAuthConfig, passwordLogin, startLogin, verifyMfa, type AuthConfig, type OidcSession } from '../../lib/oidc';
 import PasswordField from '../../components/PasswordField';
+import Link from 'next/link';
+import { API_BASE } from '../../lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,6 +16,11 @@ export default function LoginPage() {
   const l = typeof window === 'undefined' ? 'fr' : getLocale();
   const [cfg, setCfg] = useState<AuthConfig | null>(null);
   useEffect(() => { fetchAuthConfig().then(setCfg).catch(() => setCfg({ mode: 'sandbox' })); }, []);   // unreachable config: fall back to the dev form, the API still refuses it in production
+  const [brand, setBrand] = useState<{ slug: string; name: string; type_label?: { fr: string; en: string }; city?: string } | null>(null);
+  useEffect(() => {   // coming from a school's site: show which school this sign-in is for
+    const sl = new URLSearchParams(window.location.search).get('school')?.toLowerCase(); if (!sl || !/^[a-z0-9_]{2,40}$/.test(sl)) return;
+    setSchool(sl); void fetch(`${API_BASE}/directory/schools?slug=${encodeURIComponent(sl)}`).then((r) => (r.ok ? r.json() : [])).then((d) => { if (d[0]) setBrand(d[0]); }).catch(() => undefined);
+  }, []);
   const pwd = cfg?.mode === 'password'; const oidc = cfg?.mode === 'oidc';
   const fr = l === 'fr';
   return (
@@ -51,6 +58,7 @@ export default function LoginPage() {
         }}>
           <h1>{t('app', l)}</h1>
           <p className="sub">{fr ? 'Connectez-vous pour accéder à votre espace.' : 'Sign in to access your space.'}</p>
+          {brand && <p className="login-school"><span><strong>{brand.name}</strong><small>{[fr ? brand.type_label?.fr : brand.type_label?.en, brand.city].filter(Boolean).join(' · ')} · <Link href={`/ecole/${brand.slug}`}>{fr ? 'Site de l’école' : 'School site'}</Link></small></span></p>}
           {pwd && !pend && <>
             <label>Email<input type="email" required autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} /></label>
             <PasswordField label={fr ? 'Mot de passe' : 'Password'} value={password} onChange={setPassword} />
@@ -60,7 +68,7 @@ export default function LoginPage() {
               <input data-autofocus autoFocus inputMode="numeric" autoComplete="one-time-code" pattern="[0-9 ]{6,7}" maxLength={7} required value={code} onChange={(e) => setCode(e.target.value)} />
             </label>
           )}
-          {!pwd && <label>{t('school', l)}<input required value={school} onChange={(e) => setSchool(e.target.value)} /></label>}
+          {!pwd && !brand && <label>{t('school', l)}<input required value={school} onChange={(e) => setSchool(e.target.value)} /></label>}
           {!oidc && !pwd && <label>{t('role', l)}
             <select value={role} onChange={(e) => setRole(e.target.value)}>
               {['admin', 'head', 'teacher', 'education_assistant', 'accountant', 'student', 'guardian'].map((r) => <option key={r}>{r}</option>)}

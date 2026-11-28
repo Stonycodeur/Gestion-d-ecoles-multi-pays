@@ -6,13 +6,15 @@ import { api, getContext, getSession, isRootSession, replayQueue, setContext, se
 import { fetchAuthConfig, logoutUrl } from '../lib/oidc';
 import { getLocale, setLocale, t, type Locale } from '../lib/i18n';
 import { pendingOps } from '../lib/offline-queue';
-import { HOME, NAV, PLATFORM, findAny, pick } from '../lib/nav';
+import { HOME, PLATFORM, pick } from '../lib/nav';
+import { useNavigation } from '../lib/navigation';
+import NotificationBell from './NotificationBell';
 import Icon from './Icon';
 import PersonalizeDialog from './PersonalizeDialog';
 import SyncDialog from './SyncDialog';
 import { decodeClaims } from '../lib/pkce';
 import { initialsOf, useProfile } from '../lib/profile';
-import { loadPrefs, mergeRemote, playRing, savePrefs } from '../lib/prefs';
+import { loadPrefs, mergeRemote, savePrefs } from '../lib/prefs';
 
 export default function Shell({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -24,9 +26,9 @@ export default function Shell({ children }: { children: ReactNode }) {
   const [who, setWho] = useState('');
   const [ctx, setCtx] = useState('');
   const [schools, setSchools] = useState<{ slug: string; name: string; active: boolean }[]>([]);
-  const [menu, setMenu] = useState(false); const [dlg, setDlg] = useState<'' | 'perso' | 'sync'>(''); const [unread, setUnread] = useState(0);
+  const [menu, setMenu] = useState(false); const [dlg, setDlg] = useState<'' | 'perso' | 'sync'>('');
   const [email, setEmail] = useState(''); const [roles, setRoles] = useState<string[]>([]); const [install, setInstall] = useState<any>(null); const [hint, setHint] = useState('');
-  const { profile } = useProfile(); const menuRef = useRef<HTMLDivElement>(null); const lastUnread = useRef<number | null>(null);
+  const { profile } = useProfile(); const menuRef = useRef<HTMLDivElement>(null); const { nav } = useNavigation();
   useEffect(() => {
     setL(getLocale()); setLocale(getLocale());
     const s = getSession();
@@ -50,19 +52,6 @@ export default function Shell({ children }: { children: ReactNode }) {
   }, [router]);
   // Preferences saved on the account follow the person to this device.
   useEffect(() => { if (profile) { if (Object.keys(profile.preferences).length) mergeRemote(profile.preferences); if (profile.language && !localStorage.getItem('em_locale')) { setLocale(profile.language as Locale); setL(profile.language as Locale); } } }, [profile]);
-  // Unread notifications: a badge on the bell, and the person's ringtone when a new one arrives.
-  useEffect(() => {
-    if (!who || (who === 'root' && !ctx)) { setUnread(0); return; }
-    let stop = false;
-    const poll = async () => {
-      if (!navigator.onLine) return;
-      const r = await api<{ read_at: string | null }[]>('/notifications'); if (stop || !r.ok || !Array.isArray(r.data)) return;
-      const n = r.data.filter((x) => !x.read_at).length; setUnread(n);
-      if (lastUnread.current !== null && n > lastUnread.current) void playRing(loadPrefs().ringVolume);
-      lastUnread.current = n;
-    };
-    void poll(); const h = setInterval(poll, 60_000); return () => { stop = true; clearInterval(h); };
-  }, [who, ctx]);
   useEffect(() => {
     if (!menu) return;
     const out = (e: MouseEvent) => { if (!menuRef.current?.contains(e.target as Node)) setMenu(false); };
@@ -75,10 +64,11 @@ export default function Shell({ children }: { children: ReactNode }) {
   }, []);
   const enter = (slug: string) => { setContext(slug); window.location.assign(slug ? '/' : '/root'); };
   const fr = locale === 'fr';
-  const found = findAny(path);
+  const navGroups = nav.groups.map((g) => ({ title: g.title, items: g.items }));
+  const found = [...PLATFORM.items, ...navGroups.flatMap((g) => g.items)].filter((i) => path === i.href || path.startsWith(`${i.href}/`)).sort((x, y) => y.href.length - x.href.length)[0];
   const title = path === '/' ? pick(HOME.label, locale) : found ? pick(found.label, locale) : path.startsWith('/account') ? (fr ? 'Mon espace' : 'My space') : t('app', locale);
   const isRoot = who === 'root';
-  const groups = isRoot ? [PLATFORM, ...(ctx ? NAV : [])] : NAV;
+  const groups = isRoot ? [PLATFORM, ...(ctx ? navGroups : [])] : navGroups;
   const needsSchool = isRoot && !ctx && path !== '/' && !path.startsWith('/root') && !path.startsWith('/account');
   const initials = initialsOf(profile?.full_name, isRoot ? 'SA' : who.replace(/[^a-z0-9]/gi, '').slice(0, 2) || '··');
   const display = profile?.full_name || email || (isRoot ? 'Super-Admin' : who);
@@ -126,7 +116,7 @@ export default function Shell({ children }: { children: ReactNode }) {
             </select>
           )}
           <button type="button" className={`pill ${online ? 'ok' : 'warn'}`} style={{ minHeight: 0, border: 0 }} onClick={() => setDlg('sync')} aria-label={`${online ? (pending ? `${pending} ${fr ? 'en attente' : 'pending'}` : t('synced', locale)) : t('offline', locale)} — ${fr ? 'ouvrir la synchronisation' : 'open synchronisation'}`}>{online ? (pending ? `${pending} ${fr ? 'en attente' : 'pending'}` : t('synced', locale)) : t('offline', locale)}</button>
-          <Link href="/notifications" className="iconbtn" aria-label={`Notifications${unread ? ` (${unread})` : ''}`}><Icon name="bell" />{unread > 0 && <span className="badge-count" aria-hidden="true">{unread > 99 ? '99+' : unread}</span>}</Link>
+          <NotificationBell active={!!who && !(who === 'root' && !ctx)} />
           <div className="usermenu" ref={menuRef}>
             <button type="button" className="avatar-btn" aria-expanded={menu} aria-controls="menu-user" aria-label={`${fr ? 'Mon espace' : 'My space'} : ${display}`} onClick={() => setMenu(!menu)}>
               {profile?.avatar ? <img src={profile.avatar} alt="" /> : <span aria-hidden="true">{initials}</span>}

@@ -35,6 +35,7 @@ export class CommsController {
   @Get('events') @RequirePermission('news:read') events(@Req() r: CoreRequest) { return this.svc.listEvents(need(r).slug); }
 
   @Get('notifications') notifications(@Req() r: CoreRequest) { const { slug, p } = need(r); return this.svc.listNotifications(slug, p); }
+  @Post('notifications/read-all') readAll(@Req() r: CoreRequest) { const { slug, p } = need(r); return this.svc.markAllRead(slug, p); }
   @Post('notifications/:id/read') read(@Req() r: CoreRequest, @Param('id') id: string) { const { slug, p } = need(r); return this.svc.markRead(slug, p, id); }
   @Get('me/notification-preferences') prefs(@Req() r: CoreRequest) { const { slug, p } = need(r); return this.notif.getPrefs(slug, p.id); }
   @Put('me/notification-preferences') setPrefs(@Req() r: CoreRequest, @Body() b: any) { const { slug, p } = need(r); return this.notif.setPrefs(slug, p.id, b); }

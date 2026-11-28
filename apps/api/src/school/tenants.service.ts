@@ -3,6 +3,8 @@ import { poolConfig } from '../core/db-config';
 import { Pool } from 'pg';
 import { AuditService } from '../core/audit.service';
 import { GeoService } from '../geo/geo.service';
+import { ModulesService } from '../modules/modules.service';
+import { profileOf } from '@ecolemanager/shared';
 
 const TYPES = ['primary', 'college', 'lycee', 'university'];
 
@@ -10,7 +12,7 @@ const TYPES = ['primary', 'college', 'lycee', 'university'];
 @Injectable()
 export class TenantsService {
   private pool?: Pool;
-  constructor(private readonly audit: AuditService, private readonly geo: GeoService) {}
+  constructor(private readonly audit: AuditService, private readonly geo: GeoService, private readonly modules: ModulesService) {}
   private get db(): Pool {
     if (!this.pool) {
       if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set');
@@ -29,6 +31,27 @@ export class TenantsService {
     } catch (e) { await c.query('ROLLBACK').catch(() => undefined); throw e; } finally { c.release(); }
   }
 
+  /** Public directory: active schools only, nothing private (no config, no ids). */
+  directory(country?: string, q?: string, type?: string, slug?: string) {
+    if (slug !== undefined && slug !== '' && !/^[a-z0-9_]{2,40}$/.test(slug)) throw new BadRequestException('invalid school code');
+    if (country !== undefined && country !== '' && !/^[A-Za-z]{2}$/.test(country)) throw new BadRequestException('country must be an ISO code');
+    if (type !== undefined && type !== '' && !TYPES.includes(type)) throw new BadRequestException(`type must be one of ${TYPES.join(', ')}`);
+    return this.root((qq) => qq(`SELECT slug, name, school_type, country_code, region, city, config FROM public.tenants WHERE active AND deleted_at IS NULL
+      AND ($4::text IS NULL OR slug = $4) AND ($1::text IS NULL OR country_code = $1) AND ($2::text IS NULL OR school_type = $2) AND ($3::text IS NULL OR lower(name) LIKE $3 OR lower(coalesce(city,'')) LIKE $3)
+      ORDER BY name LIMIT 200`, [country ? country.toUpperCase() : null, type || null, q ? `%${q.toLowerCase().replace(/[%_]/g, '')}%` : null, slug || null]));
+  }
+  async countsByCountry(): Promise<Record<string, number>> {
+    const rows = await this.root((qq) => qq('SELECT country_code, COUNT(*)::int AS n FROM public.tenants WHERE active AND deleted_at IS NULL GROUP BY country_code'));
+    return Object.fromEntries(rows.map((r: any) => [r.country_code, r.n]));
+  }
+  /** What the school chose on top of its level: hidden pages, pages brought back, vocabulary overrides. Stored in tenants.config. */
+  async setProfile(slug: string, actor: string, patch: { hidden?: string[]; shown?: string[]; vocabulary?: Record<string, { fr?: string; en?: string }> }) {
+    const cur = (await this.get(slug)).config ?? {};
+    const next = { ...cur, ...(patch.hidden ? { hidden: patch.hidden } : {}), ...(patch.shown ? { shown: patch.shown } : {}), ...(patch.vocabulary ? { vocabulary: patch.vocabulary } : {}) };
+    await this.root((q) => q('UPDATE public.tenants SET config = $2::jsonb WHERE slug = $1', [slug, JSON.stringify(next)]));
+    await this.audit.log({ actorId: actor, tenant: slug, action: 'school.profile.update', entity: 'tenant', entityId: slug });
+    return next;
+  }
   list() { return this.root((q) => q('SELECT id, slug, name, school_type, country_code, continent_code, region, city, active, created_at FROM public.tenants WHERE deleted_at IS NULL ORDER BY name')); }
   /** Countries of the referential (the ones a school can be created in), with their currency and grading scales. */
   activated() { return this.root((q) => q('SELECT c.code, c.name_fr, c.name_en, c.currency, c.is_sample, (SELECT count(*)::int FROM public.tenants t WHERE t.country_code = c.code AND t.deleted_at IS NULL) AS schools FROM public.countries c ORDER BY c.name_en')); }
@@ -91,6 +114,8 @@ export class TenantsService {
       } catch (e) { if ((e as { code?: string }).code === '23505') throw new ConflictException('a school with this slug already exists'); throw e; }
     });
     await this.audit.log({ actorId: actor, action: 'tenant.create', entity: 'tenant', entityId: id, details: { slug, country, region, city, school_type: b.school_type } });
+    // Recommended modules for the level, when asked: the school starts with a working public site, payments, OAA... and can switch any off.
+    if (b.with_default_modules === true) for (const m of profileOf(b.school_type).modules) if (this.modules.registry.has(m)) this.modules.registry.enable(slug, m, {});
     return this.get(slug);
   }
 

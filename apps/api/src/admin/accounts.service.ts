@@ -79,6 +79,18 @@ export class AccountsAdminService {
     return { id, active };
   }
 
+  /** Sign-in details of one account (needs 112_school_spaces.sql): 2FA, open sessions, last sign-in, phone. */
+  async detail(id: string) {
+    if (!UUID.test(id)) throw new NotFoundException('unknown account');
+    try { return (await this.root((q) => q('SELECT * FROM admin_account_detail($1)', [id])))[0] ?? null; } catch (e) { if ((e as { code?: string }).code === '42883') return null; return this.fail(e); }
+  }
+  async closeSessions(actor: string, id: string) {
+    if (!UUID.test(id)) throw new NotFoundException('unknown account');
+    try { await this.root((q) => q('SELECT admin_close_sessions($1)', [id])); } catch (e) { return this.fail(e); }
+    await this.audit.log({ actorId: actor, action: 'account.close_sessions', entity: 'user', entityId: id });
+    return { closed: true };
+  }
+
   // ----- trash (needs 111_supabase_trash.sql): a trashed account is disabled and hidden until restored or purged
   async listTrashed() { try { return await this.root((q) => q('SELECT * FROM admin_list_trashed_accounts()')); } catch (e) { if ((e as { code?: string }).code === '42883') return []; return this.fail(e); } }
   async trash(actor: string, id: string) {
