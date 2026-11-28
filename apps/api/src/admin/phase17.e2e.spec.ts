@@ -37,7 +37,7 @@ const enabled = !!process.env.DATABASE_URL && !!process.env.DATABASE_ADMIN_URL;
     const stu = await tok('student', 'e2e_p17', 41); const stu2 = await tok('student', 'e2e_p17', 42); const tea = await tok('teacher', 'e2e_p17', 43);
     await call('get', '/teachers', stu).expect(403);
     await admin.query("INSERT INTO user_permission_overrides(user_id, tenant_slug, permission, granted) VALUES ($1,'e2e_p17','staff:read',TRUE)", [U(41)]);
-    await admin.query("INSERT INTO user_permission_overrides(user_id, tenant_slug, permission, granted) VALUES ($1,'e2e_p17','students:read',FALSE)", [U(43)]);
+    await admin.query("INSERT INTO user_permission_overrides(user_id, tenant_slug, permission, granted) VALUES ($1,'e2e_p17','schedule:read',FALSE)", [U(43)]);
     await perms.refresh(true);
     await call('get', '/teachers', stu).expect(200);        // granted to this student
     await call('get', '/teachers', stu2).expect(403);       // another student: unchanged
