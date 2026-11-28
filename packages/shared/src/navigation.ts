@@ -1,6 +1,6 @@
 import { roleHas, type RoleCode } from './rbac.ts';
 
-export type SchoolType = 'primary' | 'college' | 'lycee' | 'university';
+import type { SchoolType } from './oaa-axes.ts';
 export const SCHOOL_TYPES: SchoolType[] = ['primary', 'college', 'lycee', 'university'];
 type L2 = { fr: string; en: string };
 
