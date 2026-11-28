@@ -122,6 +122,7 @@ export const NAV_CATALOG: NavEntry[] = [
 
 export interface NavContext {
   roles: string[]; isRoot?: boolean; schoolType: string; modules: string[];
+  has?: (perm: string) => boolean;                // overrides the role lookup (personal rights included)
   hidden?: string[]; shown?: string[];            // school choices: pages hidden / pages re-enabled against the level default
 }
 export interface NavItemOut { href: string; icon: string; label: L2; desc: L2 }
@@ -131,7 +132,7 @@ export interface NavGroupOut { key: NavEntry['group']; title: L2; items: NavItem
 export function visibleNav(c: NavContext): NavGroupOut[] {
   const prof = profileOf(c.schoolType); const mods = new Set(c.modules);
   const hidden = new Set([...prof.hidden.filter((h) => !(c.shown ?? []).includes(h)), ...(c.hidden ?? [])]);
-  const holds = (perm: string) => c.isRoot || c.roles.some((r) => r === 'root_super_admin' || roleHas(r as RoleCode, perm));
+  const holds = (perm: string) => c.has ? c.has(perm) : c.isRoot || c.roles.some((r) => r === 'root_super_admin' || roleHas(r as RoleCode, perm));
   const groups = new Map<NavEntry['group'], NavItemOut[]>();
   for (const n of NAV_CATALOG) {
     if (!c.isRoot) {

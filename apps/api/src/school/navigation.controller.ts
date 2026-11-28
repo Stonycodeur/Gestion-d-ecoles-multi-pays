@@ -1,5 +1,5 @@
 import { BadRequestException, Body, Controller, ForbiddenException, Get, Put, Req } from '@nestjs/common';
-import { SCHOOL_PROFILES, TOGGLEABLE_PAGES, NAV_CATALOG, allPermissions, profileOf, roleHas, visibleNav, type RoleCode, type Vocabulary } from '@ecolemanager/shared';
+import { SCHOOL_PROFILES, TOGGLEABLE_PAGES, NAV_CATALOG, allPermissions, principalHas, profileOf, visibleNav, type Vocabulary } from '@ecolemanager/shared';
 import { RequirePermission } from '../core/auth.guard';
 import type { CoreRequest } from '../core/request-context';
 import { TenantsService } from './tenants.service';
@@ -21,10 +21,11 @@ export class NavigationController {
     const prof = profileOf(t.school_type);
     const vocabulary = { ...prof.vocabulary } as Record<string, { fr: string; en: string }>;
     for (const k of VOCAB_KEYS) { const o = cfg.vocabulary?.[k]; if (o) vocabulary[k] = { fr: o.fr || vocabulary[k].fr, en: o.en || vocabulary[k].en }; }
-    const groups = visibleNav({ roles: p.roles, isRoot: p.isRoot, schoolType: t.school_type, modules: mods, hidden: cfg.hidden, shown: cfg.shown });
+    const groups = visibleNav({ roles: p.roles, isRoot: p.isRoot, has: (perm) => principalHas(p, perm), schoolType: t.school_type, modules: mods, hidden: cfg.hidden, shown: cfg.shown });
     return { school: { slug: t.slug, name: t.name, type: t.school_type, country: t.country_code, city: t.city ?? null }, profile: { type: prof.type, label: prof.label, vocabulary }, groups,
       widgets: prof.homeWidgets, hidden: cfg.hidden ?? [], shown: cfg.shown ?? [], modules: mods,
-      rights: allPermissions().filter((perm) => p.isRoot || p.roles.some((role) => roleHas(role as RoleCode, perm))) };
+      view_as: p.impersonatedBy ? { by: p.impersonatedBy } : null,
+      rights: allPermissions().filter((perm) => principalHas(p, perm)) };
   }
 
   @Get('me/navigation') navigation(@Req() r: CoreRequest) { return this.view(r); }

@@ -84,6 +84,16 @@ export class AccountsAdminService {
     if (!UUID.test(id)) throw new NotFoundException('unknown account');
     try { return (await this.root((q) => q('SELECT * FROM admin_account_detail($1)', [id])))[0] ?? null; } catch (e) { if ((e as { code?: string }).code === '42883') return null; return this.fail(e); }
   }
+  /** Sign-in history of one account (needs 114_supabase_login_history.sql); empty with another identity provider. */
+  async loginHistory(id: string): Promise<{ at: string; ip: string | null; action: string; provider: string | null }[]> {
+    if (!UUID.test(id)) throw new NotFoundException('unknown account');
+    try { return await this.root((q) => q('SELECT at, ip, action, provider FROM admin_login_history($1, 30)', [id])); } catch (e) { if ((e as { code?: string }).code === '42883') return []; return this.fail(e); }
+  }
+  /** When the identity provider last changed this account (a new password included); null when unknown. */
+  async authUpdatedAt(id: string): Promise<Date | null> {
+    if (!UUID.test(id)) return null;
+    try { const r = await this.root((q) => q('SELECT admin_auth_updated_at($1) AS at', [id])); return r[0]?.at ? new Date(r[0].at) : null; } catch (e) { if ((e as { code?: string }).code === '42883') return null; return this.fail(e); }
+  }
   async closeSessions(actor: string, id: string) {
     if (!UUID.test(id)) throw new NotFoundException('unknown account');
     try { await this.root((q) => q('SELECT admin_close_sessions($1)', [id])); } catch (e) { return this.fail(e); }
